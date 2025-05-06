@@ -1,17 +1,24 @@
 {
-  "name": "simcity-threejs-clone",
-  "private": true,
+  "name": "vite-template-solid",
   "version": "0.0.0",
+  "description": "",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 3000",
+    "tsc": "tsc",
+    "start": "vite",
+    "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "serve": "vite preview"
   },
+  "license": "MIT",
   "devDependencies": {
-    "vite": "^4.4.5"
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0",
+    "vite-plugin-solid": "^2.11.6"
   },
   "dependencies": {
-    "three": "^0.155.0"
+    "@types/three": "^0.176.0",
+    "solid-js": "^1.9.5",
+    "three": "^0.176.0"
   }
 }

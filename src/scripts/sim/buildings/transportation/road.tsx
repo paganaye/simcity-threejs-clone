@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { Building } from '../building.js';
 import { City } from '../../city.js';
 import { DEG2RAD } from 'three/src/math/MathUtils.js';
@@ -8,7 +7,7 @@ export class Road extends Building {
   type: string = "road";
   
   style: string;
-  constructor(x, y) {
+  constructor(x: number, y: number) {
     super(x, y);
     this.type = 'road';
     this.name = 'Road';
@@ -83,7 +82,7 @@ export class Road extends Building {
 
     const mesh = assetManager.getModel(`road-${this.style}`, this);
     this.setMesh(mesh);
-    city.vehicleGraph.updateTile(this.x, this.y, this);
+    city.vehicleGraph?.updateTile(this.x, this.y, this);
   }
 
   /**

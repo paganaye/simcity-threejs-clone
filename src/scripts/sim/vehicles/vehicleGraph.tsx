@@ -3,14 +3,14 @@ import { VehicleGraphTile } from './vehicleGraphTile.js';
 import { VehicleGraphHelper } from './vehicleGraphHelper.js';
 import config from '../../config.js';
 import { Vehicle } from './vehicle.js';
-import { Road } from '../buildings/transportation/road.js';
+import { Road } from '../buildings/transportation/road.jsx';
 
 export class VehicleGraph extends THREE.Group {
-  size: any;
-  tiles: any[];
+  size: number;
+  tiles: (VehicleGraphTile | null)[][];
   vehicles: THREE.Group<THREE.Object3DEventMap>;
   helper: VehicleGraphHelper;
-  constructor(size) {
+  constructor(size: number) {
     super();
 
     this.size = size;
@@ -31,7 +31,7 @@ export class VehicleGraph extends THREE.Group {
 
     // Initialize the vehicle graph tiles array
     for (let x = 0; x < this.size; x++) {
-      const column = [];
+      const column: null[] = [];
       for (let y = 0; y < this.size; y++) {
         column.push(null);
       }
@@ -55,7 +55,7 @@ export class VehicleGraph extends THREE.Group {
    * @param {number} y 
    * @param {Road | null} road 
    */
-  updateTile(x, y, road) {
+  updateTile(x: number, y: number, road: Road | null) {
     const existingTile = this.getTile(x, y);
     const leftTile = this.getTile(x - 1, y);
     const rightTile = this.getTile(x + 1, y);
@@ -71,27 +71,28 @@ export class VehicleGraph extends THREE.Group {
 
     if (road) {
       const tile = VehicleGraphTile.create(x, y, road.rotation.y, road.style);
+      if (tile) {
+        // Connect tile to adjacent tiles
+        if (leftTile) {
+          tile.getWorldLeftSide().out?.connect(leftTile.getWorldRightSide().in);
+          leftTile.getWorldRightSide().out?.connect(tile.getWorldLeftSide().in);
+        }
+        if (rightTile) {
+          tile.getWorldRightSide().out?.connect(rightTile.getWorldLeftSide().in);
+          rightTile.getWorldLeftSide().out?.connect(tile.getWorldRightSide().in);
+        }
+        if (topTile) {
+          tile.getWorldTopSide().out?.connect(topTile.getWorldBottomSide().in);
+          topTile.getWorldBottomSide().out?.connect(tile.getWorldTopSide().in);
+        }
+        if (bottomTile) {
+          tile.getWorldBottomSide().out?.connect(bottomTile.getWorldTopSide().in);
+          bottomTile.getWorldTopSide().out?.connect(tile.getWorldBottomSide().in);
+        }
 
-      // Connect tile to adjacent tiles
-      if (leftTile) {
-        tile.getWorldLeftSide().out?.connect(leftTile.getWorldRightSide().in);
-        leftTile.getWorldRightSide().out?.connect(tile.getWorldLeftSide().in);
+        this.tiles[x][y] = tile;
+        this.add(tile);
       }
-      if (rightTile) {
-        tile.getWorldRightSide().out?.connect(rightTile.getWorldLeftSide().in);
-        rightTile.getWorldLeftSide().out?.connect(tile.getWorldRightSide().in);
-      }
-      if (topTile) {
-        tile.getWorldTopSide().out?.connect(topTile.getWorldBottomSide().in);
-        topTile.getWorldBottomSide().out?.connect(tile.getWorldTopSide().in);
-      }
-      if (bottomTile) {
-        tile.getWorldBottomSide().out?.connect(bottomTile.getWorldTopSide().in);
-        bottomTile.getWorldTopSide().out?.connect(tile.getWorldBottomSide().in);
-      }
-
-      this.tiles[x][y] = tile;
-      this.add(tile);
     } else {
       this.tiles[x][y] = null;
     }
@@ -105,7 +106,7 @@ export class VehicleGraph extends THREE.Group {
    * @param {number} y 
    * @returns {VehicleGraphTile}
    */
-  getTile(x, y) {
+  getTile(x: number, y: number): VehicleGraphTile | null {
     if (x >= 0 && x < this.size && y >= 0 && y < this.size) {
       return this.tiles[x][y];
     } else {
@@ -117,7 +118,7 @@ export class VehicleGraph extends THREE.Group {
     const startingTile = this.getStartingTile();
 
     if (startingTile != null) {
-      const origin = startingTile.getRandomNode();
+      const origin = (startingTile as any).getRandomNode();
       const destination = origin?.getRandomNextNode();
 
       if (origin && destination) {
@@ -131,8 +132,8 @@ export class VehicleGraph extends THREE.Group {
    * Gets a random tile for a vehicle to spawn at
    * @returns {VehicleGraphTile | null}
    */
-  getStartingTile() {
-    const tiles = [];
+  getStartingTile(): VehicleGraphTile | null {
+    const tiles: VehicleGraphTile[] = [];
     for (let x = 0; x < this.size; x++) {
       for (let y = 0; y < this.size; y++) {
         let tile = this.getTile(x, y);

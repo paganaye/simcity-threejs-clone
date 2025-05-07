@@ -1,7 +1,7 @@
 import config from '../../../config.js';
 import { Citizen } from '../../citizen.js';
 import { City } from '../../city.js';
-import { Zone as ResidentialZone } from '../../buildings/zones/zone.js';
+import { Zone } from '../zones/zone.jsx';
 import { DevelopmentState } from './development.js';
 import { SimModule } from './simModule.js';
 
@@ -17,12 +17,12 @@ export class ResidentsModule extends SimModule {
   /**
    * @type {Citizen[]}
    */
-  #residents = [];
+  #residents: Citizen[] = [];
 
   /**
    * @param {ResidentialZone} zone 
    */
-  constructor(zone) {
+  constructor(zone: Zone) {
     super();
     this.#zone = zone;
   }

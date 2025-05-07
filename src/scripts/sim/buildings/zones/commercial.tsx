@@ -8,9 +8,9 @@ export class CommercialZone extends Zone {
   /**
    * @type {JobsModule}
    */
-  jobs = new JobsModule(this);
+  jobs: JobsModule = new JobsModule(this);
 
-  constructor(x, y) {
+  constructor(x: number, y: number) {
     super(x, y);
     this.name = generateBusinessName();
   }

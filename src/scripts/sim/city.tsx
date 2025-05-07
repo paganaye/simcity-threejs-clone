@@ -4,7 +4,6 @@ import { createBuilding } from './buildings/buildingFactory.js';
 import { Tile } from './tile.js';
 import { VehicleGraph } from './vehicles/vehicleGraph.js';
 import { PowerService } from './services/power.js';
-import { SimService } from './services/simService.js';
 
 export class City extends THREE.Group {
   /**
@@ -22,7 +21,7 @@ export class City extends THREE.Group {
    * List of services for the city
    * @type {SimService}
    */
-  services = [];
+  services: PowerService[] = [];
   /**
    * The size of the city in tiles
    * @type {number}
@@ -36,17 +35,17 @@ export class City extends THREE.Group {
    * 2D array of tiles that make up the city
    * @type {Tile[][]}
    */
-  tiles = [];
+  tiles: Tile[][] = [];
   /**
    * 
    * @param {VehicleGraph} size 
    */
-  vehicleGraph;
+  vehicleGraph: VehicleGraph | undefined;
 
   constructor() {
     super();
   }
-  init(size, name = 'My City') {
+  init(size: number, name = 'My City') {
     this.name = name;
     this.size = size;
 
@@ -55,7 +54,7 @@ export class City extends THREE.Group {
 
     this.tiles = [];
     for (let x = 0; x < this.size; x++) {
-      const column = [];
+      const column: Tile[] = [];
       for (let y = 0; y < this.size; y++) {
         const tile = new Tile(x, y);
         tile.refreshView(this);
@@ -81,7 +80,7 @@ export class City extends THREE.Group {
     for (let x = 0; x < this.size; x++) {
       for (let y = 0; y < this.size; y++) {
         const tile = this.getTile(x, y);
-        population += tile.building?.residents?.count ?? 0;
+        if (tile?.building?.residents) population += tile.building.residents.count;
       }
     }
     return population;
@@ -113,7 +112,7 @@ export class City extends THREE.Group {
       // Update each building
       for (let x = 0; x < this.size; x++) {
         for (let y = 0; y < this.size; y++) {
-          this.getTile(x, y).simulate(this);
+          this.getTile(x, y)!.simulate(this);
         }
       }
     }
@@ -127,12 +126,13 @@ export class City extends THREE.Group {
    * @param {number} y 
    * @param {string} buildingType 
    */
-  placeBuilding(x, y, buildingType) {
+  placeBuilding(x: number, y: number, buildingType: string) {
     const tile = this.getTile(x, y);
 
     // If the tile doesnt' already have a building, place one there
     if (tile && !tile.building) {
-      tile.setBuilding(createBuilding(x, y, buildingType));
+      let newBuilding = createBuilding(x, y, buildingType)!
+      tile.setBuilding(newBuilding);
       tile.refreshView(this);
 
       // Update buildings on adjacent tile in case they need to
@@ -142,8 +142,8 @@ export class City extends THREE.Group {
       this.getTile(x, y - 1)?.refreshView(this);
       this.getTile(x, y + 1)?.refreshView(this);
 
-      if (tile.building.type === BuildingType.road) {
-        this.vehicleGraph.updateTile(x, y, tile.building);
+      if (newBuilding.type === BuildingType.road) {
+        this.vehicleGraph?.updateTile(x, y, tile.building);
       }
     }
   }
@@ -153,12 +153,12 @@ export class City extends THREE.Group {
    * @param {number} x 
    * @param {number} y
    */
-  bulldoze(x, y) {
+  bulldoze(x: number, y: number) {
     const tile = this.getTile(x, y);
 
-    if (tile.building) {
+    if (tile && tile.building) {
       if (tile.building.type === BuildingType.road) {
-        this.vehicleGraph.updateTile(x, y, null);
+        this.vehicleGraph?.updateTile(x, y, null);
       }
 
       tile.building.dispose();
@@ -174,7 +174,7 @@ export class City extends THREE.Group {
   }
 
   draw() {
-    this.vehicleGraph.updateVehicles();
+    this.vehicleGraph?.updateVehicles();
   }
 
   /**
@@ -185,17 +185,17 @@ export class City extends THREE.Group {
    * no more tiles left to search.
    * @param {number} maxDistance The maximum distance to search from the starting tile
    */
-  findTile(start, filter, maxDistance): Tile | null {
+  findTile(start: { x: number, y: number }, filter: (tile: Tile) => boolean, maxDistance: number): Tile | null {
     const startTile = this.getTile(start.x, start.y);
+    if (!startTile) return null;
     const visited = new Set();
-    const tilesToSearch = [];
+    const tilesToSearch: Tile[] = [];
 
     // Initialze our search with the starting tile
     tilesToSearch.push(startTile);
 
     while (tilesToSearch.length > 0) {
-      const tile = tilesToSearch.shift();
-
+      const tile = tilesToSearch.shift()!;
       // Has this tile been visited? If so, ignore it and move on
       if (visited.has(tile.id)) {
         continue;
@@ -224,20 +224,20 @@ export class City extends THREE.Group {
    * @param {number} x The x-coordinate of the tile
    * @param {number} y The y-coordinate of the tile
    */
-  getTileNeighbors(x, y) {
-    const neighbors = [];
+  getTileNeighbors(x: number, y: number) {
+    const neighbors: Tile[] = [];
 
     if (x > 0) {
-      neighbors.push(this.getTile(x - 1, y));
+      neighbors.push(this.getTile(x - 1, y)!);
     }
     if (x < this.size - 1) {
-      neighbors.push(this.getTile(x + 1, y));
+      neighbors.push(this.getTile(x + 1, y)!);
     }
     if (y > 0) {
-      neighbors.push(this.getTile(x, y - 1));
+      neighbors.push(this.getTile(x, y - 1)!);
     }
     if (y < this.size - 1) {
-      neighbors.push(this.getTile(x, y + 1));
+      neighbors.push(this.getTile(x, y + 1)!);
     }
 
     return neighbors;

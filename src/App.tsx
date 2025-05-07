@@ -88,7 +88,7 @@ export default function App() {
                         onclick={event => ui.onToolSelected(event)}>
                         <img class="toolbar-icon" src="./icons/power-line-color.png" />
                     </button>
-                    <button id='button-pause' class="ui-button" onclick={event => ui.togglePause()}>
+                    <button id='button-pause' class="ui-button" onclick={() => ui.togglePause()}>
                         <img id='pause-button-icon' class="toolbar-icon" src="./icons/pause-color.png" />
                     </button>
                 </div>

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { VehicleGraph } from './vehicleGraph.js';
-import { VehicleGraphNode } from './vehicleGraphNode.js';
+import { VehicleGraph } from './vehicleGraph';
+import { VehicleGraphNode } from './vehicleGraphNode';
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -17,11 +17,7 @@ export class VehicleGraphHelper extends THREE.Group {
     this.visible = false;
   }
 
-  /**
-   * 
-   * @param {VehicleGraph} graph 
-   */
-  refreshView(graph) {
+  refreshView(graph: VehicleGraph) {
     this.clear();
 
     for (let x = 0; x < graph.size; x++) {
@@ -31,7 +27,7 @@ export class VehicleGraphHelper extends THREE.Group {
         if (!tile) continue;
 
         for (const node of tile.children) {
-          this.createNodeVisualization(node);
+          this.createNodeVisualization(node as VehicleGraphNode);
         }
       }
     }
@@ -41,7 +37,7 @@ export class VehicleGraphHelper extends THREE.Group {
    * 
    * @param {VehicleGraphNode} node 
    */
-  createNodeVisualization(node) {
+  createNodeVisualization(node: VehicleGraphNode) {
     const nodeMesh = new THREE.Mesh(
       NODE_GEOMETRY,
       node.next.length > 0 ? CONNECTED_MATERIAL : DISCONNECTED_MATERIAL
@@ -57,7 +53,7 @@ export class VehicleGraphHelper extends THREE.Group {
     );
 
     // Add edge visualizations for the connected nodes
-    if(node.next.length > 0) {
+    if (node.next.length > 0) {
       for (const next of node.next) {
         // Get world position of the next node
         const nextWorldPosition = new THREE.Vector3();
@@ -75,12 +71,12 @@ export class VehicleGraphHelper extends THREE.Group {
         );
 
         edgeMesh.scale.set(1, distance, 1);
-        
+
         edgeMesh.quaternion.setFromUnitVectors(
           UP,
           edgeVector.clone().normalize()
         );
-        
+
         const offset = new THREE.Vector3(0, distance / 2, 0)
           .applyQuaternion(edgeMesh.quaternion.clone());
 

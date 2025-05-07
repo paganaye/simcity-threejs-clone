@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { AssetManager } from './assets/assetManager';
 import { CameraManager } from './camera';
 import { InputManager } from './input';
 import { City } from './sim/city';

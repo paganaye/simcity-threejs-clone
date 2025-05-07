@@ -15,7 +15,7 @@ export class PowerPlant extends Building {
    */
   powerConsumed = 0;
 
-  constructor(x, y) {
+  constructor(x: number, y: number) {
     super(x, y);
     this.type = BuildingType.powerPlant;
   }

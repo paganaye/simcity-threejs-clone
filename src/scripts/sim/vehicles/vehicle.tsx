@@ -1,22 +1,22 @@
 import * as THREE from 'three';
-import { VehicleGraphNode } from './vehicleGraphNode.js';
 import config from '../../config.js';
 import { SimObject } from '../simObject.js';
 import models from '../../assets/models.js';
 import { assetManager } from '../../../App.jsx';
+import { VehicleGraphNode } from './vehicleGraphNode.jsx';
 
 const FORWARD = new THREE.Vector3(1, 0, 0);
 
 export class Vehicle extends SimObject {
   createdTime: number;
   cycleStartTime: any;
-  origin: any;
-  destination: any;
+  origin: VehicleGraphNode;
+  destination: VehicleGraphNode;
   originWorldPosition: THREE.Vector3;
   destinationWorldPosition: THREE.Vector3;
   originToDestination: THREE.Vector3;
   orientation: THREE.Vector3;
-  constructor(origin, destination) {
+  constructor(origin: VehicleGraphNode, destination: VehicleGraphNode) {
     super();
 
     this.createdTime = Date.now();
@@ -99,7 +99,7 @@ export class Vehicle extends SimObject {
   }
 
   updateOpacity() {
-    const setOpacity = (opacity) => {
+    const setOpacity = (opacity: number) => {
       this.traverse(obj => {
         if ('material' in obj && obj.material) {
           (obj.material as THREE.Material).opacity = Math.max(0, Math.min(opacity, 1))
@@ -118,7 +118,7 @@ export class Vehicle extends SimObject {
 
   pickNewDestination() {
     this.origin = this.destination;
-    this.destination = this.origin?.getRandomNextNode();
+    this.destination = this.origin?.getRandomNextNode()!;
     this.updateWorldPositions();
     this.cycleStartTime = Date.now();
   }

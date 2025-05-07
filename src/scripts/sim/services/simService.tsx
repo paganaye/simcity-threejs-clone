@@ -7,7 +7,7 @@ export class SimService {
   /**
    * @param {City} city 
    */
-  simulate(city: City) {
+  simulate(_city: City) {
     // Implement in subclass
   }
 }

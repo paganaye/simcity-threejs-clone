@@ -1,6 +1,6 @@
 import config from '../../../config.js';
 import { City } from '../../city.js';
-import { Building } from '../building.js';
+import { Building } from '../building.jsx';
 import { SimModule } from './simModule.js';
 
 /**
@@ -19,12 +19,12 @@ export class RoadAccessModule extends SimModule {
    * Whether or not the tile has access to a road
    * @type {boolean}
    */
-  value;
+  value: any;
 
   /**
    * @param {Building} building 
    */
-  constructor(building) {
+  constructor(building: Building) {
     super();
     this.building = building;
   }
@@ -38,8 +38,8 @@ export class RoadAccessModule extends SimModule {
       this.value = true;
     } else {
       const road = city.findTile(
-        this.building, 
-        (tile) => tile.building?.type === 'road', 
+        this.building,
+        (tile) => tile.building?.type === 'road',
         config.modules.roadAccess.searchDistance);
 
       this.value = (road !== null);

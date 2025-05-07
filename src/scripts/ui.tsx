@@ -1,5 +1,5 @@
-import { Game } from './game';
-import { SimObject } from './sim/simObject';
+import { Game } from "./game";
+
 const playIconUrl = './icons/play-color.png';
 const pauseIconUrl = './icons/pause-color.png';
 
@@ -43,7 +43,7 @@ export class GameUI {
     this.selectedControl = event.target as HTMLElement;
     this.selectedControl.classList.add('selected');
 
-    this.activeToolId = this.selectedControl.getAttribute('data-type');
+    this.activeToolId = String(this.selectedControl.getAttribute('data-type'));
   }
 
   /**
@@ -53,10 +53,10 @@ export class GameUI {
     this.isPaused = !this.isPaused;
     if (this.isPaused) {
       (document.getElementById('pause-button-icon') as HTMLImageElement).src = playIconUrl;
-      document.getElementById('paused-text').style.visibility = 'visible';
+      document.getElementById('paused-text')!.style.visibility = 'visible';
     } else {
       (document.getElementById('pause-button-icon') as HTMLImageElement).src = pauseIconUrl;
-      document.getElementById('paused-text').style.visibility = 'hidden';
+      document.getElementById('paused-text')!.style.visibility = 'hidden';
     }
   }
 
@@ -64,27 +64,29 @@ export class GameUI {
    * Updates the values in the title bar
    * @param {Game} game 
    */
-  updateTitleBar(game) {
-    document.getElementById('city-name').innerHTML = game.city.name;
-    document.getElementById('population-counter').innerHTML = game.city.population;
+  updateTitleBar(game: Game) {
+    document.getElementById('city-name')!.innerHTML = game.city.name;
+    document.getElementById('population-counter')!.innerHTML = String(game.city.population);
 
     const date = new Date('1/1/2023');
     date.setDate(date.getDate() + game.city.simTime);
-    document.getElementById('sim-time').innerHTML = date.toLocaleDateString();
+    document.getElementById('sim-time')!.innerHTML = date.toLocaleDateString();
   }
 
   /**
    * Updates the info panel with the information in the object
    * @param {SimObject} object 
    */
-  updateInfoPanel(object) {
+  updateInfoPanel(object: any) {
     const infoElement = document.getElementById('info-panel')
-    if (object) {
-      infoElement.style.visibility = 'visible';
-      infoElement.innerHTML = object.toHTML();
-    } else {
-      infoElement.style.visibility = 'hidden';
-      infoElement.innerHTML = '';
+    if (infoElement) {
+      if (object) {
+        infoElement.style.visibility = 'visible';
+        infoElement.innerHTML = object.toHTML();
+      } else {
+        infoElement.style.visibility = 'hidden';
+        infoElement.innerHTML = '';
+      }
     }
   }
 }

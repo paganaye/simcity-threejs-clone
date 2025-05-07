@@ -1,4 +1,3 @@
-import { ui } from "../App";
 
 /** 
  * Manages mouse and keyboard input
@@ -22,10 +21,10 @@ export class InputManager {
   isRightMouseDown = false;
 
   constructor(gameWindow: HTMLDivElement) {
-    ui.gameWindow.addEventListener('mousedown', this.#onMouseDown.bind(this), false);
-    ui.gameWindow.addEventListener('mouseup', this.#onMouseUp.bind(this), false);
-    ui.gameWindow.addEventListener('mousemove', this.#onMouseMove.bind(this), false);
-    ui.gameWindow.addEventListener('contextmenu', (event) => event.preventDefault(), false);
+    gameWindow.addEventListener('mousedown', this.#onMouseDown.bind(this), false);
+    gameWindow.addEventListener('mouseup', this.#onMouseUp.bind(this), false);
+    gameWindow.addEventListener('mousemove', this.#onMouseMove.bind(this), false);
+    gameWindow.addEventListener('contextmenu', (event) => event.preventDefault(), false);
   }
 
   /**

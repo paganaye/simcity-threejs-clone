@@ -1,5 +1,7 @@
 import { BuildingType } from '../buildings/buildingType.js';
+import { PowerPlant } from '../buildings/power/powerPlant.jsx';
 import { City } from '../city.js';
+import { Tile } from '../tile.jsx';
 
 export class PowerService {
   /**
@@ -7,14 +9,14 @@ export class PowerService {
    */
   simulate(city: City) {
     // Find all power plants in the city
-    const powerPlantList = [];
+    const powerPlantList: { powerPlant: PowerPlant, frontier: Tile[], visited: Tile[] }[] = [];
     for (let x = 0; x < city.size; x++) {
       for (let y = 0; y < city.size; y++) {
-        const tile = city.getTile(x, y);
-        const building = city.getTile(x, y).building;
+        const tile = city.getTile(x, y)!;
+        const building = tile.building;
         if (building) {
           if (building.type === BuildingType.powerPlant) {
-            const powerPlant = building;
+            const powerPlant = building as PowerPlant;
             // Reset power consumption for each power plant
             powerPlant.powerConsumed = 0;
             // Create an object with the power plant, the search frontier, and a visited array
@@ -58,8 +60,8 @@ export class PowerService {
           searching = true;
 
           // Get the next tile
-          const tile = frontier.shift();
-          const building = tile.building;
+          const tile = frontier.shift()!;
+          const building = tile.building!;
           visited.push(tile);
 
           // Does this building need power?
@@ -75,7 +77,7 @@ export class PowerService {
           // Add neighboring tiles to search if
           // 1) They haven't already been visited
           // 2) The tile has a building (power can pass through non-powered buildings)
-          const shouldVisit = (tile) => tile && !visited.includes(tile) && tile.building;
+          const shouldVisit = (tile: Tile | null) => tile && !visited.includes(tile) && tile.building;
 
           let left = city.getTile(x - 1, y);
           let right = city.getTile(x + 1, y);
@@ -83,16 +85,16 @@ export class PowerService {
           let bottom = city.getTile(x, y + 1);
 
           if (shouldVisit(left)) {
-            frontier.push(left);
+            frontier.push(left!);
           }
           if (shouldVisit(right)) {
-            frontier.push(right);
+            frontier.push(right!);
           }
           if (shouldVisit(top)) {
-            frontier.push(top);
-          }            
+            frontier.push(top!);
+          }
           if (shouldVisit(bottom)) {
-            frontier.push(bottom);
+            frontier.push(bottom!);
           }
         }
       }

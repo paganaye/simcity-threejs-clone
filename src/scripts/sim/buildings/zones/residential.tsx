@@ -8,9 +8,9 @@ export class ResidentialZone extends Zone {
   /**
    * @type {ResidentsModule}
    */
-  residents = new ResidentsModule(this);
+  residents: ResidentsModule = new ResidentsModule(this);
 
-  constructor(x, y) {
+  constructor(x: number, y: number) {
     super(x, y);
     this.name = generateBuildingName();
   }

@@ -6,43 +6,24 @@ import { RoadAccessModule } from './modules/roadAccess';
 import { assetManager } from '../../../App';
 import { JobsModule } from './modules/jobs';
 import { City } from '../city';
-import { Citizen } from '../citizen';
 import { ResidentsModule } from './modules/residents';
 
 export abstract class Building extends SimObject {
-  /**
-   * The building type
-   * @type {string}
-   */
+  /** The building type */
   abstract type: string; // 'building';
-  /**
-   * True if the terrain should not be rendered with this building type
-   * @type {boolean}
-   */
+  /** True if the terrain should not be rendered with this building type */
   hideTerrain = false;
-  /**
-   * @type {PowerModule}
-   */
-  power = new PowerModule(this);
-  /**
-   * @type {RoadAccessModule}
-   */
+  power = new PowerModule();
   roadAccess = new RoadAccessModule(this);
-  /**
-   * The current status of the building
-   * @type {string}
-   */
+  /** The current status of the building */
   status = BuildingStatus.Ok;
-  /**
-   * Icon displayed when building status
-   * @type {Sprite}
-   */
+  /** Icon displayed when building status */
   #statusIcon = new THREE.Sprite();
 
   jobs: JobsModule | undefined;
   residents: ResidentsModule | undefined;
-  powerConsumed: number;
-  abstract refreshView(city: City);
+  powerConsumed: number = 0;
+  abstract refreshView(city: City): void;
 
   constructor(x: number, y: number) {
     super(x, y);
@@ -51,22 +32,23 @@ export abstract class Building extends SimObject {
     this.#statusIcon.layers.set(1);
     this.#statusIcon.scale.set(0.5, 0.5, 0.5);
     this.add(this.#statusIcon);
+
   }
 
   /**
    * 
    * @param {*} status 
    */
-  setStatus(status) {
+  setStatus(status: string | null) {
     if (status !== this.status) {
       switch (status) {
         case BuildingStatus.NoPower:
           this.#statusIcon.visible = true;
-          this.#statusIcon.material.map = assetManager.statusIcons[BuildingStatus.NoPower];
+          this.#statusIcon.material.map = (assetManager.statusIcons as any)[BuildingStatus.NoPower];
           break;
         case BuildingStatus.NoRoadAccess:
           this.#statusIcon.visible = true;
-          this.#statusIcon.material.map = assetManager.statusIcons[BuildingStatus.NoRoadAccess];
+          this.#statusIcon.material.map = (assetManager.statusIcons as any)[BuildingStatus.NoRoadAccess];
           break;
         default:
           this.#statusIcon.visible = false;

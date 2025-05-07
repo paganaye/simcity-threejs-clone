@@ -1,9 +1,7 @@
-import { CommercialZone } from './buildings/zones/commercial.js';
-import { IndustrialZone } from './buildings/zones/industrial.js';
-import { ResidentialZone } from './buildings/zones/residential.js';
 import config from '../config.js';
 import { City } from './city.jsx';
 import { Building } from './buildings/building.jsx';
+import { Zone } from './buildings/zones/zone.jsx';
 
 export class Citizen {
   id: string;
@@ -11,12 +9,12 @@ export class Citizen {
   age: number;
   state: string;
   stateCounter: number;
-  residence: any;
+  residence: Zone;
   workplace: Building | null;
   /**
    * @param {ResidentialZone} residence 
    */
-  constructor(residence) {
+  constructor(residence: Zone) {
     /**
      * Unique identifier for the citizen
      * @type {string}
@@ -117,10 +115,10 @@ export class Citizen {
    */
   dispose() {
     // Remove resident from its  workplace
-    const workerIndex = this.workplace?.jobs.workers.indexOf(this);
+    const workerIndex = this.workplace?.jobs?.workers.indexOf(this);
 
     if (workerIndex !== undefined && workerIndex > -1) {
-      this.workplace.jobs.workers.splice(workerIndex);
+      this.workplace?.jobs?.workers.splice(workerIndex);
     }
   }
 
@@ -134,7 +132,7 @@ export class Citizen {
       // Search for an industrial or commercial building with at least one available job
       if (tile.building?.type === 'industrial' ||
         tile.building?.type === 'commercial') {
-        if (tile.building.jobs.availableJobs > 0) {
+        if ((tile.building.jobs?.availableJobs ?? 0) > 0) {
           return true;
         }
       }
@@ -144,7 +142,7 @@ export class Citizen {
 
     if (tile) {
       // Employ the citizen at the building
-      tile.building.jobs.workers.push(this);
+      tile.building?.jobs?.workers.push(this);
       return tile.building;
     } else {
       return null;
@@ -155,7 +153,7 @@ export class Citizen {
    * Sets the workplace for the citizen
    * @param {CommercialZone | IndustrialZone} workplace 
    */
-  setWorkplace(workplace) {
+  setWorkplace(workplace: Building | null) {
     this.workplace = workplace;
   }
 

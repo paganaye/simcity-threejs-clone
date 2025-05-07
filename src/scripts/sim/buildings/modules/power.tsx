@@ -19,7 +19,7 @@ export class PowerModule extends SimModule {
   /**
    * @param {number} powerRequired Amount of power (kWh) this building needs
    */
-  constructor(powerRequired) {
+  constructor(/*powerRequired: number*/) {
     super();
     this.required = this.supplied;
   }
@@ -28,7 +28,7 @@ export class PowerModule extends SimModule {
    * Returns true if building is fully powered
    * @type {boolean}
    */
-  get isFullyPowered () {
+  get isFullyPowered() {
     return this.supplied >= this.required;
   }
 }

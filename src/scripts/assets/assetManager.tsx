@@ -53,13 +53,15 @@ export class AssetManager {
     // This is so we can set the modify the texture of each
     // mesh independently (e.g. highlight on mouse over,
     // abandoned buildings, etc.))
-    mesh.traverse((obj: THREE.Mesh) => {
+    mesh.traverse((obj: THREE.Object3D) => {
       obj.userData = simObject;
-      if (Array.isArray(obj.material)) {
-        throw Error("Material Array cloning not implemented");
-      } else if (obj.material) {
-        obj.material = obj.material.clone();
-        obj.material.transparent = transparent;
+      if ('material' in obj) {
+        if (Array.isArray(obj.material)) {
+          throw Error("Material Array cloning not implemented");
+        } else if (obj.material) {
+          obj.material = (obj.material as THREE.MeshStandardMaterial).clone();
+          (obj.material as THREE.MeshStandardMaterial).transparent = transparent;
+        }
       }
     });
 
@@ -90,14 +92,14 @@ export class AssetManager {
         mesh.name = filename;
 
         mesh.traverse((obj: any) => {
-          if (obj.material) {
+          //if (obj.material) {
             obj.material = new THREE.MeshLambertMaterial({
               map: this.textures.base,
               specularMap: this.textures.specular
             })
             obj.receiveShadow = receiveShadow;
             obj.castShadow = castShadow;
-          }
+          //}
         });
 
         mesh.rotation.set(0, THREE.MathUtils.degToRad(rotation), 0);
@@ -111,7 +113,7 @@ export class AssetManager {
           this.onLoad()
         }
       },
-      (xhr) => {
+      (_xhr: any) => {
         //console.log(`${name} ${(xhr.loaded / xhr.total) * 100}% loaded`);
       },
       (error) => {

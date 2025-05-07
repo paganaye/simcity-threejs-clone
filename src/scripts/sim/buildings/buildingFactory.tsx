@@ -3,7 +3,6 @@ import { CommercialZone } from './zones/commercial.js';
 import { ResidentialZone } from './zones/residential.js';
 import { IndustrialZone } from './zones/industrial.js';
 import { Road } from './transportation/road.js';
-import { Building } from './building.js';
 import { PowerPlant } from './power/powerPlant.js';
 import { PowerLine } from './power/powerLine.js';
 
@@ -14,21 +13,25 @@ import { PowerLine } from './power/powerLine.js';
  * @param {string} type The building type
  * @returns {Building} A new building object
  */
-export function createBuilding(x, y, type) {
+export function createBuilding(x: number, y: number, type: string) {
+  // I wonder why we have x and y as parameters here.
+  x = 0;
+  y = 0;
   switch (type) {
     case BuildingType.residential:
-      return new ResidentialZone(0, 0);
+      return new ResidentialZone(x, y);
     case BuildingType.commercial:
-      return new CommercialZone(0, 0);
+      return new CommercialZone(x, y);
     case BuildingType.industrial:
-      return new IndustrialZone(0, 0);
+      return new IndustrialZone(x, y);
     case BuildingType.road:
-      return new Road(0, 0);
+      return new Road(x, y);
     case BuildingType.powerPlant:
-      return new PowerPlant(0, 0);
+      return new PowerPlant(x, y);
     case BuildingType.powerLine:
-      return new PowerLine(0, 0);
+      return new PowerLine(x, y);
     default:
       console.error(`${type} is not a recognized building type.`);
+      return undefined;
   }
 }

@@ -1,7 +1,6 @@
 import config from '../../../config.js';
-import { Citizen } from '../../citizen.js';
-import { City } from '../../city.js';
-import { Zone } from '../../buildings/zones/zone.js';
+import { Citizen } from '../../citizen.jsx';
+import { Zone } from '../zones/zone.jsx';
 import { DevelopmentState } from './development.js';
 import { SimModule } from './simModule.js';
 
@@ -14,9 +13,9 @@ export class JobsModule extends SimModule {
   /**
    * @type {Citizen[]}
    */
-  workers = [];
+  workers: Citizen[] = [];
 
-  constructor(zone) {
+  constructor(zone: Zone) {
     super();
     this.#zone = zone;
   }

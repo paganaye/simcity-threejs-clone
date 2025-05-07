@@ -1,6 +1,6 @@
 import config from '../../../config.js';
 import { City } from '../../city.js';
-import { Zone } from '../../buildings/zones/zone.js';
+import { Zone } from '../zones/zone.jsx';
 import { SimModule } from './simModule.js';
 
 export const DevelopmentState = {
@@ -52,7 +52,7 @@ export class DevelopmentModule extends SimModule {
    * 
    * @param {Zone} zone 
    */
-  constructor(zone) {
+  constructor(zone: Zone) {
     super();
     this.#zone = zone;
   }
@@ -78,7 +78,7 @@ export class DevelopmentModule extends SimModule {
   /**
    * @param {City} city 
    */
-  simulate(city: City) {
+  simulate(_city: City) {
     this.#checkAbandonmentCriteria();
 
     switch (this.state) {
@@ -123,7 +123,7 @@ export class DevelopmentModule extends SimModule {
    */
   #checkDevelopmentCriteria() {
     return (
-      this.#zone.roadAccess.value && 
+      this.#zone.roadAccess.value &&
       this.#zone.power.isFullyPowered
     );
   }
@@ -144,13 +144,13 @@ export class DevelopmentModule extends SimModule {
    * Returns an HTML representation of this object
    * @returns {string}
    */
-    toHTML() {
-      return `
+  toHTML() {
+    return `
         <span class="info-label">State </span>
         <span class="info-value">${this.state}</span>
         <br>
         <span class="info-label">Level </span>
         <span class="info-value">${this.level}</span>
         <br>`;
-    }
+  }
 }

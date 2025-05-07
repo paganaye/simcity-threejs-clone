@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { Building } from './buildings/building.js';
 import { SimObject } from './simObject.js';
 import { assetManager } from '../../App.jsx';
@@ -16,7 +15,7 @@ export class Tile extends SimObject {
    */
   #building: Building | null = null;
 
-  constructor(x, y) {
+  constructor(x: number, y: number) {
     super(x, y);
     this.name = `Tile-${this.x}-${this.y}`;
   }
@@ -31,7 +30,7 @@ export class Tile extends SimObject {
   /**
    * @type {Building} value
    */
-  setBuilding(value) {
+  setBuilding(value: Building | null) {
     // Remove and dispose resources for existing building
     if (this.#building) {
       this.#building.dispose();
@@ -42,7 +41,7 @@ export class Tile extends SimObject {
 
     // Add to scene graph
     if (value) {
-      this.add(this.#building);
+      this.add(value);
     }
   }
 
@@ -69,7 +68,7 @@ export class Tile extends SimObject {
    * @param {Tile} tile 
    * @returns 
    */
-  distanceTo(tile) {
+  distanceTo(tile: Tile) {
     return Math.abs(this.x - tile.x) + Math.abs(this.y - tile.y);
   }
 

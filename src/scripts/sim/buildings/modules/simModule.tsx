@@ -5,7 +5,7 @@ export class SimModule {
    * Simulates one day passing
    * @param {City} city 
    */
-  simulate(city: City) {
+  simulate(_city: City) {
     // Implement in subclass
   }
 

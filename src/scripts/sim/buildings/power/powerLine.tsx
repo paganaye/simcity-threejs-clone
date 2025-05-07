@@ -16,7 +16,7 @@ const powerLineMaterial = new THREE.LineBasicMaterial({ color: 0 });
 export class PowerLine extends Building {
   type: string = "power-line";
 
-  constructor(x, y) {
+  constructor(x: number, y: number) {
     super(x, y);
     this.type = BuildingType.powerLine;
     this.roadAccess.enabled = false;
@@ -31,7 +31,7 @@ export class PowerLine extends Building {
 
     // Check which adjacent tiles are powerlines
     let top = Boolean(city.getTile(this.x, this.y - 1)?.building?.type === this.type);
-    let bottom = Boolean(city.getTile(this.x, this.y + 1)?.building.type === this.type);
+    let bottom = Boolean(city.getTile(this.x, this.y + 1)?.building?.type === this.type);
     let left = Boolean(city.getTile(this.x - 1, this.y)?.building?.type === this.type);
     let right = Boolean(city.getTile(this.x + 1, this.y)?.building?.type === this.type);
 
@@ -50,10 +50,10 @@ export class PowerLine extends Building {
       this.#addLines(group, Side.Right);
     }
 
-    this.setMesh(group);
+    this.setMesh(group as any);
   }
 
-  #addLines(group, side) {
+  #addLines(group: any, side: any) {
     switch (side) {
       case Side.Left:
         group.add(this.#createPowerLine(-0.09, 0.36, 0.09, -0.5, 0.36, 0.09));
@@ -78,7 +78,7 @@ export class PowerLine extends Building {
    * Creates a new power line between the start/stop points
    * @returns 
    */
-  #createPowerLine(x1, y1, z1, x2, y2, z2) {
+  #createPowerLine(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) {
     const points = [
       new THREE.Vector3(x1, y1, z1),
       new THREE.Vector3(x2, y2, z2)

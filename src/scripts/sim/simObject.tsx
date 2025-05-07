@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { SimModule } from './buildings/modules/simModule';
 import { City } from './city';
 
 const SELECTED_COLOR = 0xaaaa55;
@@ -9,7 +8,7 @@ export class SimObject extends THREE.Object3D {
   /**
    * @type {THREE.Mesh?}
    */
-  #mesh = null;
+  #mesh: THREE.Mesh | null = null;
   /**
    * World position of the object
    * @type {THREE.Vector3}
@@ -47,7 +46,7 @@ export class SimObject extends THREE.Object3D {
   /**
    * @type {THREE.Mesh} value
    */
-  setMesh(value) {
+  setMesh(value: THREE.Mesh | null) {
     // Remove resources for existing mesh
     if (this.#mesh) {
       this.dispose();
@@ -66,11 +65,11 @@ export class SimObject extends THREE.Object3D {
    * Updates the state of this object by one simulation step
    * @param {City} city 
    */
-  simulate(city: City) {
+  simulate(_city: City) {
     // Override in subclass
   }
 
-  setSelected(value) {
+  setSelected(value: boolean) {
     if (value) {
       this.#setMeshEmission(SELECTED_COLOR);
     } else {
@@ -78,7 +77,7 @@ export class SimObject extends THREE.Object3D {
     }
   }
 
-  setFocused(value) {
+  setFocused(value: boolean) {
     if (value) {
       this.#setMeshEmission(HIGHLIGHTED_COLOR);
     } else {
@@ -90,18 +89,18 @@ export class SimObject extends THREE.Object3D {
    * Sets the emission color of the mesh 
    * @param {number} color 
    */
-  #setMeshEmission(color) {
+  #setMeshEmission(color: number) {
     if (!this.mesh) return;
-    this.mesh.traverse((obj) => obj.material?.emissive?.setHex(color));
+    this.mesh.traverse((obj) => { if ('material' in obj) (obj.material as THREE.MeshLambertMaterial).emissive?.setHex(color); });
   }
 
   /**
    * Handles any clean up needed before an object is removed
    */
   dispose() {
-    this.#mesh.traverse((obj) => {
-      if (obj.material) {
-        obj.material?.dispose();
+    this.#mesh?.traverse((obj: THREE.Object3D) => {
+      if ('material' in obj) {
+        (obj.material as any).dispose();
       }
     })
   }

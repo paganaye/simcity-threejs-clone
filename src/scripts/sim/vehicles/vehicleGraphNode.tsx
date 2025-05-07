@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 
 export class VehicleGraphNode extends THREE.Object3D {
-  next: any[];
-  constructor(x, y) {
+  next: VehicleGraphNode[];
+  constructor(x: number, y: number) {
     super();
 
     this.position.set(x, 0, y);
@@ -13,7 +13,7 @@ export class VehicleGraphNode extends THREE.Object3D {
     this.next = [];
   }
 
-  connect(node) {
+  connect(node: VehicleGraphNode | null) {
     if (!node) return;
 
     if (!this.next.includes(node)) {

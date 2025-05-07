@@ -4,6 +4,7 @@ import { SimModule } from './simModule.js';
  * Logic for determining whether or not a tile has road access
  */
 export class PowerModule extends SimModule {
+  
   /**
    * Amount of power supplied to this building (if powerRequired > 0)
    * @type {number}
@@ -31,4 +32,5 @@ export class PowerModule extends SimModule {
   get isFullyPowered() {
     return this.supplied >= this.required;
   }
+
 }

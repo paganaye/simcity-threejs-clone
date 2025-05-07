@@ -2,6 +2,7 @@ import { Building } from './buildings/building.js';
 import { SimObject } from './simObject.js';
 import { assetManager } from '../../App.jsx';
 import { City } from './city.jsx';
+import { JSXElement } from 'solid-js';
 
 export class Tile extends SimObject {
   /**
@@ -76,21 +77,16 @@ export class Tile extends SimObject {
    * 
    * @returns {string} HTML representation of this object
    */
-  toHTML() {
-    let html = `
+  toHTML(): JSXElement {
+    return <>
       <div class="info-heading">Tile</div>
       <span class="info-label">Coordinates </span>
-      <span class="info-value">X: ${this.x}, Y: ${this.y}</span>
-      <br>
+      <span class="info-value">X: {this.x}, Y: {this.y}</span>
+      <br />
       <span class="info-label">Terrain </span>
-      <span class="info-value">${this.terrain}</span>
-      <br>
-    `;
-
-    if (this.building) {
-      html += this.building.toHTML();
-    }
-
-    return html;
+      <span class="info-value">{this.terrain}</span>
+      <br />
+      {this.building?.toHTML()}
+    </>;
   }
 };

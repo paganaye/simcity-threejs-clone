@@ -1,3 +1,4 @@
+import { JSXElement } from 'solid-js';
 import { City } from '../../city.js';
 
 export class SimModule {
@@ -20,7 +21,7 @@ export class SimModule {
    * Returns an HTML representation of this object
    * @returns {string}
    */
-  toHTML() {
-    // Implement in subclass
-  }
+  toHTML(): JSXElement {
+    return undefined;
+  };
 }

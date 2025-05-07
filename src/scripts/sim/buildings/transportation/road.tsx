@@ -2,10 +2,11 @@ import { Building } from '../building.js';
 import { City } from '../../city.js';
 import { DEG2RAD } from 'three/src/math/MathUtils.js';
 import { assetManager } from '../../../../App.jsx';
+import { JSXElement } from 'solid-js';
 
 export class Road extends Building {
   type: string = "road";
-  
+
   style: string;
   constructor(x: number, y: number) {
     super(x, y);
@@ -89,13 +90,12 @@ export class Road extends Building {
    * Returns an HTML representation of this object
    * @returns {string}
    */
-  toHTML() {
-    let html = super.toHTML();
-    html += `
-    <span class="info-label">Style </span>
-    <span class="info-value">${this.style}</span>
-    <br>
-    `;
-    return html;
+  toHTML(): JSXElement {
+    return (<>
+      {super.toHTML()}
+      <span class="info-label">Style </span>
+      <span class="info-value">{this.style}</span>
+      <br />
+    </>);
   }
 }

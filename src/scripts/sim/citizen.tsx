@@ -2,6 +2,7 @@ import config from '../config.js';
 import { City } from './city.jsx';
 import { Building } from './buildings/building.jsx';
 import { Zone } from './buildings/zones/zone.jsx';
+import { JSXElement } from 'solid-js';
 
 export class Citizen {
   id: string;
@@ -161,23 +162,23 @@ export class Citizen {
    * Returns an HTML representation of this object
    * @returns {string}
    */
-  toHTML() {
-    return `
+  toHTML(): JSXElement {
+    return (
       <li class="info-citizen">
-        <span class="info-citizen-name">${this.name}</span>
-        <br>
+        <span class="info-citizen-name">{this.name}</span>
+        <br />
         <span class="info-citizen-details">
           <span>
-            <img class="info-citizen-icon" src="/icons/calendar.png">
-            ${this.age} 
+            <img class="info-citizen-icon" src="/icons/calendar.png" />
+            {this.age}
           </span>
           <span>
-            <img class="info-citizen-icon" src="/icons/job.png">
-            ${this.state}
+            <img class="info-citizen-icon" src="/icons/job.png" />
+            {this.state}
           </span>
         </span>
       </li>
-    `;
+    );
   }
 }
 

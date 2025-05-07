@@ -1,3 +1,4 @@
+import { JSXElement } from 'solid-js';
 import { BuildingType } from '../buildings/buildingType.js';
 import { PowerPlant } from '../buildings/power/powerPlant.jsx';
 import { City } from '../city.js';
@@ -108,11 +109,11 @@ export class PowerService {
     // Implement in subclass
   }
 
-  /**
+   /**
    * Returns an HTML representation of this object
-   * @returns {string}
    */
-  toHTML() {
+  toHTML(): JSXElement {
     // Implement in subclass
+    return undefined;
   }
 }

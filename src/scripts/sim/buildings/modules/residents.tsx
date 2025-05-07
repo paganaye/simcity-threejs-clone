@@ -1,3 +1,4 @@
+import { For, JSXElement } from 'solid-js';
 import config from '../../../config.js';
 import { Citizen } from '../../citizen.js';
 import { City } from '../../city.js';
@@ -83,15 +84,15 @@ export class ResidentsModule extends SimModule {
    * Returns an HTML representation of this object
    * @returns {string}
    */
-  toHTML() {
-    let html = `<div class="info-heading">Residents (${this.#residents.length}/${this.maximum})</div>`;
+  toHTML(): JSXElement {
+    return (<>
+      <div class="info-heading">Residents ({this.#residents.length}/{this.maximum})</div>
+      <ul class="info-citizen-list">
+        <For each={this.#residents}>
+          {resident => resident.toHTML()}
+        </For>
+      </ul>
 
-    html += '<ul class="info-citizen-list">';
-    for (const resident of this.#residents) {
-      html += resident.toHTML();
-    }
-    html += '</ul>';
-
-    return html;
+    </>);
   }
 }

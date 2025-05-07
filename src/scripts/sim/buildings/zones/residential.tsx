@@ -2,6 +2,7 @@ import { City } from '../../city.js';
 import { Zone } from './zone.js';
 import { ResidentsModule } from '../modules/residents.js';
 import { BuildingType } from '../buildingType.js';
+import { JSXElement } from 'solid-js';
 
 export class ResidentialZone extends Zone {
   type = BuildingType.residential;
@@ -36,10 +37,11 @@ export class ResidentialZone extends Zone {
    * Returns an HTML representation of this object
    * @returns {string}
    */
-  toHTML() {
-    let html = super.toHTML();
-    html += this.residents.toHTML();
-    return html;
+  toHTML(): JSXElement {
+    return <>
+      {super.toHTML()}
+      {this.residents.toHTML()}
+    </>
   }
 }
 

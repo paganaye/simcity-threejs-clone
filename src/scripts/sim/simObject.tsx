@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { City } from './city';
+import { JSXElement } from 'solid-js';
 
 const SELECTED_COLOR = 0xaaaa55;
 const HIGHLIGHTED_COLOR = 0x555555;
@@ -100,8 +101,12 @@ export class SimObject extends THREE.Object3D {
   dispose() {
     this.#mesh?.traverse((obj: THREE.Object3D) => {
       if ('material' in obj) {
-        (obj.material as any).dispose();
+        (obj.material as THREE.MeshLambertMaterial).dispose();
       }
     })
+  }
+
+  toHTML(): JSXElement {
+    return <p>Not implemented ${this.constructor.name}</p>;
   }
 }

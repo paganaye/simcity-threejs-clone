@@ -4,6 +4,7 @@ import { SimObject } from '../simObject.js';
 import models from '../../assets/models.js';
 import { assetManager } from '../../../App.jsx';
 import { VehicleGraphNode } from './vehicleGraphNode.jsx';
+import { JSXElement } from 'solid-js';
 
 const FORWARD = new THREE.Vector3(1, 0, 0);
 
@@ -148,7 +149,7 @@ export class Vehicle extends SimObject {
     this.removeFromParent();
   }
 
-  toHTML() {
+  toHTML(): JSXElement {
     return 'Car';
   }
 }

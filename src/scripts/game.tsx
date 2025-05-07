@@ -21,7 +21,6 @@ export class Game {
   /**
    * Object that is currently selected
    */
-  selectedObject: SimObject | null = null;
   renderer!: THREE.WebGLRenderer;
   scene!: THREE.Scene;
   cameraManager!: CameraManager;
@@ -57,7 +56,7 @@ export class Game {
      * Global instance of the asset manager
      */
     // assetManager = new AssetManager(() => {
-    ui.hideLoadingText();
+    ui.setIsLoading(false);
 
     //   this.city = new City(16);
     this.initialize(this.city);
@@ -151,34 +150,34 @@ export class Game {
    * Moves the simulation forward by one step
    */
   simulate() {
-    if (ui.isPaused) return;
+    if (ui.isPaused()) return;
 
     // Update the city data model first, then update the scene
     this.city.simulate(1);
 
     ui.updateTitleBar(this);
-    ui.updateInfoPanel(this.selectedObject);
+    //ui.updateInfoPanel(this.selectedObject);
   }
 
   /**
    * Uses the currently active tool
    */
   useTool() {
-    switch (ui.activeToolId) {
+    switch (ui.activeTool()) {
       case 'select':
         this.updateSelectedObject();
-        ui.updateInfoPanel(this.selectedObject);
+        //ui.updateInfoPanel(this.selectedObject);
         break;
       case 'bulldoze':
         if (this.focusedObject) {
-          const { x, y } = this.focusedObject as any;
+          const { x, y } = this.focusedObject;
           this.city.bulldoze(x, y);
         }
         break;
       default:
         if (this.focusedObject) {
           const { x, y } = this.focusedObject;
-          this.city.placeBuilding(x, y, ui.activeToolId);
+          this.city.placeBuilding(x, y, ui.activeTool());
         }
         break;
     }
@@ -188,21 +187,21 @@ export class Game {
    * Sets the currently selected object and highlights it
    */
   updateSelectedObject() {
-    this.selectedObject?.setSelected(false);
-    this.selectedObject = this.focusedObject;
-    this.selectedObject?.setSelected(true);
+    ui.selectedObject()?.setSelected(false);
+    ui.setSelectedObject(this.focusedObject);
+    ui.selectedObject()?.setSelected(true);
   }
 
   /**
    * Sets the object that is currently highlighted
    */
   updateFocusedObject() {
-    this.focusedObject?.setFocused(false);
     const newObject = this.#raycast();
     if (newObject !== this.focusedObject) {
+      this.focusedObject?.setFocused(false);
       this.focusedObject = newObject;
+      this.focusedObject?.setFocused(true);
     }
-    this.focusedObject?.setFocused(true);
   }
 
   /**

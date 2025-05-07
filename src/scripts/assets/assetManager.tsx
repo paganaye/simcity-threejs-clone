@@ -46,7 +46,7 @@ export class AssetManager {
    * @param {boolean} transparent True if materials should be transparent. Default is false.
    * @returns {THREE.Mesh}
    */
-  getModel(name: string, simObject: any, transparent = false) {
+  getModel(name: string, simObject: any, transparent = false): THREE.Mesh {
     const mesh = this.models[name].clone();
 
     // Clone materials so each object has a unique material
@@ -87,25 +87,25 @@ export class AssetManager {
   #loadModel(name: string | number, { filename, scale = 1, rotation = 0, receiveShadow = true, castShadow = true }: any) {
     this.modelLoader.load(`${baseUrl}models/${filename}`,
       (glb) => {
-        let mesh = glb.scene;
+        let mesh: THREE.Mesh = glb.scene! as any;
 
         mesh.name = filename;
 
         mesh.traverse((obj: any) => {
           //if (obj.material) {
-            obj.material = new THREE.MeshLambertMaterial({
-              map: this.textures.base,
-              specularMap: this.textures.specular
-            })
-            obj.receiveShadow = receiveShadow;
-            obj.castShadow = castShadow;
+          obj.material = new THREE.MeshLambertMaterial({
+            map: this.textures.base,
+            specularMap: this.textures.specular
+          })
+          obj.receiveShadow = receiveShadow;
+          obj.castShadow = castShadow;
           //}
         });
 
         mesh.rotation.set(0, THREE.MathUtils.degToRad(rotation), 0);
         mesh.scale.set(scale / 30, scale / 30, scale / 30);
 
-        this.models[name] = mesh as any; // THREE.Mesh;
+        this.models[name] = mesh;
 
         // Once all models are loaded
         this.loadedModelCount++;

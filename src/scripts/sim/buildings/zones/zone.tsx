@@ -4,6 +4,7 @@ import { DevelopmentModule, DevelopmentState } from '../modules/development.js';
 import { Building } from '../building.js';
 import { assetManager } from '../../../../App.jsx';
 import { City } from '../../city.jsx';
+import { JSXElement } from 'solid-js';
 
 /**
  * Represents a zoned building such as residential, commercial or industrial
@@ -64,9 +65,10 @@ export abstract class Zone extends Building {
    * Returns an HTML representation of this object
    * @returns {string}
    */
-  toHTML() {
-    let html = super.toHTML();
-    html += this.development.toHTML();
-    return html;
+  toHTML(): JSXElement {
+    return <>
+      {super.toHTML()}
+      {this.development.toHTML()}
+    </>
   }
 }

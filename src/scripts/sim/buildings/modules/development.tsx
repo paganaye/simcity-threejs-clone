@@ -1,3 +1,4 @@
+import { JSXElement } from 'solid-js';
 import config from '../../../config.js';
 import { City } from '../../city.js';
 import { Zone } from '../zones/zone.jsx';
@@ -144,13 +145,14 @@ export class DevelopmentModule extends SimModule {
    * Returns an HTML representation of this object
    * @returns {string}
    */
-  toHTML() {
-    return `
-        <span class="info-label">State </span>
-        <span class="info-value">${this.state}</span>
-        <br>
-        <span class="info-label">Level </span>
-        <span class="info-value">${this.level}</span>
-        <br>`;
+  toHTML(): JSXElement {
+    return (<>
+      <span class="info-label">State </span>
+      <span class="info-value">{this.state}</span>
+      <br />
+      <span class="info-label">Level </span>
+      <span class="info-value">{this.level}</span>
+      <br />
+    </>);
   }
 }

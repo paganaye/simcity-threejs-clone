@@ -7,10 +7,12 @@ import { JobsModule } from './modules/jobs';
 import { City } from '../city';
 import { ResidentsModule } from './modules/residents';
 import { JSXElement, Show } from 'solid-js';
+import { IStoreGameData } from '../../storage/GameStorage';
 
 export type BuildingStatus = 'no-power' | 'no-road-access' | 'OK';
 
-export abstract class Building extends SimObject {
+
+export abstract class Building<TGameData = any> extends SimObject implements IStoreGameData<TGameData> {
   /** The building type */
   abstract type: string; // 'building';
   /** True if the terrain should not be rendered with this building type */
@@ -103,4 +105,8 @@ export abstract class Building extends SimObject {
       </Show>
     </>
   }
+
+  loadGameData(_data: TGameData): void { }
+  saveGameData(_target: TGameData): void { }
+
 }

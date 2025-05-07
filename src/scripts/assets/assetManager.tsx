@@ -47,7 +47,11 @@ export class AssetManager {
    * @returns {THREE.Mesh}
    */
   getModel(name: string, simObject: any, transparent = false): THREE.Mesh {
-    const mesh = this.models[name].clone();
+    let model = this.models[name];
+    if (!model) {
+      throw Error("unknown model " + name);
+    }
+    const mesh = model.clone();
 
     // Clone materials so each object has a unique material
     // This is so we can set the modify the texture of each

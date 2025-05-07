@@ -23,8 +23,11 @@ export default function App() {
 
 
     assetManager.init(() => {
-        city.init(16)
-        game.init(city);
+        game.city = city;
+        if (!game.storage.loadGame()) {
+            city.init(16, game.storage.getDefaultName())
+        }
+        game.init();
 
     });
 

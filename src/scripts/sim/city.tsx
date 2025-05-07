@@ -4,6 +4,7 @@ import { createBuilding } from './buildings/buildingFactory.js';
 import { Tile } from './tile.js';
 import { VehicleGraph } from './vehicles/vehicleGraph.js';
 import { PowerService } from './services/power.js';
+import { Building } from './buildings/building.jsx';
 
 export class City extends THREE.Group {
   /**
@@ -31,6 +32,8 @@ export class City extends THREE.Group {
    * The current simulation time
    */
   simTime = 0;
+
+  simMoney = 0;
   /**
    * 2D array of tiles that make up the city
    * @type {Tile[][]}
@@ -45,7 +48,8 @@ export class City extends THREE.Group {
   constructor() {
     super();
   }
-  init(size: number, name = 'My City') {
+
+  init(size: number, name: string) {
     this.name = name;
     this.size = size;
 
@@ -126,7 +130,7 @@ export class City extends THREE.Group {
    * @param {number} y 
    * @param {string} buildingType 
    */
-  placeBuilding(x: number, y: number, buildingType: string) {
+  placeBuilding(x: number, y: number, buildingType: string): Building | null {
     const tile = this.getTile(x, y);
 
     // If the tile doesnt' already have a building, place one there
@@ -145,7 +149,8 @@ export class City extends THREE.Group {
       if (newBuilding.type === BuildingType.road) {
         this.vehicleGraph?.updateTile(x, y, tile.building);
       }
-    }
+      return newBuilding;
+    } else return null;
   }
 
   /**

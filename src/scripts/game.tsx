@@ -4,7 +4,7 @@ import { InputManager } from './input';
 import { City } from './sim/city';
 import { SimObject } from './sim/simObject.js';
 import { ui, assetManager } from '../App';
-
+import { GameStorage } from './storage/GameStorage';
 /** 
  * Manager for the Three.js scene. Handles rendering of a `City` object
  */
@@ -25,13 +25,12 @@ export class Game {
   scene!: THREE.Scene;
   cameraManager!: CameraManager;
   raycaster!: THREE.Raycaster;
+  storage = new GameStorage(this);
 
   constructor() {
   }
 
-  init(city: City) {
-    this.city = city;
-
+  init() {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true
     });
@@ -172,15 +171,23 @@ export class Game {
         if (this.focusedObject) {
           const { x, y } = this.focusedObject;
           this.city.bulldoze(x, y);
+          this.saveGame();
         }
         break;
       default:
         if (this.focusedObject) {
           const { x, y } = this.focusedObject;
-          this.city.placeBuilding(x, y, ui.activeTool());
+          if (this.city.placeBuilding(x, y, ui.activeTool())) {
+            this.saveGame();
+          }
         }
         break;
     }
+  }
+
+
+  saveGame() {
+    this.storage.saveGame();
   }
 
   /**

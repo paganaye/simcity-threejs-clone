@@ -5,11 +5,16 @@ import { City } from '../../city.js';
 import { Zone } from '../zones/zone.jsx';
 import { DevelopmentState } from './development.js';
 import { SimModule } from './simModule.js';
+import { IStoreGameData } from '../../../storage/GameStorage.js';
 
 /**
  * Logic for residents moving into and out of a building
  */
-export class ResidentsModule extends SimModule {
+export interface IResidentsData {
+  residents: number;
+}
+export class ResidentsModule extends SimModule implements IStoreGameData<IResidentsData> {
+
   /**
    * @type {ResidentialZone}
    */
@@ -34,6 +39,15 @@ export class ResidentsModule extends SimModule {
    */
   get count() {
     return this.#residents.length;
+  }
+
+  setCount(residents: number) {
+    if (this.#residents.length > residents) this.#residents.length = residents;
+    else {
+      while (this.#residents.length < residents) {
+        this.#residents.push(new Citizen(this.#zone));
+      }
+    }
   }
 
   /**
@@ -95,4 +109,12 @@ export class ResidentsModule extends SimModule {
 
     </>);
   }
+
+  loadGameData(data: IResidentsData): void {
+    this.setCount(data.residents);
+  }
+  saveGameData(target: IResidentsData): void {
+    target.residents = this.#residents.length;
+  }
+
 }

@@ -9,7 +9,12 @@ import { JSXElement } from 'solid-js';
 /**
  * Represents a zoned building such as residential, commercial or industrial
  */
-export abstract class Zone extends Building {
+export interface IZoneData {
+  developmentLevel: number;
+  developmentState: string;
+}
+
+export abstract class Zone<TGameData extends IZoneData = IZoneData> extends Building<TGameData> {
   /**
    * The mesh style to use when rendering
    */
@@ -70,5 +75,15 @@ export abstract class Zone extends Building {
       {super.toHTML()}
       {this.development.toHTML()}
     </>
+  }
+
+  override loadGameData(data: TGameData): void {
+    this.development.level = data.developmentLevel;
+    this.development.state = data.developmentState;
+  }
+
+  override saveGameData(target: TGameData): void {
+    target.developmentLevel = this.development.level;
+    target.developmentState = this.development.state;
   }
 }

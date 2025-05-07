@@ -1,10 +1,13 @@
 import { City } from '../../city.js';
-import { Zone } from './zone.js';
-import { ResidentsModule } from '../modules/residents.js';
+import { IZoneData, Zone } from './zone.js';
+import { ResidentsModule, IResidentsData } from '../modules/residents.js';
 import { BuildingType } from '../buildingType.js';
 import { JSXElement } from 'solid-js';
 
-export class ResidentialZone extends Zone {
+
+interface IResidentialData extends IZoneData, IResidentsData {
+}
+export class ResidentialZone extends Zone<IResidentialData> {
   type = BuildingType.residential;
   /**
    * @type {ResidentsModule}
@@ -42,6 +45,16 @@ export class ResidentialZone extends Zone {
       {super.toHTML()}
       {this.residents.toHTML()}
     </>
+  }
+
+  override saveGameData(target: IResidentialData): void {
+    super.saveGameData(target);
+    this.residents.saveGameData(target);
+  }
+
+  override loadGameData(data: IResidentialData): void {
+    super.loadGameData(data);
+    this.residents.loadGameData(data);
   }
 }
 

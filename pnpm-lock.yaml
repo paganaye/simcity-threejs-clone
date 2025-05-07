@@ -17,6 +17,9 @@ importers:
       three:
         specifier: ^0.176.0
         version: 0.176.0
+      zod:
+        specifier: ^3.24.4
+        version: 3.24.4
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -621,6 +624,9 @@ packages:
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
 
+  zod@3.24.4:
+    resolution: {integrity: sha512-OdqJE9UDRPwWsrHjLN2F8bPxvwJBK22EHLWtanu0LSYr5YqzsaaW3RMgmjwr8Rypg5k+meEJdSPXJZXE/yqOMg==}
+
 snapshots:
 
   '@ampproject/remapping@2.3.0':
@@ -1122,3 +1128,5 @@ snapshots:
       vite: 6.0.0
 
   yallist@3.1.1: {}
+
+  zod@3.24.4: {}

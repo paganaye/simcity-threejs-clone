@@ -89,6 +89,4 @@ export class PowerLine extends Building {
     powerLine.layers.set(1);
     return powerLine;
   }
-
-
 }

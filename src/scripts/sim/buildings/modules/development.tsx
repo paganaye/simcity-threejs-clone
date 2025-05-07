@@ -63,6 +63,7 @@ export class DevelopmentModule extends SimModule {
   }
 
   set level(value) {
+    if (!value) return;
     this.#level = value;
     this.#zone.refreshView();
   }
@@ -72,6 +73,7 @@ export class DevelopmentModule extends SimModule {
   }
 
   set state(value) {
+    if (!value) return;
     this.#state = value;
     this.#zone.refreshView();
   }

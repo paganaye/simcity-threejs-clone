@@ -3,7 +3,6 @@ import { DEG2RAD } from 'three/src/math/MathUtils.js';
 import { DevelopmentModule, DevelopmentState } from '../modules/development.js';
 import { Building } from '../building.js';
 import { assetManager } from '../../../../App.jsx';
-import { City } from '../../city.jsx';
 import { JSXElement } from 'solid-js';
 
 /**
@@ -61,9 +60,9 @@ export abstract class Zone<TGameData extends IZoneData = IZoneData> extends Buil
     this.setMesh(mesh);
   }
 
-  simulate(city: City) {
-    super.simulate(city);
-    this.development.simulate(city);
+  simulate() {
+    super.simulate();
+    this.development.simulate();
   }
 
   /**

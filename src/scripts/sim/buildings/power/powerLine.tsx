@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import { Building } from '../building.js';
 import { BuildingType } from '../buildingType.js';
-import { assetManager } from '../../../../App.jsx';
-import { City } from '../../city.jsx';
+import { assetManager, city } from '../../../../App.jsx';
 
 const Side = {
   Left: 'left',
@@ -22,7 +21,7 @@ export class PowerLine extends Building {
     this.roadAccess.enabled = false;
   }
 
-  refreshView(city: City) {
+  refreshView() {
     let group = new THREE.Group();
 
     // Merge two powerline models, offset by 90 degrees

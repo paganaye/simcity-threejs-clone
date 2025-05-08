@@ -1,15 +1,14 @@
 import * as THREE from 'three';
 import { CameraManager } from './camera';
 import { InputManager } from './input';
-import { City } from './sim/city';
 import { SimObject } from './sim/simObject.js';
-import { ui, assetManager } from '../App';
+import { assetManager, city, ui } from '../App';
 import { GameStorage } from './storage/GameStorage';
+import { Accessor, createSignal, Setter } from 'solid-js';
 /** 
  * Manager for the Three.js scene. Handles rendering of a `City` object
  */
 export class Game {
-  city!: City;
   /**
    * Object that currently hs focus
    */
@@ -27,7 +26,24 @@ export class Game {
   raycaster!: THREE.Raycaster;
   storage = new GameStorage(this);
 
+  cityName!: Accessor<string>;
+  setCityName!: Setter<string>;
+
+  populationCounter!: Accessor<number>;
+  setPopulationCounter!: Setter<number>;
+
+  simDate!: Accessor<string>;
+  setSimDate!: Setter<string>;
+
+  simMoney!: Accessor<number>;
+  setSimMoney!: Setter<number>;
+
   constructor() {
+    [this.cityName, this.setCityName] = createSignal("");
+    [this.populationCounter, this.setPopulationCounter] = createSignal(0);
+    [this.simDate, this.setSimDate] = createSignal("...");
+    [this.simMoney, this.setSimMoney] = createSignal(0);
+
   }
 
   init() {
@@ -58,7 +74,7 @@ export class Game {
     ui.setIsLoading(false);
 
     //   this.city = new City(16);
-    this.initialize(this.city);
+    this.initialize();
     this.start();
 
     setInterval(this.simulate.bind(this), 1000);
@@ -69,14 +85,14 @@ export class Game {
   /**
    * Initalizes the scene, clearing all existing assets
    */
-  initialize(city: City) {
+  initialize() {
     this.scene.clear();
     this.scene.add(city);
     this.#setupLights();
-    this.#setupGrid(city);
+    this.#setupGrid();
   }
 
-  #setupGrid(city: City) {
+  #setupGrid() {
     // Add the grid
     const gridMaterial = new THREE.MeshBasicMaterial({
       color: 0x000000,
@@ -135,7 +151,7 @@ export class Game {
    * Render the contents of the scene
    */
   draw() {
-    this.city.draw();
+    city.draw();
     this.updateFocusedObject();
 
     if (this.inputManager.isLeftMouseDown) {
@@ -152,10 +168,18 @@ export class Game {
     if (ui.isPaused()) return;
 
     // Update the city data model first, then update the scene
-    this.city.simulate(1);
+    city.simulate(1);
 
-    ui.updateTitleBar(this);
+    this.setCityName(city.name);
+    this.setPopulationCounter(city.population);
+
+    const date = new Date('1/1/2023');
+    date.setDate(date.getDate() + city.simTime);
+    this.setSimDate(date.toLocaleDateString());
+    this.setSimMoney(city.simMoney);
+
     //ui.updateInfoPanel(this.selectedObject);
+    this.storage.saveGame();
   }
 
   /**
@@ -170,14 +194,14 @@ export class Game {
       case 'bulldoze':
         if (this.focusedObject) {
           const { x, y } = this.focusedObject;
-          this.city.bulldoze(x, y);
+          city.bulldoze(x, y);
           this.saveGame();
         }
         break;
       default:
         if (this.focusedObject) {
           const { x, y } = this.focusedObject;
-          if (this.city.placeBuilding(x, y, ui.activeTool())) {
+          if (city.placeBuilding(x, y, ui.activeTool())) {
             this.saveGame();
           }
         }
@@ -224,7 +248,7 @@ export class Game {
 
     this.raycaster.setFromCamera(coords, this.cameraManager.camera);
 
-    let intersections = this.raycaster.intersectObjects(this.city.root.children, true);
+    let intersections = this.raycaster.intersectObjects(city.root.children, true);
     if (intersections.length > 0) {
       // The SimObject attached to the mesh is stored in the user data
       const selectedObject = intersections[0].object.userData as SimObject | null;

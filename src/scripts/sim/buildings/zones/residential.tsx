@@ -1,4 +1,3 @@
-import { City } from '../../city.js';
 import { IZoneData, Zone } from './zone.js';
 import { ResidentsModule, IResidentsData } from '../modules/residents.js';
 import { BuildingType } from '../buildingType.js';
@@ -23,9 +22,9 @@ export class ResidentialZone extends Zone<IResidentialData> {
    * Steps the state of the zone forward in time by one simulation step
    * @param {City} city 
    */
-  simulate(city: City) {
-    super.simulate(city);
-    this.residents.simulate(city);
+  simulate() {
+    super.simulate();
+    this.residents.simulate();
   }
 
   /**

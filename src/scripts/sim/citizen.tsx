@@ -1,8 +1,9 @@
 import config from '../config.js';
-import { City } from './city.jsx';
 import { Building } from './buildings/building.jsx';
 import { Zone } from './buildings/zones/zone.jsx';
 import { JSXElement } from 'solid-js';
+import { city } from '../../App.jsx';
+import { Tile } from './tile.jsx';
 
 export class Citizen {
   id: string;
@@ -77,7 +78,7 @@ export class Citizen {
    * Steps the state of the citizen forward in time by one simulation step
    * @param {object} city 
    */
-  simulate(city: City) {
+  simulate() {
     switch (this.state) {
       case 'idle':
       case 'school':
@@ -89,7 +90,7 @@ export class Citizen {
         break;
       case 'unemployed':
         // Action - Look for a job
-        this.workplace = this.#findJob(city);
+        this.workplace = this.#findJob();
 
         // Transitions
         if (this.workplace) {
@@ -128,8 +129,8 @@ export class Citizen {
    * @param {object} city 
    * @returns 
    */
-  #findJob(city: City): Building | null {
-    const tile = city.findTile(this.residence, (tile) => {
+  #findJob(): Building | null {
+    const tile = city.findTile(this.residence, (tile: Tile) => {
       // Search for an industrial or commercial building with at least one available job
       if (tile.building?.type === 'industrial' ||
         tile.building?.type === 'commercial') {

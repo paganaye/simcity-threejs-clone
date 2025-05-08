@@ -1,3 +1,4 @@
+import { city } from "../../App";
 import { Game } from "../game";
 
 
@@ -27,14 +28,13 @@ export class GameStorage {
 
     saveGame(name?: string) {
         if (name == null) name = this.getDefaultName()
-        let game = this.game;
-        let size = game.city.size;
+        let size = city.size;
         let buildings: IBuilding[] = [];
-        let simTime = game.city.simTime;
-        let simMoney = game.city.simMoney;
+        let simTime = city.simTime;
+        let simMoney = city.simMoney;
         for (let x = 0; x < size; x++) {
             for (let y = 0; y < size; y++) {
-                let tile = game.city.tiles[x][y];
+                let tile = city.tiles[x][y];
                 let { building, terrain } = tile;
                 if (tile && building) {
                     let { x, y, type } = building;
@@ -62,21 +62,20 @@ export class GameStorage {
     }
 
     getDefaultName(): string {
-        return this.game.city?.name || 'simcity';
+        return city?.name || 'simcity';
     }
 
     loadGame(name?: string): boolean {
         if (name == null) name = this.getDefaultName()
-        let game = this.game;
         let input = localStorage.getItem(name);
         if (input) {
             try {
                 let storageGame = JSON.parse(input) as IGame;
-                game.city.simTime = storageGame.simTime;
-                game.city.simMoney = storageGame.simMoney;
-                game.city.init(storageGame.size, name);
+                city.simTime = storageGame.simTime;
+                city.simMoney = storageGame.simMoney;
+                city.init(storageGame.size, name);
                 for (let building of storageGame.buildings) {
-                    let newBuilding = game.city.placeBuilding(building.x, building.y, building.type);
+                    let newBuilding = city.placeBuilding(building.x, building.y, building.type);
                     if (newBuilding && building.data) {
                         newBuilding.loadGameData(building.data);
                     }

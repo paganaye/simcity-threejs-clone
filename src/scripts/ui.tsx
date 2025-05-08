@@ -1,6 +1,6 @@
-import { Game } from "./game";
 import { createSignal, Accessor, Setter, Show } from 'solid-js';
 import { SimObject } from "./sim/simObject";
+import { game } from "../App";
 
 type ActiveTool = "select" | "bulldoze" | "residential" | "commercial" | "industrial" | "road" | "power-plant" | "power-line";
 
@@ -14,15 +14,6 @@ export class GameUI {
 
   activeTool!: Accessor<ActiveTool>;
   setActiveTool!: Setter<ActiveTool>;
-
-  cityName!: Accessor<string>;
-  setCityName!: Setter<string>;
-
-  populationCounter!: Accessor<number>;
-  setPopulationCounter!: Setter<number>;
-
-  simTime!: Accessor<string>;
-  setSimTime!: Setter<string>;
 
   selectedObject!: Accessor<SimObject | null>;
   setSelectedObject!: Setter<SimObject | null>;
@@ -43,15 +34,6 @@ export class GameUI {
     this.setIsPaused(!this.isPaused());
   }
 
-  /** Updates the values in the title bar */
-  updateTitleBar(game: Game) {
-    this.setCityName(game.city.name);
-    this.setPopulationCounter(game.city.population);
-
-    const date = new Date('1/1/2023');
-    date.setDate(date.getDate() + game.city.simTime);
-    this.setSimTime(date.toLocaleDateString());
-  }
 
 }
 
@@ -60,9 +42,6 @@ export function GameUiView(props: { ui: GameUI }) {
   [ui.isLoading, ui.setIsLoading] = createSignal(true);
   [ui.isPaused, ui.setIsPaused] = createSignal(false);
   [ui.activeTool, ui.setActiveTool] = createSignal<ActiveTool>("select");
-  [ui.cityName, ui.setCityName] = createSignal("");
-  [ui.populationCounter, ui.setPopulationCounter] = createSignal(0);
-  [ui.simTime, ui.setSimTime] = createSignal("...");
   [ui.selectedObject, ui.setSelectedObject] = createSignal<SimObject | null>(null);
 
   function UIButton(props: { icon: string, selected: boolean, onclick: (() => void) }) {
@@ -104,16 +83,16 @@ export function GameUiView(props: { ui: GameUI }) {
       <div id="ui">
         <div id="title-bar">
           <div class="title-bar-left-items title-bar-items">
-            $1000
+            ${game.simMoney()}
           </div>
           <div class="title-bar-center-items title-bar-items">
-            <span id="city-name">{ui.cityName()}</span>
+            <span id="city-name">{game.cityName()}</span>
             <span>&nbsp;-&nbsp;</span>
-            <span id="sim-time">{ui.simTime()}</span>
+            <span id="sim-time">{game.simDate()}</span>
           </div>
           <div class="title-bar-right-items title-bar-items">
             <img id="population-icon" src="./icons/person.png" />
-            <span id="population-counter">{ui.populationCounter()}</span>
+            <span id="population-counter">{game.populationCounter()}</span>
           </div>
         </div>
         <div id="ui-toolbar" class="container">

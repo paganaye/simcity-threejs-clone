@@ -1,5 +1,5 @@
+import { city } from '../../../../App.jsx';
 import config from '../../../config.js';
-import { City } from '../../city.js';
 import { Building } from '../building.jsx';
 import { SimModule } from './simModule.js';
 
@@ -33,7 +33,7 @@ export class RoadAccessModule extends SimModule {
    * Updates the state of this attribute
    * @param {City} city 
    */
-  simulate(city: City) {
+  simulate() {
     if (!this.enabled) {
       this.value = true;
     } else {

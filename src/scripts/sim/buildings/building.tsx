@@ -4,7 +4,6 @@ import { PowerModule } from './modules/power';
 import { RoadAccessModule } from './modules/roadAccess';
 import { assetManager } from '../../../App';
 import { JobsModule } from './modules/jobs';
-import { City } from '../city';
 import { ResidentsModule } from './modules/residents';
 import { JSXElement, Show } from 'solid-js';
 import { IStoreGameData } from '../../storage/GameStorage';
@@ -27,7 +26,7 @@ export abstract class Building<TGameData = any> extends SimObject implements ISt
   jobs: JobsModule | undefined;
   residents: ResidentsModule | undefined;
   powerConsumed: number = 0;
-  abstract refreshView(city: City): void;
+  abstract refreshView(): void;
 
   constructor(x: number, y: number) {
     super(x, y);
@@ -61,11 +60,11 @@ export abstract class Building<TGameData = any> extends SimObject implements ISt
     }
   }
 
-  simulate(city: City) {
-    super.simulate(city);
+  simulate() {
+    super.simulate();
 
-    this.power.simulate(city);
-    this.roadAccess.simulate(city);
+    this.power.simulate();
+    this.roadAccess.simulate();
 
     if (!this.power.isFullyPowered) {
       this.setStatus('no-power');

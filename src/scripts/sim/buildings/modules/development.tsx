@@ -1,6 +1,5 @@
 import { JSXElement } from 'solid-js';
 import config from '../../../config.js';
-import { City } from '../../city.js';
 import { Zone } from '../zones/zone.jsx';
 import { SimModule } from './simModule.js';
 
@@ -81,7 +80,7 @@ export class DevelopmentModule extends SimModule {
   /**
    * @param {City} city 
    */
-  simulate(_city: City) {
+  simulate() {
     this.#checkAbandonmentCriteria();
 
     switch (this.state) {

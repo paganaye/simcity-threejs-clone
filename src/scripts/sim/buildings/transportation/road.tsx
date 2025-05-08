@@ -1,7 +1,6 @@
 import { Building } from '../building.js';
-import { City } from '../../city.js';
 import { DEG2RAD } from 'three/src/math/MathUtils.js';
-import { assetManager } from '../../../../App.jsx';
+import { assetManager, city } from '../../../../App.jsx';
 import { JSXElement } from 'solid-js';
 
 export class Road extends Building {
@@ -21,7 +20,7 @@ export class Road extends Building {
    * Updates the road mesh based on which adjacent tiles are roads as well
    * @param {City} city 
    */
-  refreshView(city: City) {
+  refreshView() {
     // Check which adjacent tiles are roads
     let top = Boolean(city.getTile(this.x, this.y - 1)?.building?.type === this.type);
     let bottom = Boolean(city.getTile(this.x, this.y + 1)?.building?.type === this.type);

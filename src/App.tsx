@@ -10,20 +10,14 @@ import { GameUiView, GameUI } from "./scripts/ui"
 
 
 
-export let ui: GameUI;
-export let assetManager: AssetManager;
-export let city: City;
-export let game: Game;
+export let assetManager = new AssetManager();
+export let ui: GameUI = new GameUI();
+export let city = new City();
+export let game = new Game();
 
 export default function App() {
-    assetManager = new AssetManager();
-    ui = new GameUI();
-    city = new City();
-    game = new Game();
-
-
     assetManager.init(() => {
-        game.city = city;
+        city = city;
         if (!game.storage.loadGame()) {
             city.init(16, game.storage.getDefaultName())
         }

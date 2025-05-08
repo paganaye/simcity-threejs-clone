@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { City } from './city';
 import { JSXElement } from 'solid-js';
 
 const SELECTED_COLOR = 0xaaaa55;
@@ -66,7 +65,7 @@ export class SimObject extends THREE.Object3D {
    * Updates the state of this object by one simulation step
    * @param {City} city 
    */
-  simulate(_city: City) {
+  simulate() {
     // Override in subclass
   }
 

@@ -1,14 +1,14 @@
 import { JSXElement } from 'solid-js';
 import { BuildingType } from '../buildings/buildingType.js';
 import { PowerPlant } from '../buildings/power/powerPlant.jsx';
-import { City } from '../city.js';
 import { Tile } from '../tile.jsx';
+import { city } from '../../../App.jsx';
 
 export class PowerService {
   /**
    * @param {City} city 
    */
-  simulate(city: City) {
+  simulate() {
     // Find all power plants in the city
     const powerPlantList: { powerPlant: PowerPlant, frontier: Tile[], visited: Tile[] }[] = [];
     for (let x = 0; x < city.size; x++) {

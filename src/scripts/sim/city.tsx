@@ -33,7 +33,7 @@ export class City extends THREE.Group {
    */
   simTime = 0;
 
-  simMoney = 0;
+  simMoney = 999;
   /**
    * 2D array of tiles that make up the city
    * @type {Tile[][]}
@@ -61,7 +61,7 @@ export class City extends THREE.Group {
       const column: Tile[] = [];
       for (let y = 0; y < this.size; y++) {
         const tile = new Tile(x, y);
-        tile.refreshView(this);
+        tile.refreshView();
         this.root.add(tile);
         column.push(tile);
       }
@@ -111,12 +111,12 @@ export class City extends THREE.Group {
     let count = 0;
     while (count++ < steps) {
       // Update services
-      this.services.forEach((service) => service.simulate(this));
+      this.services.forEach((service) => service.simulate());
 
       // Update each building
       for (let x = 0; x < this.size; x++) {
         for (let y = 0; y < this.size; y++) {
-          this.getTile(x, y)!.simulate(this);
+          this.getTile(x, y)!.simulate();
         }
       }
     }
@@ -137,14 +137,14 @@ export class City extends THREE.Group {
     if (tile && !tile.building) {
       let newBuilding = createBuilding(x, y, buildingType)!
       tile.setBuilding(newBuilding);
-      tile.refreshView(this);
+      tile.refreshView();
 
       // Update buildings on adjacent tile in case they need to
       // change their mesh (e.g. roads)
-      this.getTile(x - 1, y)?.refreshView(this);
-      this.getTile(x + 1, y)?.refreshView(this);
-      this.getTile(x, y - 1)?.refreshView(this);
-      this.getTile(x, y + 1)?.refreshView(this);
+      this.getTile(x - 1, y)?.refreshView();
+      this.getTile(x + 1, y)?.refreshView();
+      this.getTile(x, y - 1)?.refreshView();
+      this.getTile(x, y + 1)?.refreshView();
 
       if (newBuilding.type === BuildingType.road) {
         this.vehicleGraph?.updateTile(x, y, tile.building);
@@ -168,13 +168,13 @@ export class City extends THREE.Group {
 
       tile.building.dispose();
       tile.setBuilding(null);
-      tile.refreshView(this);
+      tile.refreshView();
 
       // Update neighboring tiles in case they need to change their mesh (e.g. roads)
-      this.getTile(x - 1, y)?.refreshView(this);
-      this.getTile(x + 1, y)?.refreshView(this);
-      this.getTile(x, y - 1)?.refreshView(this);
-      this.getTile(x, y + 1)?.refreshView(this);
+      this.getTile(x - 1, y)?.refreshView();
+      this.getTile(x + 1, y)?.refreshView();
+      this.getTile(x, y - 1)?.refreshView();
+      this.getTile(x, y + 1)?.refreshView();
     }
   }
 

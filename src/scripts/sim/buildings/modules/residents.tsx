@@ -1,7 +1,6 @@
 import { For, JSXElement } from 'solid-js';
 import config from '../../../config.js';
 import { Citizen } from '../../citizen.js';
-import { City } from '../../city.js';
 import { Zone } from '../zones/zone.jsx';
 import { DevelopmentState } from './development.js';
 import { SimModule } from './simModule.js';
@@ -61,7 +60,7 @@ export class ResidentsModule extends SimModule implements IStoreGameData<IReside
   /**
    * @param {City} city 
    */
-  simulate(city: City) {
+  simulate() {
     // If building is abandoned, all residents are evicted and no more residents are allowed to move in.
     if (this.#zone.development.state === DevelopmentState.abandoned && this.#residents.length > 0) {
       this.#evictAll();
@@ -73,7 +72,7 @@ export class ResidentsModule extends SimModule implements IStoreGameData<IReside
     }
 
     for (const resident of this.#residents) {
-      resident.simulate(city);
+      resident.simulate();
     }
   }
 

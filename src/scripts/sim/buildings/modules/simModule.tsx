@@ -1,12 +1,11 @@
 import { JSXElement } from 'solid-js';
-import { City } from '../../city.js';
 
 export class SimModule {
   /**
    * Simulates one day passing
    * @param {City} city 
    */
-  simulate(_city: City) {
+  simulate() {
     // Implement in subclass
   }
 

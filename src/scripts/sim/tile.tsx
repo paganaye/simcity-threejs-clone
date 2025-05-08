@@ -1,7 +1,6 @@
 import { Building } from './buildings/building.js';
 import { SimObject } from './simObject.js';
 import { assetManager } from '../../App.jsx';
-import { City } from './city.jsx';
 import { JSXElement } from 'solid-js';
 
 export class Tile extends SimObject {
@@ -46,8 +45,8 @@ export class Tile extends SimObject {
     }
   }
 
-  refreshView(city: City) {
-    this.building?.refreshView(city);
+  refreshView() {
+    this.building?.refreshView();
     if (this.building?.hideTerrain) {
       this.setMesh(null);
     } else {
@@ -60,8 +59,8 @@ export class Tile extends SimObject {
     }
   }
 
-  simulate(city: City) {
-    this.building?.simulate(city);
+  simulate() {
+    this.building?.simulate();
   }
 
   /**

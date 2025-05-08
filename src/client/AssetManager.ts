@@ -1,4 +1,16 @@
-export default {
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { appConstants } from '../AppConstants';
+
+export interface IAsset {
+  type: 'zone' | 'road' | 'vehicle' | 'power' | "terrain",
+  filename: string;
+  scale?: number;
+  castShadow?: boolean;
+  rotation?: number;
+}
+
+const models = {
   "under-construction": {
     "type": "zone",
     "filename": "construction-small.glb",
@@ -209,5 +221,115 @@ export default {
     "type": "vehicle",
     "filename": "armored-truck.glb",
     "rotation": 90
+  }
+} satisfies Record<string, IAsset>;
+
+export type ModelName = keyof typeof models;
+
+let assetsBaseUrl = appConstants.assetsBaseUrl;
+
+export class AssetManager {
+  textureLoader = new THREE.TextureLoader();
+  modelLoader = new GLTFLoader();
+
+  textures = {
+    'base': this.#loadTexture(`${assetsBaseUrl}textures/base.png`),
+    'specular': this.#loadTexture(`${assetsBaseUrl}textures/specular.png`),
+    'grid': this.#loadTexture(`${assetsBaseUrl}textures/grid.png`),
+
+  };
+
+  statusIcons = {
+    'no-power': this.#loadTexture(`${assetsBaseUrl}statusIcons/no-power.png`, true),
+    'no-road-access': this.#loadTexture(`${assetsBaseUrl}statusIcons/no-road-access.png`, true)
+  }
+
+  models: Record<string, THREE.Mesh> = {};
+
+  sprites = {};
+  modelCount!: number;
+  loadedModelCount!: number;
+
+  constructor() {
+  }
+
+  async init() {
+    this.modelCount = Object.keys(models).length;
+    this.loadedModelCount = 0;
+
+    await Promise.all(Object.entries(models).map(([name, meta]) => this.#loadModel(name, meta)));
+  }
+
+  getModel(name: ModelName, simObject: any, transparent = false): THREE.Mesh {
+    let model = this.models[name];
+    if (!model) {
+      throw Error("unknown model " + name);
+    }
+    const mesh = model.clone();
+
+    // Clone materials so each object has a unique material
+    // This is so we can set the modify the texture of each
+    // mesh independently (e.g. highlight on mouse over,
+    // abandoned buildings, etc.))
+    mesh.traverse((obj: THREE.Object3D) => {
+      obj.userData = simObject;
+      if ('material' in obj) {
+        if (Array.isArray(obj.material)) {
+          throw Error("Material Array cloning not implemented");
+        } else if (obj.material) {
+          obj.material = (obj.material as THREE.MeshStandardMaterial).clone();
+          (obj.material as THREE.MeshStandardMaterial).transparent = transparent;
+        }
+      }
+    });
+
+    return mesh;
+  }
+
+  /** Loads the texture at the specified URL   */
+  #loadTexture(url: string, flipY = false) {
+    const texture = this.textureLoader.load(url)
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.flipY = flipY;
+    return texture;
+  }
+
+  /** Load the 3D models  */
+  async #loadModel(name: string | number, { filename, scale = 1, rotation = 0, receiveShadow = true, castShadow = true }: any) {
+    return new Promise((resolve, reject) => {
+      this.modelLoader.load(`${assetsBaseUrl}models/${filename}`,
+        (glb) => {
+          let mesh: THREE.Mesh = glb.scene! as any;
+
+          mesh.name = filename;
+
+          mesh.traverse((obj: any) => {
+            //if (obj.material) {
+            obj.material = new THREE.MeshLambertMaterial({
+              map: this.textures.base,
+              specularMap: this.textures.specular
+            })
+            obj.receiveShadow = receiveShadow;
+            obj.castShadow = castShadow;
+            //}
+          });
+
+          mesh.rotation.set(0, THREE.MathUtils.degToRad(rotation), 0);
+          mesh.scale.set(scale / 30, scale / 30, scale / 30);
+
+          this.models[name] = mesh;
+
+          this.loadedModelCount++;
+          resolve(undefined);
+        },
+        (_xhr: any) => {
+          //console.log(`${name} ${(xhr.loaded / xhr.total) * 100}% loaded`);
+        },
+        (error) => {
+          console.error(error);
+          reject(error)
+        });
+    })
+
   }
 }

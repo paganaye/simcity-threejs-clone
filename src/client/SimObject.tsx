@@ -5,47 +5,29 @@ const SELECTED_COLOR = 0xaaaa55;
 const HIGHLIGHTED_COLOR = 0x555555;
 
 export class SimObject extends THREE.Object3D {
-  /**
-   * @type {THREE.Mesh?}
-   */
   #mesh: THREE.Mesh | null = null;
-  /**
-   * World position of the object
-   * @type {THREE.Vector3}
-   */
-  #worldPos = new THREE.Vector3();
+  // #worldPos = new THREE.Vector3();
 
-  /**
-   * @param {number} x The x-coordinate of the object 
-   * @param {number} y The y-coordinate of the object
-   */
   constructor(x = 0, y = 0) {
     super();
     this.name = 'SimObject';
-    this.position.x = x;
-    this.position.z = y;
+    this.position.set(x, 0, y)
   }
 
-  get x() {
-    this.getWorldPosition(this.#worldPos);
-    return Math.floor(this.#worldPos.x);
-  }
+  // get x() {
+  //   this.getWorldPosition(this.#worldPos);
+  //   return Math.floor(this.#worldPos.x);
+  // }
 
-  get y() {
-    this.getWorldPosition(this.#worldPos);
-    return Math.floor(this.#worldPos.z);
-  }
+  // get y() {
+  //   this.getWorldPosition(this.#worldPos);
+  //   return Math.floor(this.#worldPos.z);
+  // }
 
-  /**
-   * @type {THREE.Mesh?}
-   */
   get mesh() {
     return this.#mesh;
   }
 
-  /**
-   * @type {THREE.Mesh} value
-   */
   setMesh(value: THREE.Mesh | null) {
     // Remove resources for existing mesh
     if (this.#mesh) {
@@ -59,14 +41,6 @@ export class SimObject extends THREE.Object3D {
     if (this.#mesh) {
       this.add(this.#mesh);
     }
-  }
-
-  /**
-   * Updates the state of this object by one simulation step
-   * @param {City} city 
-   */
-  simulate() {
-    // Override in subclass
   }
 
   setSelected(value: boolean) {
@@ -85,18 +59,11 @@ export class SimObject extends THREE.Object3D {
     }
   }
 
-  /**
-   * Sets the emission color of the mesh 
-   * @param {number} color 
-   */
   #setMeshEmission(color: number) {
     if (!this.mesh) return;
     this.mesh.traverse((obj) => { if ('material' in obj) (obj.material as THREE.MeshLambertMaterial).emissive?.setHex(color); });
   }
 
-  /**
-   * Handles any clean up needed before an object is removed
-   */
   dispose() {
     this.#mesh?.traverse((obj: THREE.Object3D) => {
       if ('material' in obj) {

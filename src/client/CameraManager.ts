@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ui } from '../App';
+//import { ui } from '../../App';
 
 // -- Constants --
 const DEG2RAD = Math.PI / 180.0;
@@ -97,8 +97,8 @@ export class CameraManager {
     this.updateCameraPosition();
   }
 
-  resize() {
-    const aspect = ui.gameWindow.clientWidth / ui.gameWindow.clientHeight;
+  resize(w: number, h: number) {
+    const aspect = h > 0 ? w / h : 1;
     this.camera.left = (CAMERA_SIZE * aspect) / -2;
     this.camera.right = (CAMERA_SIZE * aspect) / 2;
     this.camera.updateProjectionMatrix();

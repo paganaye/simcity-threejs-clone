@@ -4,7 +4,6 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "tsc": "tsc",
     "start": "vite",
     "dev": "vite",
     "build": "vite build",

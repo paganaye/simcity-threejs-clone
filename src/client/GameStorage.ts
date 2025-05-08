@@ -1,5 +1,4 @@
-import { city } from "../../App";
-import { Game } from "../game";
+import { GameScene } from "./GameScene";
 
 
 interface IBuilding {
@@ -18,15 +17,17 @@ interface IGame {
 
 }
 export interface IStoreGameData<TGameData> {
-  loadGameData(data: TGameData): void;
-  saveGameData(target: TGameData): void;
+    loadGameData(data: TGameData): void;
+    saveGameData(target: TGameData): void;
 }
 export class GameStorage {
-    constructor(readonly game: Game) {
+    constructor(readonly game: GameScene) {
         // if we stick to one game we might be able to do incremental saves
     }
 
     saveGame(name?: string) {
+        let city = this.game.cityView;
+
         if (name == null) name = this.getDefaultName()
         let size = city.size;
         let buildings: IBuilding[] = [];
@@ -34,21 +35,21 @@ export class GameStorage {
         let simMoney = city.simMoney;
         for (let x = 0; x < size; x++) {
             for (let y = 0; y < size; y++) {
-                let tile = city.tiles[x][y];
-                let { building, terrain } = tile;
-                if (tile && building) {
-                    let { x, y, type } = building;
-                    let data = {}
-                    building.saveGameData(data);
-                    buildings.push({
-                        terrain,
-                        x,
-                        y,
-                        type,
-                        data
-                    })
+                //let tile = city.getTile(x, y);
+                // let { building, terrain } = tile;
+                // if (tile && building) {
+                //     let { x, y, type } = building;
+                //     let data = {}
+                //     building.saveGameData(data);
+                //     buildings.push({
+                //         terrain,
+                //         x,
+                //         y,
+                //         type,
+                //         data
+                //     })
 
-                }
+                // }
             }
         }
         let storageGame: IGame = {
@@ -62,10 +63,12 @@ export class GameStorage {
     }
 
     getDefaultName(): string {
+        let city = this.game.cityView;
         return city?.name || 'simcity';
     }
 
     loadGame(name?: string): boolean {
+        let city = this.game.cityView;
         if (name == null) name = this.getDefaultName()
         let input = localStorage.getItem(name);
         if (input) {
@@ -73,13 +76,8 @@ export class GameStorage {
                 let storageGame = JSON.parse(input) as IGame;
                 city.simTime = storageGame.simTime;
                 city.simMoney = storageGame.simMoney;
-                city.init(storageGame.size, name);
-                for (let building of storageGame.buildings) {
-                    let newBuilding = city.placeBuilding(building.x, building.y, building.type);
-                    if (newBuilding && building.data) {
-                        newBuilding.loadGameData(building.data);
-                    }
-                }
+                city.init(this.game) //, storageGame.size, name);
+                
                 return true;
             } catch (e) {
                 console.error(e);

@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { BuildingType } from './buildings/buildingType.js';
-import { createBuilding } from './buildings/buildingFactory.js';
-import { Tile } from './tile.js';
-import { VehicleGraph } from './vehicles/vehicleGraph.js';
-import { PowerService } from './services/power.js';
+import { BuildingType } from './buildings/buildingType.jsx';
+import { createBuilding } from './buildings/buildingFactory.jsx';
+import { Tile } from './tile.jsx';
+import { VehicleGraph } from './vehicles/vehicleGraph.jsx';
+import { PowerService } from './services/power.jsx';
 import { Building } from './buildings/building.jsx';
 
 export class City extends THREE.Group {
@@ -45,7 +45,7 @@ export class City extends THREE.Group {
    */
   vehicleGraph: VehicleGraph | undefined;
 
-  constructor() {
+  constructor(readonly game: Game) {
     super();
   }
 
@@ -60,7 +60,7 @@ export class City extends THREE.Group {
     for (let x = 0; x < this.size; x++) {
       const column: Tile[] = [];
       for (let y = 0; y < this.size; y++) {
-        const tile = new Tile(x, y);
+        const tile = new Tile(this.game, x, y);
         tile.refreshView();
         this.root.add(tile);
         column.push(tile);
@@ -130,7 +130,7 @@ export class City extends THREE.Group {
    * @param {number} y 
    * @param {string} buildingType 
    */
-  placeBuilding(x: number, y: number, buildingType: string): Building | null {
+  placeBuilding(x: number, y: number, buildingType: BuildingType): Building | null {
     const tile = this.getTile(x, y);
 
     // If the tile doesnt' already have a building, place one there
@@ -209,7 +209,7 @@ export class City extends THREE.Group {
       }
 
       // Check if tile is outside the search bounds
-      const distance = startTile.distanceTo(tile);
+      const distance = startTile.manhattanDistanceTo(tile);
       if (distance > maxDistance) continue;
 
       // Add this tiles neighbor's to the search list

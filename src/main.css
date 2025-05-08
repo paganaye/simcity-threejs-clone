@@ -3,7 +3,8 @@
   src: url('fonts/Bebas-Regular.otf');
 }
 
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
   font-family: Bebas-Regular, sans-serif;
@@ -19,9 +20,15 @@ h1 {
   color: white;
 }
 
-.root_window,
-#root-window, #root {
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+.root-window,
+.game-view {
   height: 100%;
+  overflow: hidden;
 }
 
 #render-target {
@@ -81,7 +88,7 @@ h1 {
   margin: 4px 0;
 
   transition: background-color 0.1s ease-in-out;
-  
+
   background-color: #1e2331cd;
   border: none;
   border-radius: 8px;
@@ -110,8 +117,6 @@ h1 {
   height: 32px;
   pointer-events: none;
 }
-
-/* TITLE BAR */
 
 #title-bar {
   position: fixed;
@@ -155,13 +160,11 @@ h1 {
   margin-left: 8px;
 }
 
-/* INFO PANEL */
-
 #info-panel {
   position: fixed;
   top: 64px;
   right: 0px;
-  padding: 0; 
+  padding: 0;
   padding-bottom: 16px;
   width: 300px;
 

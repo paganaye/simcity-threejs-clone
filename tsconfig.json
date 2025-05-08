@@ -27,5 +27,11 @@
     "types": [
       "vite/client"
     ]
-  }
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "old"
+  ]
 }

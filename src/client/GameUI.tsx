@@ -1,26 +1,37 @@
-//import { createSignal, Accessor, Setter, Show } from 'solid-js';
-//import { SimObject } from "./sim/simObject";
-//import { game } from "../../App";
+import { Accessor, createSignal, Setter, Show } from "solid-js";
+import { SimObject3D } from "./SimObject3D";
 
-import { createSignal, Show } from "solid-js";
-import { SimObject } from "./SimObject";
-import { GameScene } from "./GameScene";
 
 export type ActiveTool = "select" | "bulldoze" | "residential" | "commercial" | "industrial" | "road" | "power-plant" | "power-line";
 
+import "./GameUI.css";
 
-export function GameUI() {
+export interface UIProps {
+    gameWindow: HTMLDivElement,
+    setIsLoading: Setter<boolean>,
+    isPaused: Setter<boolean>,
+    activeTool: Accessor<ActiveTool>,
+    setActiveTool: Setter<ActiveTool>,
+    selectedObject: Accessor<SimObject3D | null>,
+    setSelectedObject: Setter<SimObject3D | null>,
+    setSimMoney: Setter<number>,
+    setPopulation: Setter<number>,
+    setSimTime: Setter<number>,
+    setCityName: Setter<string>
+}
+
+export function GameUI(props: { onUILoaded: (uiProps: UIProps) => void }) {
     let [isLoading, setIsLoading] = createSignal(true);
     let [isPaused, setIsPaused] = createSignal(false);
     let [activeTool, setActiveTool] = createSignal<ActiveTool>('select');
-    let [selectedObject, setSelectedObject] = createSignal<SimObject | null>(null);
+    let [selectedObject, setSelectedObject] = createSignal<SimObject3D | null>(null);
     let [simMoney, setSimMoney] = createSignal(0);
     let [population, setPopulation] = createSignal(0);
     let [simTime, setSimTime] = createSignal(0);
     let [cityName, setCityName] = createSignal('My city');
 
     async function setGameView(gameView: HTMLDivElement) {
-        new GameScene({
+        props.onUILoaded({
             gameWindow: gameView,
             setIsLoading,
             isPaused,
@@ -30,7 +41,7 @@ export function GameUI() {
             setPopulation,
             setSimTime,
             setCityName
-        });
+        })
     }
 
     function UIButton(props: { icon: string, selected: boolean, onclick: (() => void) }) {
@@ -100,9 +111,9 @@ export function GameUI() {
                 </div>
                 <div id="instructions">
                     INTERACT - Left Mouse<br />
-                    ROTATE - Right Mouse<br />
-                    PAN - Control + Right Mouse<br />
-                    ZOOM - Scroll
+                    PAN - Right Mouse<br />
+                    ZOOM - Scroll<br />
+                    ROTATE - Middle Mouse<br />
                 </div>
                 <div id="version">
                     v0.3.0

@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import { JSXElement } from 'solid-js';
+import { Game3D } from './Game3D';
 
 const SELECTED_COLOR = 0xaaaa55;
 const HIGHLIGHTED_COLOR = 0x555555;
 
-export class SimObject extends THREE.Object3D {
+export class SimObject3D extends THREE.Object3D {
   #mesh: THREE.Mesh | null = null;
   // #worldPos = new THREE.Vector3();
 
-  constructor(x = 0, y = 0) {
+  constructor(readonly scene: Game3D, x: number = 0, y: number = 0) {
     super();
     this.name = 'SimObject';
     this.position.set(x, 0, y)

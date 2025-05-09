@@ -1,16 +1,18 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { appConstants } from '../AppConstants';
+import { Game3D } from './Game3D';
 
-export interface IAsset {
+export interface IAssetMeta {
   type: 'zone' | 'road' | 'vehicle' | 'power' | "terrain",
   filename: string;
   scale?: number;
   castShadow?: boolean;
+  receiveShadow?: boolean;
   rotation?: number;
 }
 
-const models = {
+const modelsMetaData = {
   "under-construction": {
     "type": "zone",
     "filename": "construction-small.glb",
@@ -222,11 +224,31 @@ const models = {
     "filename": "armored-truck.glb",
     "rotation": 90
   }
-} satisfies Record<string, IAsset>;
+} satisfies Record<string, IAssetMeta>;
 
-export type ModelName = keyof typeof models;
+export const cars: ModelName[] = ["car-ambulance-pickup", "car-baywatch", "car-hippie-van", "car-passenger-race", "car-passenger", "car-police", "car-taxi", "car-tow-truck", "car-truck-armored-truck", "car-truck-dump", "car-veteran", "truck"];
+export const commercialBuildings: ModelName[] = ["commercial-A1", "commercial-A2", "commercial-A3", "commercial-B1", "commercial-B2", "commercial-B3", "commercial-C1", "commercial-C2", "commercial-C3"];
+export const otherTiles: ModelName[] = ["grass", "power-line", "under-construction"]
+export const industrialBuildings: ModelName[] = ["industrial-A1", "industrial-A2", "industrial-A3", "industrial-B1", "industrial-B2", "industrial-B3", "industrial-C1", "industrial-C2", "industrial-C3", "power-plant"];
+export const residentialBuildings: ModelName[] = ["residential-A1", "residential-A2", "residential-A3", "residential-B1", "residential-B2", "residential-B3", "residential-C1", "residential-C2", "residential-C3"]
+export const roads: ModelName[] = ["road-corner", "road-end", "road-four-way", "road-straight", "road-three-way"];
+
+export type ModelName = keyof typeof modelsMetaData;
 
 let assetsBaseUrl = appConstants.assetsBaseUrl;
+
+interface IFastMeshes {
+  geometry: any,
+  material: any;
+  instancedMesh: THREE.InstancedMesh;
+  index: number;
+  count: number;
+}
+
+export interface IFastMesh {
+  parent: IFastMeshes;
+  index: number;
+}
 
 export class AssetManager {
   textureLoader = new THREE.TextureLoader();
@@ -239,51 +261,86 @@ export class AssetManager {
 
   };
 
-  statusIcons = {
-    'no-power': this.#loadTexture(`${assetsBaseUrl}statusIcons/no-power.png`, true),
-    'no-road-access': this.#loadTexture(`${assetsBaseUrl}statusIcons/no-road-access.png`, true)
-  }
+  // statusIcons = {
+  //   'no-power': this.#loadTexture(`${assetsBaseUrl}statusIcons/no-power.png`, true),
+  //   'no-road-access': this.#loadTexture(`${assetsBaseUrl}statusIcons/no-road-access.png`, true)
+  // }
 
-  models: Record<string, THREE.Mesh> = {};
+  models: Record<ModelName, THREE.Mesh> = {} as any;
+  fastMeshes: Record<string, IFastMeshes> = {};
 
   sprites = {};
   modelCount!: number;
   loadedModelCount!: number;
 
-  constructor() {
+  constructor(readonly game: Game3D) {
   }
 
   async init() {
-    this.modelCount = Object.keys(models).length;
+    this.modelCount = Object.keys(modelsMetaData).length;
     this.loadedModelCount = 0;
 
-    await Promise.all(Object.entries(models).map(([name, meta]) => this.#loadModel(name, meta)));
+    await Promise.all(Object.entries(modelsMetaData).map(async ([name, meta]) => {
+      const model = await this.#loadModel(meta);
+      this.models[name as ModelName] = model;
+      this.loadedModelCount += 1;
+    }));
+
   }
 
-  getModel(name: ModelName, simObject: any, transparent = false): THREE.Mesh {
-    let model = this.models[name];
-    if (!model) {
-      throw Error("unknown model " + name);
-    }
-    const mesh = model.clone();
 
-    // Clone materials so each object has a unique material
-    // This is so we can set the modify the texture of each
-    // mesh independently (e.g. highlight on mouse over,
-    // abandoned buildings, etc.))
-    mesh.traverse((obj: THREE.Object3D) => {
-      obj.userData = simObject;
-      if ('material' in obj) {
-        if (Array.isArray(obj.material)) {
-          throw Error("Material Array cloning not implemented");
-        } else if (obj.material) {
-          obj.material = (obj.material as THREE.MeshStandardMaterial).clone();
-          (obj.material as THREE.MeshStandardMaterial).transparent = transparent;
-        }
+
+  addFastMesh(modelName: ModelName, x: number, y: number, rotation: number): IFastMesh {
+    let fastMeshes = this.fastMeshes[modelName];
+    if (!fastMeshes) {
+      let originalMesh = this.models[modelName];
+      originalMesh.updateMatrixWorld();
+      // we need a mesh with material in order to use InstanceMesh
+      let actualMesh = findMeshWithMaterial(originalMesh)!;
+      // then we need to apply the transformation we skipped
+      actualMesh.geometry = actualMesh.geometry.clone().applyMatrix4((actualMesh as any).matrixWorld);
+
+      let count = appConstants.MeshInstancesMin;
+      fastMeshes = {
+        instancedMesh: new THREE.InstancedMesh(actualMesh.geometry, actualMesh.material, count),
+        count,
+        geometry: actualMesh.geometry,
+        material: actualMesh.material,
+        index: 0
       }
-    });
+      console.log(modelName, fastMeshes.count);
+      this.game.scene.add(fastMeshes.instancedMesh);
+      this.fastMeshes[modelName] = fastMeshes;
+    }
 
-    return mesh;
+    if (fastMeshes.index >= fastMeshes.count) {
+      fastMeshes.count = Math.floor(fastMeshes.count * appConstants.MeshInstancesGrowth);
+      let oldMesh = fastMeshes.instancedMesh;
+      let newMesh = fastMeshes.instancedMesh = new THREE.InstancedMesh(oldMesh.geometry, oldMesh.material, fastMeshes.count);
+      let tempMatrix = new THREE.Matrix4();
+      for (let i = 0; i < oldMesh.count; i++) {
+        oldMesh.getMatrixAt(i, tempMatrix);
+        newMesh.setMatrixAt(i, tempMatrix);
+      }
+      console.log(modelName, fastMeshes.count);
+      this.game.scene.remove(oldMesh);
+      this.game.scene.add(newMesh);
+    }
+
+    let result: IFastMesh = {
+      parent: fastMeshes,
+      index: fastMeshes.index++
+    };
+    this.setFastMeshPos(result, x, y, rotation);
+    return result;
+  }
+
+  setFastMeshPos(instance: IFastMesh, x: number, y: number, _rotation: number) {
+    const matrix = new THREE.Matrix4()
+      .makeTranslation(x, 0, y) // Positionner l'instance
+    //.makeRotationAxis(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(rotation));
+    instance.parent.instancedMesh.setMatrixAt(instance.index, matrix);
+    instance.parent.instancedMesh.instanceMatrix.needsUpdate = true;
   }
 
   /** Loads the texture at the specified URL   */
@@ -295,7 +352,13 @@ export class AssetManager {
   }
 
   /** Load the 3D models  */
-  async #loadModel(name: string | number, { filename, scale = 1, rotation = 0, receiveShadow = true, castShadow = true }: any) {
+  async #loadModel(meta: IAssetMeta): Promise<THREE.Mesh> {
+    let filename = meta.filename;
+    let receiveShadow = meta.receiveShadow ?? false;
+    let castShadow = meta.castShadow ?? true;
+    let scale = meta.scale ?? 1
+    let rotation = meta.rotation ?? 0
+
     return new Promise((resolve, reject) => {
       this.modelLoader.load(`${assetsBaseUrl}models/${filename}`,
         (glb) => {
@@ -317,10 +380,8 @@ export class AssetManager {
           mesh.rotation.set(0, THREE.MathUtils.degToRad(rotation), 0);
           mesh.scale.set(scale / 30, scale / 30, scale / 30);
 
-          this.models[name] = mesh;
 
-          this.loadedModelCount++;
-          resolve(undefined);
+          resolve(mesh);
         },
         (_xhr: any) => {
           //console.log(`${name} ${(xhr.loaded / xhr.total) * 100}% loaded`);
@@ -333,3 +394,22 @@ export class AssetManager {
 
   }
 }
+
+type MeshWithMaterial = {
+  geometry: any;
+  material: any;
+};
+
+function findMeshWithMaterial(object: any): MeshWithMaterial | null {
+  if (object.type === "Mesh" && object.geometry && object.material) {
+    return object;
+  }
+  if (Array.isArray(object.children)) {
+    for (const child of object.children) {
+      let res = findMeshWithMaterial(child);
+      if (res) return res;
+    }
+  }
+  return null;
+}
+

@@ -1,64 +1,50 @@
 import * as THREE from 'three';
-import { Accessor, createSignal, JSXElement, Setter } from 'solid-js';
-import { SimObject } from './SimObject.jsx';
-import { GameScene } from './GameScene.js';
+import { JSXElement } from 'solid-js';
+import { SimObject3D } from './SimObject3D.jsx';
+import { Game3D } from './Game3D.js';
 import { ModelName } from './AssetManager.js';
-//import { Accessor, createSignal, JSXElement, Setter } from 'solid-js';
-
-export class Tile extends SimObject {
-  terrain: ModelName = 'grass';
-  private _getBuilding: Accessor<ModelName | null>;
-  private _setBuilding: Setter<ModelName | null>;
 
 
-  constructor(readonly x: number, readonly y: number) {
-    super(x, y);
+export class MeshSignal {
+  #mesh: THREE.Mesh | null = null;
+  #modelName: ModelName | null = null;
+  //#_rotation?: number | null;
+
+  constructor(readonly owner: Tile) { }
+
+  set(modelName: ModelName | null, _orientation: number = 0) {
+    let scene = this.owner.scene;
+    if (modelName != this.#modelName) {
+      if (this.#modelName) this.clear();
+      if (modelName) {
+        scene.assetManager.addFastMesh(modelName, this.owner.x, this.owner.y, 0)
+      }
+    }
+  }
+
+  clear() {
+    if (this.#mesh) {
+      this.owner.remove(this.#mesh);
+      this.#mesh = null;
+      this.#modelName = null;
+      //this.#_rotation = null;
+    }
+  }
+}
+
+export class Tile extends SimObject3D {
+
+  readonly floor = new MeshSignal(this);
+  readonly building = new MeshSignal(this);
+
+
+  constructor(scene: Game3D, readonly x: number, readonly y: number) {
+    super(scene, x, y);
     this.name = `Tile-${this.x}-${this.y}`;
-    [this._getBuilding, this._setBuilding] = createSignal<ModelName | null>(null);
 
   }
 
-  init(game: GameScene) {
-    this.#createTerrainView(game);
-  }
 
-  get building(): ModelName | null {
-    return this._getBuilding();
-  }
-
-  _buildingMesh?: THREE.Mesh | null;
-
-  setBuilding(scene: GameScene, modelName: ModelName | null) {
-    if (this._buildingMesh) {
-      this.remove(this._buildingMesh);
-    }
-    if (modelName) {
-      let mesh = scene.assetManager.getModel(modelName, undefined, true);
-      this.add(mesh)
-      this._buildingMesh = mesh;
-
-    }
-    this._setBuilding(modelName);
-  }
-
-
-  #createTerrainView(game: GameScene) {
-    //   if (this.building?.hideTerrain) {
-    //     this.setMesh(null);
-    //   } else {
-    const mesh = game.assetManager.getModel(this.terrain, this);
-    mesh.name = this.terrain;
-    this.setMesh(mesh);
-    // }
-  }
-
-  // simulate() {
-  //   this.building?.simulate();
-  // }
-
-  manhattanDistanceTo(tile: Tile) {
-    return Math.abs(this.x - tile.x) + Math.abs(this.y - tile.y);
-  }
 
   toHTML(): JSXElement {
     return <>
@@ -67,7 +53,7 @@ export class Tile extends SimObject {
       <span class="info-value">X: {this.x}, Y: {this.y}</span>
       <br />
       <span class="info-label">Terrain </span>
-      <span class="info-value">{this.terrain}</span>
+      {/*<span class="info-value">{this.terrain}</span>*/}
       <br />
       {/* {this.building?.toHTML()} */}
     </>;

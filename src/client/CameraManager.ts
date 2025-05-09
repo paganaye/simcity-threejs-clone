@@ -4,19 +4,20 @@ import * as THREE from 'three';
 // -- Constants --
 const DEG2RAD = Math.PI / 180.0;
 const RIGHT_MOUSE_BUTTON = 2;
+const MIDDLE_MOUSE_BUTTON = 4;
 
 // Camera constraints
 const CAMERA_SIZE = 5;
 const MIN_CAMERA_RADIUS = 0.1;
 const MAX_CAMERA_RADIUS = 5;
-const MIN_CAMERA_ELEVATION = 45;
-const MAX_CAMERA_ELEVATION = 45;
+const MIN_CAMERA_ELEVATION = 25;
+const MAX_CAMERA_ELEVATION = 90;
 
 // Camera sensitivity
 const AZIMUTH_SENSITIVITY = 0.2;
 const ELEVATION_SENSITIVITY = 0.2;
 const ZOOM_SENSITIVITY = 0.002;
-const PAN_SENSITIVITY = -0.01;
+const PAN_SENSITIVITY = -0.02;
 
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
 
@@ -69,14 +70,14 @@ export class CameraManager {
    */
   onMouseMove(event: MouseEvent) {
     // Handles the rotation of the camera
-    if (event.buttons & RIGHT_MOUSE_BUTTON && !event.ctrlKey) {
+    if (event.buttons & MIDDLE_MOUSE_BUTTON) {
       this.cameraAzimuth += -(event.movementX * AZIMUTH_SENSITIVITY);
       this.cameraElevation += (event.movementY * ELEVATION_SENSITIVITY);
       this.cameraElevation = Math.min(MAX_CAMERA_ELEVATION, Math.max(MIN_CAMERA_ELEVATION, this.cameraElevation));
     }
 
     // Handles the panning of the camera
-    if (event.buttons & RIGHT_MOUSE_BUTTON && event.ctrlKey) {
+    if (event.buttons & RIGHT_MOUSE_BUTTON) {
       const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(Y_AXIS, this.cameraAzimuth * DEG2RAD);
       const left = new THREE.Vector3(1, 0, 0).applyAxisAngle(Y_AXIS, this.cameraAzimuth * DEG2RAD);
       this.cameraOrigin.add(forward.multiplyScalar(PAN_SENSITIVITY * event.movementY));

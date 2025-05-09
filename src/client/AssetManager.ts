@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils';
 import { appConstants } from '../AppConstants';
 import { Game3D } from './Game3D';
 
@@ -290,22 +291,27 @@ export class AssetManager {
 
 
 
-  addFastMesh(modelName: ModelName, x: number, y: number, rotation: number): IFastMesh {
+  addFastMesh(modelName: ModelName, x: number, y: number, z: number, rotation: number): IFastMesh {
     let fastMeshes = this.fastMeshes[modelName];
     if (!fastMeshes) {
       let originalMesh = this.models[modelName];
-      originalMesh.updateMatrixWorld();
-      // we need a mesh with material in order to use InstanceMesh
-      let actualMesh = findMeshWithMaterial(originalMesh)!;
-      // then we need to apply the transformation we skipped
-      actualMesh.geometry = actualMesh.geometry.clone().applyMatrix4((actualMesh as any).matrixWorld);
+      let actualMesh = originalMesh as any;
+      let { geometry, material } = actualMesh;
+      if (!geometry || !material) {
+        // we need a mesh with material in order to use InstancedMesh
+        originalMesh.updateMatrixWorld();
+        const merged = mergeMeshesWithGroups(actualMesh)
+        geometry = merged.geometry;
+        material = merged.materials;
+      }
+
 
       let count = appConstants.MeshInstancesMin;
       fastMeshes = {
-        instancedMesh: new THREE.InstancedMesh(actualMesh.geometry, actualMesh.material, count),
+        instancedMesh: new THREE.InstancedMesh(geometry, material, count),
         count,
-        geometry: actualMesh.geometry,
-        material: actualMesh.material,
+        geometry,
+        material,
         index: 0
       }
       console.log(modelName, fastMeshes.count);
@@ -331,17 +337,38 @@ export class AssetManager {
       parent: fastMeshes,
       index: fastMeshes.index++
     };
-    this.setFastMeshPos(result, x, y, rotation);
+    this.setFastMeshPos(result, x, y, z, rotation);
     return result;
   }
 
-  setFastMeshPos(instance: IFastMesh, x: number, y: number, _rotation: number) {
+  setFastMeshPos(fastMesh: IFastMesh, x: number, y: number, z: number, _rotation: number) {
     const matrix = new THREE.Matrix4()
-      .makeTranslation(x, 0, y) // Positionner l'instance
+      .makeTranslation(x, z, y) // We swap y and z here on purpose
     //.makeRotationAxis(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(rotation));
-    instance.parent.instancedMesh.setMatrixAt(instance.index, matrix);
-    instance.parent.instancedMesh.instanceMatrix.needsUpdate = true;
+    fastMesh.parent.instancedMesh.setMatrixAt(fastMesh.index, matrix);
   }
+
+  deltaMoveFastMesh(fastMesh: IFastMesh, dx: number, dy: number) {
+    const matrix = new THREE.Matrix4();
+    let im = fastMesh.parent.instancedMesh;
+    im.getMatrixAt(fastMesh.index, matrix);
+    let position = new THREE.Vector3();
+    matrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3()); // décompose la matrice pour obtenir la position
+    position.x += dx;
+    position.z += dy;
+    matrix.setPosition(position);
+    im.setMatrixAt(fastMesh.index, matrix);
+    im.instanceMatrix.needsUpdate = true;
+  }
+
+  moveFastMesh(fastMesh: IFastMesh, x: number, y: number, z: number = 0, rotation?: number) {
+    const matrix = new THREE.Matrix4();
+    if (rotation) matrix.makeRotationY(rotation);
+    matrix.setPosition(x, z, y); // we swap y and z on purpose
+    fastMesh.parent.instancedMesh.setMatrixAt(fastMesh.index, matrix);
+    fastMesh.parent.instancedMesh.instanceMatrix.needsUpdate = true;
+  }
+
 
   /** Loads the texture at the specified URL   */
   #loadTexture(url: string, flipY = false) {
@@ -395,21 +422,38 @@ export class AssetManager {
   }
 }
 
-type MeshWithMaterial = {
-  geometry: any;
-  material: any;
-};
 
-function findMeshWithMaterial(object: any): MeshWithMaterial | null {
-  if (object.type === "Mesh" && object.geometry && object.material) {
-    return object;
-  }
-  if (Array.isArray(object.children)) {
-    for (const child of object.children) {
-      let res = findMeshWithMaterial(child);
-      if (res) return res;
+function mergeMeshesWithGroups(object: THREE.Object3D): { geometry: THREE.BufferGeometry, materials: THREE.Material[] } {
+  const geometries: THREE.BufferGeometry[] = [];
+  const materials: THREE.Material[] = [];
+  const materialIndexMap = new Map<THREE.Material, number>();
+  let groupOffset = 0;
+
+  object.traverse((child: any) => {
+    if (child.isMesh && child.geometry && child.material) {
+      const geom = child.geometry.clone();
+      geom.applyMatrix4(child.matrixWorld);
+
+      let matIndex = materialIndexMap.get(child.material);
+      if (matIndex === undefined) {
+        matIndex = materials.length;
+        materials.push(child.material);
+        materialIndexMap.set(child.material, matIndex);
+      }
+
+      geom.groups.forEach((g: any) => {
+        geom.addGroup(g.start + groupOffset, g.count, matIndex!);
+      });
+
+      if (geom.groups.length === 0) {
+        geom.addGroup(0 + groupOffset, geom.index?.count || geom.attributes.position.count, matIndex!);
+      }
+
+      groupOffset += geom.index?.count || geom.attributes.position.count;
+      geometries.push(geom);
     }
-  }
-  return null;
-}
+  });
 
+  const merged = BufferGeometryUtils.mergeGeometries(geometries, true);
+  return { geometry: merged, materials };
+}

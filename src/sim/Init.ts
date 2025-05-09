@@ -1,21 +1,16 @@
-import { ModelName, residentialBuildings, roads } from "../client/AssetManager";
 import { SimCity } from "./SimCity";
-import { random } from "./Rng";
 import { appConstants } from "../AppConstants";
+import { ICarChangedWithId } from "./SimCars";
+import { ITileChange } from "./SimTiles";
 
 export function init(): ICityChanges {
-    let city = new SimCity()
+    let simCity = new SimCity()
     let size = appConstants.defaultCitySize;
 
-    city.setSize(size, size);
-    for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-            let floor: ModelName = (random(2) == 0 ? random(roads) : 'grass');
-            let building = random(residentialBuildings);
-            city.getTile(x, y).setFloor(floor, random(4) * 90)
-            city.getTile(x, y).setBuilding(building, random(4) * 90)
-        }
-    }
+    simCity.simTiles.setSize(size, size);
+    simCity.simTiles.feedRandom();
+
+    simCity.simCars.feedRandom(appConstants.defaultCarCount);
     return {
         cityChanged: {
             name: 'my city',
@@ -23,13 +18,15 @@ export function init(): ICityChanges {
             height: size,
             clear: true
         },
-        tileChanged: city.getTileChanged()
+        tileChanged: simCity.simTiles.getTileChanged(),
+        carChanged: simCity.simCars.getCarChanged()
     }
 }
 
 export interface ICityChanges {
     cityChanged?: ICityChanged;
     tileChanged?: ITileChange[];
+    carChanged?: ICarChangedWithId[];
 }
 export interface ICityChanged {
     name: string;
@@ -38,16 +35,4 @@ export interface ICityChanged {
     clear?: boolean
 }
 
-export interface IPos {
-    x: number;
-    y: number;
-}
 
-export interface ITile {
-    floor: ModelName;
-    orientation: number;
-    building?: ModelName | null;
-    buildingOrientation?: number;
-}
-
-export type ITileChange = Partial<ITile> & IPos;

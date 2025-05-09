@@ -9,7 +9,7 @@ export class SimObject3D extends THREE.Object3D {
   #mesh: THREE.Mesh | null = null;
   // #worldPos = new THREE.Vector3();
 
-  constructor(readonly scene: Game3D, x: number = 0, y: number = 0) {
+  constructor(readonly scene: Game3D, public x: number = 0, public y: number = 0) {
     super();
     this.name = 'SimObject';
     this.position.set(x, 0, y)

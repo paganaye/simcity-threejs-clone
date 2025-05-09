@@ -50,8 +50,7 @@ export class GameStorage {
     }
 
     getDefaultName(): string {
-        let city = this.game.cityView;
-        return city?.name || 'simcity';
+        return 'simcity';
     }
 
     loadGame(name?: string): boolean {

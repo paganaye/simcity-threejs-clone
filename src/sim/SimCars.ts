@@ -2,6 +2,7 @@ import { cars, ModelName } from "../client/AssetManager";
 import { Sim } from "./Sim";
 import { random } from "./Rng"
 import { findPathOrStartOfPath } from './AStar';
+import { SimTile } from "./SimTiles";
 
 export class SimCars {
     cars: SimCar[] = [];
@@ -25,9 +26,10 @@ export class SimCars {
     }
 
     #randomPath(): ICarPath[] {
-        let t0 = this.simCity.simTiles.randomTile();
-        let t1 = this.simCity.simTiles.randomTile();
-        let t2 = random(2) == 0 ? this.simCity.simTiles.randomTile() : undefined;
+        let filter = (t: SimTile) => t.content?.isRoad()
+        let t0 = this.simCity.simTiles.randomTile(filter);
+        let t1 = this.simCity.simTiles.randomTile(filter);
+        let t2 = random(2) == 0 ? this.simCity.simTiles.randomTile(filter) : undefined;
 
         let path1 = findPathOrStartOfPath(this.simCity.simTiles, t0, t1).path;
         if (t2) {
@@ -60,7 +62,25 @@ export class SimCar {
 
     setCarChange(carChanged: ICarChanged) {
         (carChanged as ICarChangedWithId).id = this.id;
-        carChanged.path = carChanged.path?.map(p => ({ x: p.x, y: p.y, speed: p.speed }));
+        let path = carChanged.path;
+        if (path) {
+            let newPath = path.map(p => ({ x: p.x, z: p.z, speed: p.speed }))
+                .filter((p, i, arr) => {
+                    if (i === 0) return true;
+                    const prev = arr[i - 1];
+                    return p.x !== prev.x || p.z !== prev.z || p.speed !== prev.speed;
+                });
+
+            if (newPath.length > 1) {
+                const first = newPath[0];
+                const last = newPath.at(-1)!;
+                if (first.x === last.x && first.z === last.z && first.speed === last.speed) {
+                    newPath.pop();
+                }
+            }
+            carChanged.path = newPath;
+        }
+
         this.city.simCars.carChanged.set(this, carChanged as ICarChangedWithId);
     }
 }
@@ -84,6 +104,6 @@ export type ICarChangedWithId = { id: number } & ICarChanged
 
 export interface ICarPath {
     x: number;
-    y: number;
+    z: number;
     speed: number;
 }

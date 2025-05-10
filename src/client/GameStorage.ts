@@ -1,4 +1,4 @@
-import { Game3D } from "./Game3D";
+import { Scene3D } from "./Scene3D";
 
 
 
@@ -7,7 +7,7 @@ export interface IStoreGameData<TGameData> {
     saveGameData(target: TGameData): void;
 }
 export class GameStorage {
-    constructor(readonly game: Game3D) {
+    constructor(readonly scene: Scene3D) {
         // if we stick to one game we might be able to do incremental saves
     }
 
@@ -19,18 +19,18 @@ export class GameStorage {
         // let buildings: IBuilding[] = [];
         // let simTime = city.simTime;
         // let simMoney = city.simMoney;
-        // for (let y = 0; y < height; y++) {
+        // for (let z = 0; z < height; z++) {
         //     for (let x = 0; x < width; x++) {
-        //         //let tile = city.getTile(x, y);
+        //         //let tile = city.getTile(x, z);
         //         // let { building, terrain } = tile;
         //         // if (tile && building) {
-        //         //     let { x, y, type } = building;
+        //         //     let { x, z, type } = building;
         //         //     let data = {}
         //         //     building.saveGameData(data);
         //         //     buildings.push({
         //         //         terrain,
         //         //         x,
-        //         //         y,
+        //         //         z,
         //         //         type,
         //         //         data
         //         //     })

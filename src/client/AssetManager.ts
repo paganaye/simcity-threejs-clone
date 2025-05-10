@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils';
 import { appConstants } from '../AppConstants';
-import { Game3D } from './Game3D';
+import { Scene3D } from './Scene3D';
 
 export interface IAssetMeta {
   type: 'zone' | 'road' | 'vehicle' | 'power' | "terrain",
@@ -12,6 +12,15 @@ export interface IAssetMeta {
   receiveShadow?: boolean;
   rotation?: number;
 }
+
+const DEG2RAD = THREE.MathUtils.DEG2RAD;
+const ZERO_VECTOR = new THREE.Vector3(0, 0, 0);
+const IDENTITY_QUATERNION = new THREE.Quaternion();
+const HIDE_MATRIX = new THREE.Matrix4().compose(
+  new THREE.Vector3(0, -1e5, 0),
+  IDENTITY_QUATERNION,
+  ZERO_VECTOR
+);
 
 const modelsMetaData = {
   "under-construction": {
@@ -239,6 +248,7 @@ export type ModelName = keyof typeof modelsMetaData;
 let assetsBaseUrl = appConstants.AssetsBaseUrl;
 
 interface IFastMeshes {
+  modelName: ModelName;
   geometry: any,
   material: any;
   instancedMesh: THREE.InstancedMesh;
@@ -249,6 +259,7 @@ interface IFastMeshes {
 export interface IFastMesh {
   parent: IFastMeshes;
   index: number;
+  rotation: number;
 }
 
 export class AssetManager {
@@ -274,7 +285,7 @@ export class AssetManager {
   modelCount!: number;
   loadedModelCount!: number;
 
-  constructor(readonly game: Game3D) {
+  constructor(readonly scene: Scene3D) {
   }
 
   async init() {
@@ -289,85 +300,98 @@ export class AssetManager {
 
   }
 
-
-
   addFastMesh(modelName: ModelName, x: number, y: number, z: number, rotation: number): IFastMesh {
     let fastMeshes = this.fastMeshes[modelName];
     if (!fastMeshes) {
-      let originalMesh = this.models[modelName];
-      let actualMesh = originalMesh as any;
-      let { geometry, material } = actualMesh;
-      if (!geometry || !material) {
-        // we need a mesh with material in order to use InstancedMesh
-        originalMesh.updateMatrixWorld();
-        const merged = mergeMeshesWithGroups(actualMesh)
-        geometry = merged.geometry;
-        material = merged.materials;
-      }
-
-
-      let count = appConstants.MeshInstancesMin;
-      fastMeshes = {
-        instancedMesh: new THREE.InstancedMesh(geometry, material, count),
-        count,
-        geometry,
-        material,
-        index: 0
-      }
-      console.log(modelName, fastMeshes.count);
-      this.game.scene.add(fastMeshes.instancedMesh);
-      this.fastMeshes[modelName] = fastMeshes;
+      fastMeshes = this.#createFastMesh(modelName, fastMeshes);
     }
-
     if (fastMeshes.index >= fastMeshes.count) {
-      fastMeshes.count = Math.floor(fastMeshes.count * appConstants.MeshInstancesGrowth);
-      let oldMesh = fastMeshes.instancedMesh;
-      let newMesh = fastMeshes.instancedMesh = new THREE.InstancedMesh(oldMesh.geometry, oldMesh.material, fastMeshes.count);
-      let tempMatrix = new THREE.Matrix4();
-      for (let i = 0; i < oldMesh.count; i++) {
-        oldMesh.getMatrixAt(i, tempMatrix);
-        newMesh.setMatrixAt(i, tempMatrix);
-      }
-      console.log(modelName, fastMeshes.count);
-      this.game.scene.remove(oldMesh);
-      this.game.scene.add(newMesh);
+      this.#growFastMesh(fastMeshes);
     }
-
     let result: IFastMesh = {
+      rotation,
       parent: fastMeshes,
       index: fastMeshes.index++
     };
-    this.setFastMeshPos(result, x, y, z, rotation);
+    this.moveFastMesh(result, x, y, z, rotation);
     return result;
   }
 
-  setFastMeshPos(fastMesh: IFastMesh, x: number, y: number, z: number, _rotation: number) {
-    const matrix = new THREE.Matrix4()
-      .makeTranslation(x, z, y) // We swap y and z here on purpose
-    //.makeRotationAxis(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(rotation));
-    fastMesh.parent.instancedMesh.setMatrixAt(fastMesh.index, matrix);
+  removeFastMesh(fastMesh: IFastMesh) {
+    // we swap the last instancedMesh with the one we just clear
+    // not tested
+    let fastMeshes = fastMesh.parent;
+    let lastInstance = fastMeshes.count - 1;
+    let tempMatrix = new THREE.Matrix4();
+    let instancedMesh = fastMeshes.instancedMesh;
+    if (fastMesh.index !== lastInstance) {
+      instancedMesh.getMatrixAt(lastInstance, tempMatrix);
+      instancedMesh.setMatrixAt(fastMesh.index, tempMatrix);
+    }
+    instancedMesh.setMatrixAt(lastInstance, HIDE_MATRIX);
+    fastMeshes.count -= 1;
   }
 
-  deltaMoveFastMesh(fastMesh: IFastMesh, dx: number, dy: number) {
-    const matrix = new THREE.Matrix4();
-    let im = fastMesh.parent.instancedMesh;
-    im.getMatrixAt(fastMesh.index, matrix);
-    let position = new THREE.Vector3();
-    matrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3()); // décompose la matrice pour obtenir la position
-    position.x += dx;
-    position.z += dy;
-    matrix.setPosition(position);
-    im.setMatrixAt(fastMesh.index, matrix);
-    im.instanceMatrix.needsUpdate = true;
+  #createFastMesh(modelName: ModelName, fastMeshes: IFastMeshes) {
+    let originalMesh = this.models[modelName];
+    let actualMesh = originalMesh as any;
+    let { geometry, material } = actualMesh;
+    if (!geometry || !material) {
+      // we need a mesh with material in order to use InstancedMesh
+      originalMesh.updateMatrixWorld();
+      const merged = mergeMeshesWithGroups(actualMesh);
+      geometry = merged.geometry;
+      material = merged.materials;
+    }
+
+
+    let count = appConstants.MeshInstancesMin;
+    fastMeshes = {
+      modelName,
+      instancedMesh: new THREE.InstancedMesh(geometry, material, count),
+      count,
+      geometry,
+      material,
+      index: 0
+    };
+
+    this.#clearFastMeshes(fastMeshes, 1);
+
+    this.scene.scene.add(fastMeshes.instancedMesh);
+    this.fastMeshes[modelName] = fastMeshes;
+    return fastMeshes;
   }
 
-  moveFastMesh(fastMesh: IFastMesh, x: number, y: number, z: number = 0, rotation?: number) {
+  #clearFastMeshes(fastMeshes: IFastMeshes, from: number) {
+    for (let i = from; i < fastMeshes.count; i++) {
+      fastMeshes.instancedMesh.setMatrixAt(i, HIDE_MATRIX);
+    }
+    fastMeshes.instancedMesh.frustumCulled = false;
+  }
+
+  #growFastMesh(fastMeshes: IFastMeshes) {
+    fastMeshes.count = Math.floor(fastMeshes.count * appConstants.MeshInstancesGrowth);
+    let oldMesh = fastMeshes.instancedMesh;
+    let newMesh = fastMeshes.instancedMesh = new THREE.InstancedMesh(oldMesh.geometry, oldMesh.material, fastMeshes.count);
+    let tempMatrix = new THREE.Matrix4();
+    for (let i = 0; i < oldMesh.count; i++) {
+      oldMesh.getMatrixAt(i, tempMatrix);
+      newMesh.setMatrixAt(i, tempMatrix);
+    }
+    this.#clearFastMeshes(fastMeshes, oldMesh.count)
+    this.scene.scene.remove(oldMesh);
+    this.scene.scene.add(newMesh);
+  }
+
+  moveFastMesh(fastMesh: IFastMesh, x: number, y: number = 0, z: number, rotation?: number) {
     const matrix = new THREE.Matrix4();
-    if (rotation) matrix.makeRotationY(rotation);
-    matrix.setPosition(x, z, y); // we swap y and z on purpose
+    const pos = new THREE.Vector3(x, y, z);
+    const rot = rotation ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), DEG2RAD * rotation) : new THREE.Quaternion();
+    matrix.compose(pos, rot, new THREE.Vector3(1, 1, 1));
     fastMesh.parent.instancedMesh.setMatrixAt(fastMesh.index, matrix);
     fastMesh.parent.instancedMesh.instanceMatrix.needsUpdate = true;
   }
+
 
 
   /** Loads the texture at the specified URL   */

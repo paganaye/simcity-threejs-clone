@@ -1,20 +1,21 @@
+import * as THREE from 'three';
 import { JSXElement } from 'solid-js';
-import { Game3D } from './Game3D.js';
-import { MeshSignal } from './MeshSignal.jsx';
+import { Scene3D } from './Scene3D.js';
+import { ReactiveMesh } from './ReactiveMesh.jsx';
 import { ICarInfo, ICarPath } from '../sim/SimCars.js';
-import { manhattanDistance } from '../sim/IPoint.js';
 
+const RAD2DEG = THREE.MathUtils.RAD2DEG;
 
 export class Car3D {
 
-  readonly car = new MeshSignal();
+  readonly car = new ReactiveMesh();
 
   pathIndex: number = 0;
   path!: ICarPath[];
   speed: number = 0;
   rotation: number = 0;
-  pos = { x: 0, y: 0 };
-  currentTarget = { x: 0, y: 0 };
+  pos = { x: 0, z: 0 };
+  currentTarget = { x: 0, z: 0 };
   static minSpeed = 0.1;
   static maxSpeed = 1;
   static acceleration = 1;
@@ -22,27 +23,23 @@ export class Car3D {
   static turnSpeed = 6;
   static turnDistance = 0.25;
   static breakDistance = 0.35;
-  drawFrame(game: Game3D, delta: number) {
+  drawFrame(scene: Scene3D, delta: number) {
     delta /= 10_000;
     let dot = this.dot();
 
     let nextPath = () => {
       if (this.path.length < 2) return;
-      let previousTarget = this.currentTarget;
       this.pathIndex = (this.pathIndex + 1) % this.path.length;
       this.currentTarget = this.path[this.pathIndex];
-      if (manhattanDistance(previousTarget, this.currentTarget) == 0) {
-        nextPath();
-      }
     }
 
     if (dot < -2 || dot > 2) {
       // something is wrong teleport and fast recover
-      this.pos = { x: this.path[this.pathIndex].x, y: this.path[this.pathIndex].y };
+      this.pos = { x: this.path[this.pathIndex].x, z: this.path[this.pathIndex].z };
       this.speed = 0;
       this.pathIndex = (this.pathIndex + 1) % this.path.length;
       this.currentTarget = this.path[this.pathIndex];
-      this.rotation = Math.atan2(this.currentTarget.y - this.pos.y, this.currentTarget.x - this.pos.x);
+      this.rotation = Math.atan2(this.currentTarget.z - this.pos.z, this.currentTarget.x - this.pos.x);
       dot = this.dot();
     }
     if (dot > 0 && dot < Car3D.turnDistance) {
@@ -51,7 +48,7 @@ export class Car3D {
 
     }
 
-    const targetAngle = Math.atan2(this.currentTarget.y - this.pos.y, this.currentTarget.x - this.pos.x);
+    const targetAngle = Math.atan2(this.currentTarget.z - this.pos.z, this.currentTarget.x - this.pos.x) * RAD2DEG;
     let angleDiff = Car3D.normalizeAngle(targetAngle - this.rotation);
     this.rotation += angleDiff * Car3D.turnSpeed * delta;
 
@@ -66,34 +63,39 @@ export class Car3D {
     }
 
     this.pos.x += Math.cos(this.rotation) * this.speed * delta;
-    this.pos.y += Math.sin(this.rotation) * this.speed * delta;
+    this.pos.z += Math.sin(this.rotation) * this.speed * delta;
 
-    this.car.move(game, this.pos.x, this.pos.y, 0, -this.rotation);
+    this.car.move(scene.assetManager, this.pos.x, 0.0, this.pos.z, -this.rotation);
   }
 
   distanceTo(to: { x: number, y: number }) {
-    return Math.abs(this.pos.x - to.x) + Math.abs(this.pos.y - to.y);
+    return Math.abs(this.pos.x - to.x) + Math.abs(this.pos.z - to.y);
   }
 
   dot() {
     const dx = this.currentTarget.x - this.pos.x;
-    const dy = this.currentTarget.y - this.pos.y;
+    const dy = this.currentTarget.z - this.pos.z;
     const dot = dx * Math.cos(this.rotation) + dy * Math.sin(this.rotation);
     return dot;
   }
 
   static normalizeAngle(a: number): number {
-    while (a > Math.PI) a -= 2 * Math.PI;
-    while (a < -Math.PI) a += 2 * Math.PI;
+    if (a > 180) a -= 360;
+    else if (a < -180) a += 360;
     return a;
   }
 
 
 
-  constructor(game: Game3D, readonly carInfo: ICarInfo) {
-    this.car.set(game, carInfo.model, 0, 0, 0, 0);
+  constructor(scene: Scene3D, readonly carInfo: ICarInfo) {
+    this.car.set(scene.assetManager, carInfo.model, 0, 0, 0, 0);
     this.path = this.carInfo.path;
+    if (this.path && this.path.length) {
+      let start = this.path[0]
+      this.pos = { x: start.x, z: start.z };
+      this.currentTarget = this.path[1];
 
+    }
   }
 
 
@@ -103,13 +105,3 @@ export class Car3D {
     </>;
   }
 };
-
-// function lerp(p: number, from: number, to: number) {
-//   return (1 - p) * from + p * to;
-// }
-
-// function lerpAngle(p: number, from: number, to: number): number {
-//   let diff = ((to - from + Math.PI) % (2 * Math.PI)) - Math.PI;
-//   return from + diff * p;
-// }
-

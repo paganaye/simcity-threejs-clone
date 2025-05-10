@@ -1,8 +1,8 @@
-const DefaultCitySize = 50;
+const DefaultCitySize = 5;
 
 export var appConstants = {
     defaultCitySize: DefaultCitySize,
-    DefaultCarCount: 1_000,
+    DefaultCarCount: 1,
     AssetsBaseUrl: "./",
     // In order to relieve the Graphic card all mesh are used as MeshInstances.
     MeshInstancesMin: 8,

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Tile3D } from './Tile3D';
-import { Game3D } from './Game3D';
+import { Scene3D } from './Scene3D';
 import { ITileChange } from '../sim/SimTiles';
+import { IPoint2D } from '../sim/IPoint';
 
 //import { BuildingType } from './buildings/buildingType.jsx';
 //import { createBuilding } from './buildings/buildingFactory.jsx';
@@ -9,7 +10,7 @@ import { ITileChange } from '../sim/SimTiles';
 //import { PowerService } from './services/power.jsx';
 //import { Building } from './buildings/building.jsx';
 
-export class City3D {
+export class Tiles3D {
     setSize(width: number, height: number) {
         if (width != this.width || height != this.height) {
             this.width = width;
@@ -19,9 +20,9 @@ export class City3D {
     }
 
     clearCity() {
-        for (let y = 0; y < this.height; y++) {
+        for (let z = 0; z < this.height; z++) {
             for (let x = 0; x < this.width; x++) {
-                // let tile = this.getTile({ x, y })!;
+                // let tile = this.getTile({ x, z })!;
                 // tile.floor.set('grass', 0)
                 // tile?.building.clear();
             }
@@ -35,7 +36,7 @@ export class City3D {
     simMoney = 999;
     #tiles: Tile3D[][] = [];
 
-    constructor(readonly game: Game3D) {
+    constructor(readonly scene: Scene3D) {
     }
 
     drawFrame(_delta: number) {
@@ -49,35 +50,36 @@ export class City3D {
     initTiles() {
         this.root.clear();
         this.#tiles = [];
-        for (let y = 0; y < this.height; y++) {
+        for (let z = 0; z < this.height; z++) {
             const row: Tile3D[] = [];
             for (let x = 0; x < this.width; x++) {
-                const tile = new Tile3D(x, y);
+                const tile = new Tile3D(x, z);
                 row.push(tile);
             }
             this.#tiles.push(row);
         }
-        this.game.onTilesResized();
+        this.scene.onTilesResized();
     }
 
-    getTile({ x, y }: { x: number, y: number }): Tile3D {
+    getTile({ x, z: z }: IPoint2D): Tile3D {
 
-        if (x === undefined || y === undefined ||
-            x < 0 || y < 0 ||
-            x >= this.width || y >= this.height) {
-            throw Error(`Invalid tile ${x} ${y}`)
+        if (x === undefined || z === undefined ||
+            x < 0 || z < 0 ||
+            x >= this.width || z >= this.height) {
+            throw Error(`Invalid tile ${x} ${z}`)
         } else {
-            return this.#tiles[y][x];
+            return this.#tiles[z][x];
         }
     }
 
     onTileChanged(tileChanged: ITileChange[]) {
+        let scene = this.scene;
         for (let t of tileChanged) {
-            let tile = this.getTile(t)
-            tile?.floor.set(this.game, t.floor ?? null, tile.x, tile.y, 0, t.orientation ?? 0);
-            tile?.building.set(this.game, t.building ?? null, tile.x, tile.y, 0, t.buildingOrientation ?? 0);
+            let tile = this.getTile(t);
+            tile.setFloor(scene, t.floor, t.orientation);
+            if (t.building) tile.setContent(scene, t.building, t.buildingOrientation);
         }
-        Object.values(this.game.assetManager.fastMeshes).forEach(m => {
+        Object.values(this.scene.assetManager.fastMeshes).forEach(m => {
             m.instancedMesh.instanceMatrix.needsUpdate = true;
         })
     }

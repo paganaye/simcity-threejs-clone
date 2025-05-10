@@ -1,6 +1,6 @@
-import { IPoint, IRectangle, rectangleContains, rectangleIntersects } from './IPoint';
+import { IPoint2D, IRectangle, rectangleContains, rectangleIntersects } from './IPoint';
 
-interface IQuadTreeNode<T extends IPoint> {
+interface IQuadTreeNode<T extends IPoint2D> {
     values?: T[];
     northWest?: IQuadTreeNode<T>;
     northEast?: IQuadTreeNode<T>;
@@ -12,14 +12,14 @@ interface IQuadTreeNode<T extends IPoint> {
     height: number;
 }
 
-export class QuadTree<T extends IPoint> {
+export class QuadTree<T extends IPoint2D> {
     root: IQuadTreeNode<T>;
 
     constructor(readonly boundary: IRectangle, readonly capacity: number) {
         let w2 = boundary.width / 2;
         let h2 = boundary.height / 2;
         let midX = boundary.x + w2;
-        let midY = boundary.y + h2;
+        let midY = boundary.z + h2;
         this.root = { midX, midY, width: w2, height: h2 };
     }
 
@@ -34,7 +34,7 @@ export class QuadTree<T extends IPoint> {
     #insertIntoNode(node: IQuadTreeNode<T>, value: T): void {
         if (node.northWest) {
             let north = value.x < node.midX;
-            let west = value.y < node.midY;
+            let west = value.z < node.midY;
             let quarter = north ? (west ? node.northWest : node.northEast) : (west ? node.southWest : node.southEast);
             this.#insertIntoNode(quarter!, value);
         } else if (!node.values) {
@@ -69,19 +69,19 @@ export class QuadTree<T extends IPoint> {
         }
     }
 
-    findPoint(point: IPoint): T[] {
+    findPoint(point: IPoint2D): T[] {
         let result: T[] = [];
         let find = ((node: IQuadTreeNode<T>) => {
             if (node.values) {
                 for (let v of node.values) {
-                    if (v.x === point.x && v.y === point.y) {
+                    if (v.x === point.x && v.z === point.z) {
                         result.push(v);
                     }
                 }
             }
             if (node.northWest) {
                 let north = point.x < node.midX;
-                let west = point.y < node.midY;
+                let west = point.z < node.midY;
                 let quarter = north ? (west ? node.northWest : node.northEast) : (west ? node.southWest : node.southEast);
                 find(quarter!);
             }
@@ -96,7 +96,7 @@ export class QuadTree<T extends IPoint> {
         }
         let result: T[] = [];
         let rectRight = rect.x + rect.width;
-        let rectBottom = rect.y + rect.height;
+        let rectBottom = rect.z + rect.height;
         let find = ((node: IQuadTreeNode<T>) => {
             if (node.values) {
                 for (let v of node.values) {
@@ -108,7 +108,7 @@ export class QuadTree<T extends IPoint> {
             if (node.northWest) {
                 let intersectsWest = rect.x < node.midX;
                 let intersectsEast = rectRight >= node.midX;
-                let intersectsNorth = rect.y < node.midY;
+                let intersectsNorth = rect.z < node.midY;
                 let intersectsSouth = rectBottom >= node.midY;
                 if (intersectsNorth && intersectsWest) find(node.northWest!);
                 if (intersectsNorth && intersectsEast) find(node.northEast!);

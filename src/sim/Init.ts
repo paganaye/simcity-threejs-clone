@@ -9,6 +9,7 @@ export function init(): ICityChanges {
 
     simCity.simTiles.setSize(size, size);
     simCity.simTiles.feedRandom();
+    simCity.simTiles.computeModels();
 
     simCity.simCars.feedRandom(appConstants.DefaultCarCount);
     return {

@@ -2,13 +2,13 @@
 /* @refresh reload */
 import { render } from 'solid-js/web';
 import { GameUI, UIProps } from "./client/GameUI";
-import { Game3D } from './client/Game3D';
+import { Scene3D } from './client/Scene3D';
 
 // import "./sim/TestQuadTree.ts";
 
 async function onUILoaded(uiProps: UIProps) {
-    let game = new Game3D(uiProps);
-    game.init();
+    let scene = new Scene3D(uiProps);
+    scene.init();
 }
 
 

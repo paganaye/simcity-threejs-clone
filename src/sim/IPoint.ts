@@ -1,63 +1,62 @@
-export type IPosition = IPoint;
 
-export interface IPoint {
+export interface IPoint2D {
     x: number;
-    y: number;
+    z: number;
 }
 
 
-export function tileFloor(position: IPoint): IPoint {
+export function tileFloor(position: IPoint2D): IPoint2D {
     return {
         x: Math.floor(position.x),
-        y: Math.floor(position.y),
+        z: Math.floor(position.z),
     };
 }
 
-export function tileCenter(position: IPoint): IPoint {
+export function tileCenter(position: IPoint2D): IPoint2D {
     return {
         x: Math.floor(position.x) + 0.5,
-        y: Math.floor(position.y) + 0.5,
+        z: Math.floor(position.z) + 0.5,
     };
 }
 
-export function distance(p1: IPoint, p2: IPoint): number {
-    return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+export function distance(p1: IPoint2D, p2: IPoint2D): number {
+    return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.z - p2.z, 2));
 }
 
-export function manhattanDistance(p1: IPoint, p2: IPoint): number {
-    return Math.abs(p1.x - p2.x) + Math.abs(p1.y - p2.y) * 1.2;
+export function manhattanDistance(p1: IPoint2D, p2: IPoint2D): number {
+    return Math.abs(p1.x - p2.x) + Math.abs(p1.z - p2.z) * 1.2;
 }
 
-export function addHalfTile(position: IPoint): IPoint {
+export function addHalfTile(position: IPoint2D): IPoint2D {
     return {
         x: position.x + 0.5,
-        y: position.y + 0.5,
+        z: position.z + 0.5,
     };
 }
 
-export function removeHalfTile(position: IPoint): IPoint {
+export function removeHalfTile(position: IPoint2D): IPoint2D {
     return {
         x: position.x - 0.5,
-        y: position.y - 0.5,
+        z: position.z - 0.5,
     };
 }
 
-export function positionFloorString(position: IPoint) {
-    return `${Math.floor(position.x)},${Math.floor(position.y)}`
+export function positionFloorString(position: IPoint2D) {
+    return `${Math.floor(position.x)},${Math.floor(position.z)}`
 }
 
-export interface IRectangle extends IPoint {
+export interface IRectangle extends IPoint2D {
     width: number;
     height: number;
 }
 
-export function rectangleContains(self: IRectangle, IPos: IPoint): boolean {
-    return IPos.x >= self.x && IPos.x < self.x + self.width && IPos.y >= self.y && IPos.y < self.y + self.height;
+export function rectangleContains(self: IRectangle, IPoint2D: IPoint2D): boolean {
+    return IPoint2D.x >= self.x && IPoint2D.x < self.x + self.width && IPoint2D.z >= self.z && IPoint2D.z < self.z + self.height;
 }
 
 export function rectangleIntersects(self: IRectangle, range: IRectangle): boolean {
     return !(range.x + range.width <= self.x ||
         range.x >= self.x + self.width ||
-        range.y + range.height <= self.y ||
-        range.y >= self.y + self.height);
+        range.z + range.height <= self.z ||
+        range.z >= self.z + self.height);
 }

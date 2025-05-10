@@ -1,11 +1,11 @@
-import { IPosition } from "./IPoint";
+import { IPoint2D } from "./IPoint";
 import { MinHeap } from "./MinHeap";
 import { ICarPath } from "./SimCars";
 import { SimTile, SimTiles } from "./SimTiles";
 
 type Tile = SimTile;
 
-export interface ITilePath extends ICarPath, IPosition {
+export interface ITilePath extends ICarPath, IPoint2D {
     tile: SimTile;
     gScore: number; // accumulated cost so far
     hScore: number; // expected remaining cost 
@@ -13,7 +13,7 @@ export interface ITilePath extends ICarPath, IPosition {
     cost: number;
     cameFrom: ITilePath | undefined;
     x: number;
-    y: number;
+    z: number;
     speed: number;
 }
 
@@ -36,7 +36,7 @@ function aStar(
     const h = getHeuristic(startTile)
     const startPath: ITilePath = {
         x: startTile.x,
-        y: startTile.y,
+        z: startTile.z,
         tile: startTile,
         gScore: 0,
         hScore: h,
@@ -73,7 +73,7 @@ function aStar(
 
             const path: ITilePath = {
                 x: neighbour.x,
-                y: neighbour.y,
+                z: neighbour.z,
                 tile: neighbour,
                 gScore: g,
                 hScore: h,
@@ -115,7 +115,7 @@ function aStar(
 //     return path;
 // }
 
-export function findPathOrStartOfPath(simTiles: SimTiles, origin: IPosition, destination: IPosition): { success: boolean, path: ITilePath[] } {
+export function findPathOrStartOfPath(simTiles: SimTiles, origin: IPoint2D, destination: IPoint2D): { success: boolean, path: ITilePath[] } {
 
     const startTile = simTiles.getTile(origin);
     const endTile = simTiles.getTile(destination);
@@ -150,12 +150,12 @@ export function findPathOrStartOfPath(simTiles: SimTiles, origin: IPosition, des
 }
 
 
-export function findNearest(game: SimTiles, origin: IPosition, isFound: (t: Tile) => boolean): ITilePath[] | null {
+export function findNearest(simTiles: SimTiles, origin: IPoint2D, isFound: (t: Tile) => boolean): ITilePath[] | null {
     //const cacheKey = `nearest-${origin.x | 0},${origin.y | 0}`;
     //const cached = nearestCache.get(cacheKey);
     //if (cached) return cached;
 
-    const startTile = game.getTile(origin);
+    const startTile = simTiles.getTile(origin);
     if (!startTile) return null;
     
     let result = aStar(
@@ -171,8 +171,8 @@ export function findNearest(game: SimTiles, origin: IPosition, isFound: (t: Tile
     } else return null;
 }
 
-function calculateHeuristic(from: IPosition, to: IPosition): number {
-    const manhattanTiles = Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
+function calculateHeuristic(from: IPoint2D, to: IPoint2D): number {
+    const manhattanTiles = Math.abs(from.x - to.x) + Math.abs(from.z - to.z);
     const manhattanKm = manhattanTiles * 0.016;
     const fastestSpeed = 130; // Fastest possible speed (highway)
     return (manhattanKm / fastestSpeed) * 3600; // Time in seconds with max speed

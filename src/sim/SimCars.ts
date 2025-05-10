@@ -60,6 +60,7 @@ export class SimCar {
 
     setCarChange(carChanged: ICarChanged) {
         (carChanged as ICarChangedWithId).id = this.id;
+        carChanged.path = carChanged.path?.map(p => ({ x: p.x, y: p.y, speed: p.speed }));
         this.city.simCars.carChanged.set(this, carChanged as ICarChangedWithId);
     }
 }

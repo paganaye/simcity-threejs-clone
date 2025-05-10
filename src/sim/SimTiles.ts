@@ -1,5 +1,5 @@
-import { ModelName } from "../client/AssetManager";
-import { IPos } from "./IPos";
+import { ModelName, residentialBuildings } from "../client/AssetManager";
+import { IPoint } from "./IPoint";
 import { random } from "./Rng";
 import { Sim } from "./Sim";
 
@@ -10,7 +10,7 @@ export interface ITile {
     buildingOrientation?: number;
 }
 
-export type ITileChange = Partial<ITile> & IPos;
+export type ITileChange = Partial<ITile> & IPoint;
 
 export class SimTiles {
     allTiles: SimTile[] = [];
@@ -49,22 +49,35 @@ export class SimTiles {
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
                 let floor: ModelName = 'road-four-way'; //(random(2) == 0 ? random(roads) : 'grass');
-                //let building = null //random(residentialBuildings);
+                let building = random(2) == 0 ? random(residentialBuildings) : null;
                 this.getTile(x, y)!.setFloor(floor, random(4) * 90)
-                //this.getTile(x, y).setBuilding(building, random(4) * 90)
+                this.getTile(x, y)!.setBuilding(building, random(4) * 90)
             }
         }
     }
 
     getTileChanged(): ITileChange[] {
-        let result = new Array(...this.tileChanged.values())
+        // if (this.tileChanged.size > 100) {
+        //     const result: ITileChange[] = [];
+        //     const iter = this.tileChanged.entries();
+        //     for (let i = 0; i < 100; i++) {
+        //         const next = iter.next();
+        //         if (next.done) break;
+        //         const [key, value] = next.value;
+        //         result.push(value);
+        //         this.tileChanged.delete(key);
+        //     }
+        //     return result;
+        // } else {
+        const result = new Array(...this.tileChanged.values())
+        this.tileChanged.clear();
         return result;
+        //}
     }
 
-
-    getTile(xy: IPos): SimTile | undefined
+    getTile(xy: IPoint): SimTile | undefined
     getTile(x: number, y: number): SimTile | undefined
-    getTile(xOrXy: number | IPos, y?: number): SimTile | undefined {
+    getTile(xOrXy: number | IPoint, y?: number): SimTile | undefined {
         if (typeof xOrXy === 'object') {
             return this.tiles[xOrXy.y]?.[xOrXy.x];
         } else {

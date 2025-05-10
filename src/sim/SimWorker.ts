@@ -43,7 +43,7 @@ self.onmessage = async (event) => {
     try {
         const handler = workerCommands[command as WorkerCommand] as any;
         if (!handler) throw new Error("Unknown command " + command);
-        const result = await handler(...request.args);
+        const result =await handler(...request.args);
         response = { id, command, success: true, result };
     } catch (e: any) {
         response = { id, command, success: false, error: String(e), stack: e.stack };

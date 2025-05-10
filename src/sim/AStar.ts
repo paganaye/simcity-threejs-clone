@@ -1,4 +1,4 @@
-import { IPosition } from "./IPos";
+import { IPosition } from "./IPoint";
 import { MinHeap } from "./MinHeap";
 import { ICarPath } from "./SimCars";
 import { SimTile, SimTiles } from "./SimTiles";

@@ -2,7 +2,7 @@ import { JSXElement } from 'solid-js';
 import { Game3D } from './Game3D.js';
 import { MeshSignal } from './MeshSignal.jsx';
 import { ICarInfo, ICarPath } from '../sim/SimCars.js';
-import { manhattanDistance } from '../sim/IPos.js';
+import { manhattanDistance } from '../sim/IPoint.js';
 
 
 export class Car3D {

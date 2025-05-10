@@ -236,7 +236,7 @@ export const roads: ModelName[] = ["road-corner", "road-end", "road-four-way", "
 
 export type ModelName = keyof typeof modelsMetaData;
 
-let assetsBaseUrl = appConstants.assetsBaseUrl;
+let assetsBaseUrl = appConstants.AssetsBaseUrl;
 
 interface IFastMeshes {
   geometry: any,
@@ -330,7 +330,7 @@ export class AssetManager {
       }
       console.log(modelName, fastMeshes.count);
       this.game.scene.remove(oldMesh);
-      //this.game.scene.add(newMesh);
+      this.game.scene.add(newMesh);
     }
 
     let result: IFastMesh = {

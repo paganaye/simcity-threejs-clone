@@ -8,7 +8,9 @@ import { InputManager } from './InputManager';
 import { SimBridge } from '../sim/SimBridge';
 import { Cars3D } from './Cars3D';
 import { ICityChanged } from '../sim/Init';
-import { random } from '../sim/Rng';
+import { random, setRandomSeed } from '../sim/Rng';
+import { appConstants } from '../AppConstants';
+import { Painter } from '../sim/Painter';
 
 
 
@@ -25,6 +27,7 @@ export class Game3D {
     raycaster!: THREE.Raycaster;
     grid?: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>;
     overlay?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>;
+    painter!: Painter;
 
     constructor(readonly uiProps: UIProps) { }
 
@@ -130,16 +133,16 @@ export class Game3D {
         let { width, height } = this.city3D;
         if (this.overlay) this.scene.remove(this.overlay);
         if (width || height) {
-            const PixelPerTile = 8;
-            let pw = width * PixelPerTile;
-            let ph = height * PixelPerTile;
-
+            let pw = width * appConstants.PixelPerTile;
+            let ph = height * appConstants.PixelPerTile;
+            setRandomSeed(1);
             const data = new Uint8Array(pw * ph * 4); // RGBA
             for (let i = 0; i < data.length; i += 4) {
-                data[i] = random(255);       // R
-                data[i + 1] = random(255);   // G
-                data[i + 2] = random(255);   // B
-                data[i + 3] = random(255);   // A
+                let v = random(255);
+                data[i] = 0;       // R
+                data[i + 1] = 0;   // G
+                data[i + 2] = v;   // B
+                data[i + 3] = 80;   // A
 
             }
 
@@ -148,14 +151,37 @@ export class Game3D {
             //texture.minFilter = THREE.NearestFilter;
             texture.needsUpdate = true;
 
-            const material = new THREE.MeshBasicMaterial({ map: texture });
+            const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
             const geometry = new THREE.PlaneGeometry(width, height);
             const overlay = new THREE.Mesh(geometry, material);
             this.overlay = overlay;
 
-            overlay.position.set(width / 2 - 0.5, 0, height / 2 - 0.5);
+            overlay.position.set(width / 2 - 0.5, 0.01, height / 2 - 0.5);
             overlay.rotation.x = -Math.PI / 2; // à plat au sol
+
+            function getPixel(x: number, y: number): boolean {
+                if (x >= 0 && y >= 0 && x < pw && y < ph) {
+                    let index = (pw * y + x) * 4 + 2;
+                    return data[index + 2] > 0
+                }
+                return false;
+            }
+            function setPixel(x: number, y: number, value: boolean): void {
+                if (x >= 0 && y >= 0 && x < pw && y < ph) {
+                    let v = value ? 255 : 0;
+                    let index = (pw * y + x) * 4 + 2;
+                    data[index] = v
+                }
+
+            }
+
             this.scene.add(overlay);
+            this.painter = new Painter({
+                get: getPixel,
+                set: setPixel,
+                width: pw,
+                height: ph
+            });
         }
     }
 

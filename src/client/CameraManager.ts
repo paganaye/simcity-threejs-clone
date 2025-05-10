@@ -8,9 +8,9 @@ const MIDDLE_MOUSE_BUTTON = 4;
 
 // Camera constraints
 const CAMERA_SIZE = 3;
-const MIN_CAMERA_RADIUS = 0.1;
+const MIN_CAMERA_RADIUS = 0.03;
 const MAX_CAMERA_RADIUS = 5;
-const MIN_CAMERA_ELEVATION = 25;
+const MIN_CAMERA_ELEVATION = 10;
 const MAX_CAMERA_ELEVATION = 90;
 
 // Camera sensitivity

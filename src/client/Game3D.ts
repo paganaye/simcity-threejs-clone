@@ -8,6 +8,7 @@ import { InputManager } from './InputManager';
 import { SimBridge } from '../sim/SimBridge';
 import { Cars3D } from './Cars3D';
 import { ICityChanged } from '../sim/Init';
+import { random } from '../sim/Rng';
 
 
 
@@ -23,6 +24,7 @@ export class Game3D {
     scene!: THREE.Scene;
     raycaster!: THREE.Raycaster;
     grid?: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>;
+    overlay?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>;
 
     constructor(readonly uiProps: UIProps) { }
 
@@ -51,7 +53,6 @@ export class Game3D {
 
         this.scene.clear();
         this.#setupLights();
-        this.#setupGrid();
 
         this.city3D.init();
 
@@ -63,6 +64,7 @@ export class Game3D {
                 this.onResize(width, height);
             }
         });
+
         resizeObserver.observe(uiProps.gameWindow);
         this.start();
         await pendingAssetManager;
@@ -80,6 +82,12 @@ export class Game3D {
         }
     }
 
+    onTilesResized() {
+        this.#setupGrid();
+        this.#setupOverlay();
+    }
+
+
     start() {
         this.renderer.setAnimationLoop((d) => this.drawFrame(d));
     }
@@ -96,6 +104,7 @@ export class Game3D {
 
     #setupGrid() {
         if (this.grid) this.scene.remove(this.grid)
+        let { width, height } = this.city3D
         // Add the grid
         const gridMaterial = new THREE.MeshBasicMaterial({
             color: 0x000000,
@@ -103,18 +112,51 @@ export class Game3D {
             transparent: true,
             opacity: 0.2
         });
-        gridMaterial.map!.repeat = new THREE.Vector2(this.city3D.width, this.city3D.height);
+        gridMaterial.map!.repeat = new THREE.Vector2(width, height);
         gridMaterial.map!.wrapS = THREE.RepeatWrapping; // city.size; 
         gridMaterial.map!.wrapT = THREE.RepeatWrapping; // city.size;
 
 
         const grid = new THREE.Mesh(
-            new THREE.BoxGeometry(this.city3D.width, 0.1, this.city3D.height),
+            new THREE.BoxGeometry(width, 0.1, height),
             gridMaterial
         );
-        grid.position.set(this.city3D.width / 2 - 0.5, -0.04, this.city3D.height / 2 - 0.5);
+        grid.position.set(width / 2 - 0.5, -0.04, height / 2 - 0.5);
         this.grid = grid;
         this.scene.add(grid);
+    }
+
+    #setupOverlay() {
+        let { width, height } = this.city3D;
+        if (this.overlay) this.scene.remove(this.overlay);
+        if (width || height) {
+            const PixelPerTile = 8;
+            let pw = width * PixelPerTile;
+            let ph = height * PixelPerTile;
+
+            const data = new Uint8Array(pw * ph * 4); // RGBA
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = random(255);       // R
+                data[i + 1] = random(255);   // G
+                data[i + 2] = random(255);   // B
+                data[i + 3] = random(255);   // A
+
+            }
+
+            const texture = new THREE.DataTexture(data, pw, ph, THREE.RGBAFormat);
+            //texture.magFilter = THREE.NearestFilter;
+            //texture.minFilter = THREE.NearestFilter;
+            texture.needsUpdate = true;
+
+            const material = new THREE.MeshBasicMaterial({ map: texture });
+            const geometry = new THREE.PlaneGeometry(width, height);
+            const overlay = new THREE.Mesh(geometry, material);
+            this.overlay = overlay;
+
+            overlay.position.set(width / 2 - 0.5, 0, height / 2 - 0.5);
+            overlay.rotation.x = -Math.PI / 2; // à plat au sol
+            this.scene.add(overlay);
+        }
     }
 
     #setupLights() {

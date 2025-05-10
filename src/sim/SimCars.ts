@@ -1,30 +1,22 @@
 import { cars, ModelName } from "../client/AssetManager";
-import { SimCity } from "./SimCity";
+import { Sim } from "./Sim";
 import { random } from "./Rng"
+import { findPathOrStartOfPath } from './AStar';
 
 export class SimCars {
     cars: SimCar[] = [];
     carChanged = new Map<SimCar, ICarChangedWithId>();
 
-    constructor(readonly simCity: SimCity) { }
+    constructor(readonly simCity: Sim) { }
 
     feedRandom(carCount: number) {
         let newCars = [];
         for (let i = 0; i < carCount; i++) {
             let car = new SimCar(this.simCity, i, random(cars))
             newCars.push(car);
-            let x0 = random(this.simCity.simTiles.width - 1)
-            let y0 = random(this.simCity.simTiles.height - 1)
-            let x1 = x0 + 1;
-            let y1 = y0 + 1;
             car.setCarChange(
                 {
-                    path: [
-                        { x: x0, y: y0 },
-                        { x: x1, y: y0 },
-                        { x: x1, y: y1 },
-                        { x: x0, y: y1 }
-                    ]
+                    path: this.#randomPath()
                 }
             )
         }
@@ -32,6 +24,21 @@ export class SimCars {
 
     }
 
+    #randomPath(): ICarPath[] {
+        let t0 = this.simCity.simTiles.randomTile();
+        let t1 = this.simCity.simTiles.randomTile();
+        let t2 = random(2) == 0 ? this.simCity.simTiles.randomTile() : undefined;
+
+        let path1 = findPathOrStartOfPath(this.simCity.simTiles, t0, t1).path;
+        if (t2) {
+            let path2 = findPathOrStartOfPath(this.simCity.simTiles, t1, t2).path;
+            let path3 = findPathOrStartOfPath(this.simCity.simTiles, t2, t0).path;
+            return [...path1, ...path2, ...path3];
+        } else {
+            let path2 = findPathOrStartOfPath(this.simCity.simTiles, t1, t0).path;
+            return [...path1, ...path2];
+        }
+    }
 
     getCarChanged(): ICarChangedWithId[] {
         let result = new Array(...this.carChanged.values())
@@ -45,7 +52,7 @@ export class SimCars {
 }
 
 export class SimCar {
-    constructor(readonly city: SimCity, readonly id: number, readonly model: ModelName) { }
+    constructor(readonly city: Sim, readonly id: number, readonly model: ModelName) { }
 
     getCarChange() {
         return this.city.simCars.carChanged.get(this);

@@ -57,6 +57,7 @@ export class City3D {
             }
             this.#tiles.push(row);
         }
+        this.game.onTilesResized();
     }
 
     getTile({ x, y }: { x: number, y: number }): Tile3D {

@@ -1,10 +1,10 @@
-import { SimCity } from "./SimCity";
+import { Sim } from "./Sim";
 import { appConstants } from "../AppConstants";
 import { ICarChangedWithId } from "./SimCars";
 import { ITileChange } from "./SimTiles";
 
 export function init(): ICityChanges {
-    let simCity = new SimCity()
+    let simCity = new Sim()
     let size = appConstants.defaultCitySize;
 
     simCity.simTiles.setSize(size, size);

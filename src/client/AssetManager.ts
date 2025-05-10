@@ -330,7 +330,7 @@ export class AssetManager {
       }
       console.log(modelName, fastMeshes.count);
       this.game.scene.remove(oldMesh);
-      this.game.scene.add(newMesh);
+      //this.game.scene.add(newMesh);
     }
 
     let result: IFastMesh = {

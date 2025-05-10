@@ -58,6 +58,7 @@ export class SimTiles {
                     // building
                     //setFloor(floor, random(4) * 90)
                     if (random(2) == 0) tile.setContent(new SimRoad(tile));
+                    else if (random(2)) tile.setFloor("firstprim")
                     else tile.setContent(new SimGrass(tile));
 
                 } else {
@@ -134,7 +135,7 @@ export class SimTile {
                 if (dx == 0 && dy == 0) continue;
                 let t2 = this.simTiles.getTile(this.x + dx, this.z + dy);
                 if (t2) {
-                    let drive = (this.content.isRoad() && t2.content.isRoad()) ? 1 : MAXVALUE
+                    let drive = (this.content?.isRoad() && t2.content?.isRoad()) ? 1 : MAXVALUE
                     let walk = MAXVALUE;
                     if (dx != 0 && dy != 0) drive = MAXVALUE; // for now
                     if (drive < MAXVALUE || walk < MAXVALUE) {

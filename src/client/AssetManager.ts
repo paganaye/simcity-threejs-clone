@@ -11,18 +11,26 @@ export interface IAssetMeta {
   castShadow?: boolean;
   receiveShadow?: boolean;
   rotation?: number;
+  updateMaterials?: boolean;
 }
 
-const DEG2RAD = THREE.MathUtils.DEG2RAD;
-const ZERO_VECTOR = new THREE.Vector3(0, 0, 0);
+//const ZERO_VECTOR = new THREE.Vector3(0, 0, 0);
+const ONE_VECTOR = new THREE.Vector3(1, 1, 1);
 const IDENTITY_QUATERNION = new THREE.Quaternion();
 const HIDE_MATRIX = new THREE.Matrix4().compose(
-  new THREE.Vector3(0, -1e5, 0),
+  new THREE.Vector3(0, 3, 0),
   IDENTITY_QUATERNION,
-  ZERO_VECTOR
+
+  ONE_VECTOR
 );
 
 const modelsMetaData = {
+  "firstprim": {
+    "type": "zone",
+    "filename": "firstprim.glb",
+    "scale": 15,
+    "updateMaterials": false
+  },
   "under-construction": {
     "type": "zone",
     "filename": "construction-small.glb",
@@ -262,6 +270,11 @@ export interface IFastMesh {
   rotation: number;
 }
 
+export interface IAssetOptions {
+  zOffset: number;
+
+}
+
 export class AssetManager {
   textureLoader = new THREE.TextureLoader();
   modelLoader = new GLTFLoader();
@@ -293,17 +306,19 @@ export class AssetManager {
     this.loadedModelCount = 0;
 
     await Promise.all(Object.entries(modelsMetaData).map(async ([name, meta]) => {
-      const model = await this.#loadModel(meta);
+      let updateMaterials = 'updateMaterials' in meta ? meta.updateMaterials : true;
+      const model = await this.#loadModel(meta, { updateMaterials });
       this.models[name as ModelName] = model;
       this.loadedModelCount += 1;
     }));
 
   }
 
-  addFastMesh(modelName: ModelName, x: number, y: number, z: number, rotation: number): IFastMesh {
+  addFastMesh(modelName: ModelName, x: number, y: number, z: number, rotation: number, options?: IAssetOptions): IFastMesh {
     let fastMeshes = this.fastMeshes[modelName];
     if (!fastMeshes) {
-      fastMeshes = this.#createFastMesh(modelName, fastMeshes);
+      fastMeshes = this.#createFastMesh(modelName, fastMeshes, options);
+
     }
     if (fastMeshes.index >= fastMeshes.count) {
       this.#growFastMesh(fastMeshes);
@@ -332,7 +347,7 @@ export class AssetManager {
     fastMeshes.count -= 1;
   }
 
-  #createFastMesh(modelName: ModelName, fastMeshes: IFastMeshes) {
+  #createFastMesh(modelName: ModelName, fastMeshes: IFastMeshes, options?: IAssetOptions) {
     let originalMesh = this.models[modelName];
     let actualMesh = originalMesh as any;
     let { geometry, material } = actualMesh;
@@ -343,7 +358,9 @@ export class AssetManager {
       geometry = merged.geometry;
       material = merged.materials;
     }
-
+    if (options && options.zOffset) {
+      geometry.translate(0, 0, options.zOffset);
+    }
 
     let count = appConstants.MeshInstancesMin;
     fastMeshes = {
@@ -386,7 +403,7 @@ export class AssetManager {
   moveFastMesh(fastMesh: IFastMesh, x: number, y: number = 0, z: number, rotation?: number) {
     const matrix = new THREE.Matrix4();
     const pos = new THREE.Vector3(x, y, z);
-    const rot = rotation ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), DEG2RAD * rotation) : new THREE.Quaternion();
+    const rot = rotation ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotation) : new THREE.Quaternion();
     matrix.compose(pos, rot, new THREE.Vector3(1, 1, 1));
     fastMesh.parent.instancedMesh.setMatrixAt(fastMesh.index, matrix);
     fastMesh.parent.instancedMesh.instanceMatrix.needsUpdate = true;
@@ -403,7 +420,7 @@ export class AssetManager {
   }
 
   /** Load the 3D models  */
-  async #loadModel(meta: IAssetMeta): Promise<THREE.Mesh> {
+  async #loadModel(meta: IAssetMeta, options: { updateMaterials: boolean }): Promise<THREE.Mesh> {
     let filename = meta.filename;
     let receiveShadow = meta.receiveShadow ?? false;
     let castShadow = meta.castShadow ?? true;
@@ -416,18 +433,20 @@ export class AssetManager {
           let mesh: THREE.Mesh = glb.scene! as any;
 
           mesh.name = filename;
-
-          mesh.traverse((obj: any) => {
-            //if (obj.material) {
-            obj.material = new THREE.MeshLambertMaterial({
-              map: this.textures.base,
-              specularMap: this.textures.specular
-            })
-            obj.receiveShadow = receiveShadow;
-            obj.castShadow = castShadow;
-            //}
-          });
-
+          if (options.updateMaterials) {
+            mesh.traverse((obj: any) => {
+              //if (obj.material) {
+              obj.material = new THREE.MeshLambertMaterial({
+                map: this.textures.base,
+                specularMap: this.textures.specular
+              })
+              obj.receiveShadow = receiveShadow;
+              obj.castShadow = castShadow;
+              //}
+            });
+          } else {
+            console.log("wtf");
+          }
           mesh.rotation.set(0, THREE.MathUtils.degToRad(rotation), 0);
           mesh.scale.set(scale / 30, scale / 30, scale / 30);
 

@@ -1,11 +1,16 @@
 
 export interface IPoint2D {
     x: number;
+    y?: number;
     z: number;
 }
 
-export interface IHeading extends IPoint2D {
-    angle: number; 
+export interface IOrientation2D extends IPoint2D {
+    angle: number;
+}
+
+export interface IMovement2D extends IPoint2D {
+    angle: number;
     speed: number;
 }
 

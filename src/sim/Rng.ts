@@ -24,9 +24,11 @@ let rng: SeededRNG;
 setRandomSeed(30_05_2007);
 
 
+export function random(): number;
 export function random<T>(array: T[]): T;
 export function random(max: number): number;
-export function random<T>(arg: T[] | number): T | number {
+export function random<T>(arg?: T[] | number): T | number {
+    if (!arg) return rng.next();
     if (typeof arg === "number") {
         return Math.floor(rng.next() * arg);
     } else {

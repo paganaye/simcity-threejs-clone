@@ -9,7 +9,7 @@ import { testScene } from './client/TestScene'
 
 const root = document.getElementById('root') || document.body;
 
-let test = 0;
+let test = 1;
 
 if (test) {
     function makeTestScene(container: HTMLDivElement) {
@@ -21,18 +21,23 @@ if (test) {
         camera.position.set(-5, 5, 0);
         camera.lookAt(0, 0, 0);
 
-        const renderer = new THREE.WebGLRenderer();
+        const renderer = new THREE.WebGLRenderer({ stencil: true });
         renderer.setSize(width, height);
         new OrbitControls(camera, renderer.domElement);
         container.appendChild(renderer.domElement);
 
-        testScene(scene)
+        let callback = testScene(scene);
         const light = new THREE.DirectionalLight(0xffffff, 1);
         light.position.set(5, 10, 7.5);
         scene.add(light);
 
+        let clock = new THREE.Clock();
+
         const animate = () => {
+            const elapsedTime = clock.getElapsedTime();
+            if (callback) callback(elapsedTime)
             requestAnimationFrame(animate);
+            renderer.clearStencil();
             renderer.render(scene, camera);
         };
         animate();

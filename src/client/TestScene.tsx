@@ -1,20 +1,13 @@
 import * as THREE from "three";
 import { DEG2RAD } from "three/src/math/MathUtils";
 import { RoadBuilder } from "./RoadBuilder";
-import { instancedMeshes } from "./instancedMeshes";
+import { instancedMeshesDemo } from "./instancedMeshesDemo";
 
 
 export function testScene(scene: THREE.Scene): ((ellapse: number) => void) | void {
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-    scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 10, 7.5);
-    scene.add(directionalLight);
-
 
     // stencilBuffer(scene)
-    return instancedMeshes(scene);
+    return instancedMeshesDemo(scene);
     //roads(scene);
 }
 

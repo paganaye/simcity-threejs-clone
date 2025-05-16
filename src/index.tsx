@@ -18,8 +18,19 @@ if (test) {
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-        camera.position.set(-5, 5, 0);
+        camera.position.set(-2, 15, 15);
         camera.lookAt(0, 0, 0);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 7.5);
+        scene.add(directionalLight);
+
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+
 
         const renderer = new THREE.WebGLRenderer({ stencil: true });
         renderer.setSize(width, height);

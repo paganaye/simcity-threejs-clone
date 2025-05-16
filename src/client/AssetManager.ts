@@ -466,7 +466,7 @@ export class AssetManager {
 }
 
 
-export function mergeMeshesWithGroups(object: THREE.Object3D): { geometry: THREE.BufferGeometry, materials: THREE.Material[] } {
+export function mergeMeshesWithGroups(object: THREE.Object3D, _ignored?: boolean): { geometry: THREE.BufferGeometry, materials: THREE.Material[] } {
   const geometries: THREE.BufferGeometry[] = [];
   const materials: THREE.Material[] = [];
   const materialIndexMap = new Map<THREE.Material, number>();

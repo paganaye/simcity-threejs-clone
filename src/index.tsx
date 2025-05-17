@@ -5,12 +5,13 @@ import { render } from 'solid-js/web';
 import { Scene3D } from './client/Scene3D';
 import { UIProps } from "./client/GameUI";
 
-const sceneKey: SceneKey = "gameUI";
+const sceneKey: SceneKey = "shaderTest";
 
 const scenes = {
     planedCharacter: "./client/tests/PlanedCharacterTest",
     roadScene: "./client/tests/RoadSceneTest",
     stencilBuffer: "./client/tests/StencilBufferTest",
+    shaderTest: "./client/tests/ShaderTest",
     gameUI: "./client/GameUI",
 };
 
@@ -33,7 +34,7 @@ async function gameScene(uiProps: UIProps) {
 }
 
 async function testScene(container: HTMLElement) {
-    let initScene: (scene: THREE.Scene) => (time: number) => void;
+    let initScene: (scene: THREE.Scene, renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera) => (time: number) => void;
     initScene = (await import(scenes[sceneKey])).default;
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -58,7 +59,7 @@ async function testScene(container: HTMLElement) {
     new OrbitControls(camera, renderer.domElement);
     container.appendChild(renderer.domElement);
 
-    const callback = initScene(scene);
+    const callback = initScene(scene, renderer, camera);
     const clock = new THREE.Clock();
 
     const animate = () => {

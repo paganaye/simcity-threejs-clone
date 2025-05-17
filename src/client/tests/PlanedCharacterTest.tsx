@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import GUI from "lil-gui";
+import { SceneContext, SceneInitResult } from "../..";
 
 interface IPoint { x: number; y: number; z: number; }
 interface IUV { u1: number; v1: number; u2: number; v2: number; }
@@ -224,7 +225,7 @@ function makePlaneFigure(animatedMeshes: IAnimatedMesh[], side: 'front' | 'left'
     return character;
 }
 
-export default function planedCharacterTest(scene: THREE.Scene): (elapsedTime: number) => void {
+export default function planedCharacterTest(scene: SceneContext): SceneInitResult {
 
     const animatedMeshes: IAnimatedMesh[] = [];
 
@@ -252,13 +253,15 @@ export default function planedCharacterTest(scene: THREE.Scene): (elapsedTime: n
     // scene.add(directionalLight);
     // scene.add(directionalLight.target);
 
-    return (elapsedTime: number) => {
-        const overallSpeed = guiControls.speed;
-        // Toutes les parties dans animatedMeshes (des 3 personnages) s'animeront.
-        animatedMeshes.forEach(({ mesh, config }) => {
-            let angle = Math.sin(elapsedTime * config.animSpeedFactor * overallSpeed * 5.0) * config.maxAngle;
-            //if (side == 'top') angle += Math.PI / 2;
-            mesh.rotation.x = angle;
-        });
+    return {
+        animate: (elapsedTime: number) => {
+            const overallSpeed = guiControls.speed;
+            // Toutes les parties dans animatedMeshes (des 3 personnages) s'animeront.
+            animatedMeshes.forEach(({ mesh, config }) => {
+                let angle = Math.sin(elapsedTime * config.animSpeedFactor * overallSpeed * 5.0) * config.maxAngle;
+                //if (side == 'top') angle += Math.PI / 2;
+                mesh.rotation.x = angle;
+            });
+        }
     };
 }

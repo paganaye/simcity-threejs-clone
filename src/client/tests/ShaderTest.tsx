@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import { vert, frag } from "../../utils/glsl"; // On garde votre système d'importation
+import { SceneContext } from "../..";
 
+const numInstances = 1_000_000;
+
+const WORLD_SIZE = Math.pow(numInstances, 1 / 3);
 // 1. Vertex Shader pour InstancedMesh avec Billboarding
 const vertexShaderCode = vert`
     varying vec2 vUv;
@@ -70,8 +74,7 @@ const fragmentShaderCode = frag`
     }
 `;
 
-export default function shaderTest(scene: THREE.Scene, _renderer: THREE.WebGLRenderer, camera: THREE.Camera) {
-    const numInstances = 100;
+export default function shaderTest({ scene, camera }: SceneContext) {
     const planeSize = 2;
 
     const planeGeometry = new THREE.PlaneGeometry(planeSize, planeSize, 1, 1);
@@ -80,9 +83,9 @@ export default function shaderTest(scene: THREE.Scene, _renderer: THREE.WebGLRen
     const instanceColors = new Float32Array(numInstances * 3);
 
     for (let i = 0; i < numInstances; i++) {
-        instancePositions[i * 3 + 0] = (Math.random() - 0.5) * 20;
-        instancePositions[i * 3 + 1] = (Math.random() - 0.5) * 20;
-        instancePositions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+        instancePositions[i * 3 + 0] = (Math.random() - 0.5) * WORLD_SIZE;
+        instancePositions[i * 3 + 1] = (Math.random() - 0.5) * WORLD_SIZE;
+        instancePositions[i * 3 + 2] = (Math.random() - 0.5) * WORLD_SIZE;
 
         const color = new THREE.Color(Math.random() * 0.8 + 0.2, Math.random() * 0.8 + 0.2, Math.random() * 0.8 + 0.2);
         instanceColors[i * 3 + 0] = color.r;
@@ -93,14 +96,11 @@ export default function shaderTest(scene: THREE.Scene, _renderer: THREE.WebGLRen
     planeGeometry.setAttribute('instancePosition', new THREE.InstancedBufferAttribute(instancePositions, 3));
     planeGeometry.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(instanceColors, 3));
 
-    // Uniforms partagés par toutes les instances
-    // Note: cameraPosition n'est plus nécessaire ici car il est fourni par Three.js au shader
     const sharedUniforms = {
         uRadius: { value: 0.45 },
-        uTime: { value: 0.0 }, 
+        uTime: { value: 0.0 },
         uCenter: { value: new THREE.Vector2(0.5, 0.5) },
         uLightDirection: { value: new THREE.Vector3(0.5, 0.5, 0.7).normalize() },
-        // cameraPosition: { value: new THREE.Vector3() } // Supprimé des uniforms JS, Three.js le gère
     };
 
     const material = new THREE.ShaderMaterial({
@@ -116,23 +116,18 @@ export default function shaderTest(scene: THREE.Scene, _renderer: THREE.WebGLRen
 
     const clock = new THREE.Clock();
     const pulsationSpeed = 1.5;
-    const minRadius = 0.1;
-    const maxRadius = 0.45;
+    const minRadius = 0.15;
+    const maxRadius = 0.5;
+    camera.position.set(WORLD_SIZE * -0.5, WORLD_SIZE, WORLD_SIZE);
+    camera.lookAt(0, 0, 0);
 
     function animate() {
-        requestAnimationFrame(animate);
         const elapsedTime = clock.getElapsedTime();
-        sharedUniforms.uTime.value = elapsedTime; 
+        sharedUniforms.uTime.value = elapsedTime;
 
         const radiusRange = maxRadius - minRadius;
         const currentAnimatedRadius = minRadius + ((Math.sin(elapsedTime * pulsationSpeed) + 1.0) / 2.0) * radiusRange;
         sharedUniforms.uRadius.value = currentAnimatedRadius;
-
-        // Pas besoin de mettre à jour cameraPosition dans les uniforms JS,
-        // Three.js le fait automatiquement pour le shader.
-        // if (camera) {
-        //     camera.getWorldPosition(sharedUniforms.cameraPosition.value); // Plus nécessaire
-        // }
     }
-    animate();
+    return animate;
 }

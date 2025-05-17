@@ -11,6 +11,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@types/stats.js": "^0.17.4",
     "typescript": "^5.7.2",
     "vite": "^6.0.0",
     "vite-plugin-solid": "^2.11.6"
@@ -19,6 +20,7 @@
     "@types/three": "^0.176.0",
     "lil-gui": "^0.20.0",
     "solid-js": "^1.9.5",
+    "stats.js": "^0.17.0",
     "three": "^0.176.0",
     "zod": "^3.24.4"
   }

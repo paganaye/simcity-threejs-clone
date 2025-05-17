@@ -35,7 +35,7 @@ export class CameraManager {
       (CAMERA_SIZE * aspect) / -2,
       (CAMERA_SIZE * aspect) / 2,
       CAMERA_SIZE / 2,
-      CAMERA_SIZE / -2, 1, 1000);
+      CAMERA_SIZE / -2, 1, 100);
     this.camera.layers.enable(1);
 
     this.cameraOrigin = new THREE.Vector3(3, 0, 3);

@@ -69,8 +69,8 @@ async function setupScene(container: HTMLElement, sceneKeyToLoad: SceneKey) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x101010);
 
-    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-    camera.position.set(-2, 15, 15);
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 200);
+    camera.position.set(-1, 1, 1);
     camera.lookAt(0, 0, 0);
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);

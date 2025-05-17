@@ -224,7 +224,7 @@ function makePlaneFigure(animatedMeshes: IAnimatedMesh[], side: 'front' | 'left'
     return character;
 }
 
-export function instancedMeshesDemo(scene: THREE.Scene): (elapsedTime: number) => void {
+export default function planedCharacterTest(scene: THREE.Scene): (elapsedTime: number) => void {
 
     const animatedMeshes: IAnimatedMesh[] = [];
 
@@ -255,7 +255,7 @@ export function instancedMeshesDemo(scene: THREE.Scene): (elapsedTime: number) =
     return (elapsedTime: number) => {
         const overallSpeed = guiControls.speed;
         // Toutes les parties dans animatedMeshes (des 3 personnages) s'animeront.
-        animatedMeshes.forEach(({ mesh, config, side }) => {
+        animatedMeshes.forEach(({ mesh, config }) => {
             let angle = Math.sin(elapsedTime * config.animSpeedFactor * overallSpeed * 5.0) * config.maxAngle;
             //if (side == 'top') angle += Math.PI / 2;
             mesh.rotation.x = angle;

@@ -11,8 +11,6 @@ import { ICityChanged } from '../sim/Init';
 import { random, setRandomSeed } from '../sim/Rng';
 import { appConstants } from '../AppConstants';
 import { Painter } from '../sim/Painter';
-import { testScene } from './TestScene';
-
 
 
 export class Scene3D {
@@ -85,7 +83,6 @@ export class Scene3D {
             this.cars3D.onCarsChanged(changes.carChanged);
         }
 
-        testScene(this.scene);
     }
 
     onTilesResized() {

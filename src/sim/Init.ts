@@ -11,7 +11,7 @@ export function init(): ICityChanges {
     simCity.simTiles.feedRandom();
     simCity.simTiles.computeModels();
 
-    simCity.simCars.feedRandom(appConstants.DefaultCarCount);
+    //simCity.simCars.feedRandom(appConstants.DefaultCarCount);
     return {
         cityChanged: {
             name: 'my city',

@@ -15,14 +15,14 @@ export class SeededRNG {
     }
 }
 
-export function setRandomSeed(seed?: number) {
+export function randomize(seed?: number) {
+    if (seed === 0) seed = 30_05_2007;
     rng = new SeededRNG(seed ?? Date.now());
     return rng;
 }
 
 let rng: SeededRNG;
-setRandomSeed(30_05_2007);
-
+randomize(30_05_2007);
 
 export function random(): number;
 export function random<T>(array: T[]): T;

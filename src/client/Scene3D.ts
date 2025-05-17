@@ -2,23 +2,24 @@ import * as THREE from 'three';
 import { AssetManager } from "./AssetManager"
 import { SimObject3D } from "./SimObject3D";
 import { Tiles3D } from './Tiles3D';
-import { CameraManager } from './CameraManager';
 import type { UIProps } from './GameUI';
-import { InputManager } from './InputManager';
+//import { InputManager } from './InputManager';
 import { SimBridge } from '../sim/SimBridge';
 import { Cars3D } from './Cars3D';
 import { ICityChanged } from '../sim/Init';
-import { random, setRandomSeed } from '../sim/Rng';
+import { random, randomize } from '../sim/Rng';
 import { appConstants } from '../AppConstants';
 import { Painter } from '../sim/Painter';
+import { SceneContext } from '..';
+import GUI from 'lil-gui';
 
 
 export class Scene3D {
     assetManager: AssetManager = new AssetManager(this)
     tiles3D!: Tiles3D;
     cars3D!: Cars3D;
-    cameraManager!: CameraManager;
-    inputManager!: InputManager;
+    //cameraManager!: CameraManager;
+    //inputManager!: InputManager;
     sim = new SimBridge(this).createCaller();
     focusedObject: SimObject3D | null = null;
     renderer!: THREE.WebGLRenderer;
@@ -27,48 +28,48 @@ export class Scene3D {
     grid?: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>;
     overlay?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>;
     painter!: Painter;
+    gui!: GUI;
+    camera!: THREE.PerspectiveCamera;
+    container!: HTMLElement;
 
     constructor(readonly uiProps: UIProps) { }
 
-    async init() {
+    async init(context: SceneContext) {
+        this.scene = context.scene;
+        this.renderer = context.renderer;
+        this.gui = context.gui;
+        this.camera = context.camera;
+        this.container = context.container;
+
         let uiProps = this.uiProps;
 
         let pendingAssetManager = this.assetManager.init()
         this.tiles3D = new Tiles3D(this);
         this.cars3D = new Cars3D(this)
-        this.cameraManager = new CameraManager(uiProps.gameWindow);
+        //this.cameraManager = new CameraManager(uiProps.gameWindow);
 
         this.renderer = new THREE.WebGLRenderer({
             antialias: true
         });
-        this.scene = new THREE.Scene();
+        //this.scene = new THREE.Scene();
 
-        this.inputManager = new InputManager(uiProps.gameWindow);
 
-        this.renderer.setSize(uiProps.gameWindow.clientWidth, uiProps.gameWindow.clientHeight);
-        this.renderer.setClearColor(0x000000, 0);
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFShadowMap;
+        //this.inputManager = new InputManager(uiProps.gameWindow);
+
+        // this.renderer.setSize(uiProps.gameWindow.clientWidth, uiProps.gameWindow.clientHeight);
+        // this.renderer.setClearColor(0x000000, 0);
+        // this.renderer.shadowMap.enabled = true;
+        // this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
         this.raycaster = new THREE.Raycaster();
 
 
-        this.scene.clear();
+        //this.scene.clear();
         this.#setupLights();
 
         this.tiles3D.init();
 
-        uiProps.gameWindow.appendChild(this.renderer.domElement);
 
-        const resizeObserver = new ResizeObserver((entries) => {
-            for (let entry of entries) {
-                const { width, height } = entry.contentRect;
-                this.onResize(width, height);
-            }
-        });
-
-        resizeObserver.observe(uiProps.gameWindow);
-        this.start();
         await pendingAssetManager;
         uiProps.setIsLoading(false);
 
@@ -88,15 +89,6 @@ export class Scene3D {
     onTilesResized() {
         this.#setupGrid();
         this.#setupOverlay();
-    }
-
-
-    start() {
-        this.renderer.setAnimationLoop((d) => this.drawFrame(d));
-    }
-
-    stop() {
-        this.renderer.setAnimationLoop(null);
     }
 
     onCityChanged(cityChanged: ICityChanged) {
@@ -135,7 +127,7 @@ export class Scene3D {
         if (width || height) {
             let pw = width * appConstants.PixelPerTile;
             let ph = height * appConstants.PixelPerTile;
-            setRandomSeed(1);
+            randomize(1);
             const data = new Uint8Array(pw * ph * 4); // RGBA
             for (let i = 0; i < data.length; i += 4) {
                 let v = random(255);
@@ -201,15 +193,15 @@ export class Scene3D {
     }
 
 
-    drawFrame(now: number) {
+    drawFrame(_elapsedTime: number) {
+        let now = performance.now();
         this.updateFocusedObject();
 
-        if (this.inputManager.isLeftMouseDown) {
-            //this.useTool();
-        }
+        //if (this.inputManager.isLeftMouseDown) {
+        //this.useTool();
+        //}
         this.cars3D.drawFrame(now)
         this.tiles3D.drawFrame(now)
-        this.renderer.render(this.scene, this.cameraManager.camera);
     }
 
     updateSelectedObject() {
@@ -232,12 +224,12 @@ export class Scene3D {
 
 
     #raycast(): SimObject3D | null {
-        var coords = new THREE.Vector2(
-            (this.inputManager.x / this.renderer.domElement.clientWidth) * 2 - 1,
-            -(this.inputManager.y / this.renderer.domElement.clientHeight) * 2 + 1
-        );
+        // var coords = new THREE.Vector2(
+        //     (this.inputManager.x / this.renderer.domElement.clientWidth) * 2 - 1,
+        //     -(this.inputManager.y / this.renderer.domElement.clientHeight) * 2 + 1
+        // );
 
-        this.raycaster.setFromCamera(coords, this.cameraManager.camera);
+        //this.raycaster.setFromCamera(coords, this.camera);
 
         let intersections = this.raycaster.intersectObjects(this.tiles3D.root.children, true);
         if (intersections.length > 0) {
@@ -249,11 +241,5 @@ export class Scene3D {
         }
     }
 
-    /**
-     * Resizes the renderer to fit the current game window
-     */
-    onResize(w: number, h: number) {
-        this.cameraManager.resize(w, h);
-        this.renderer.setSize(w, h);
-    }
+
 }

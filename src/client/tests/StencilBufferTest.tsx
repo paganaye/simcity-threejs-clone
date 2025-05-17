@@ -1,6 +1,7 @@
 import * as THREE from "three";
+import { SceneContext } from "../..";
 
-export default function stencilBufferTest(scene: THREE.Scene) {
+export default function stencilBufferTest({scene}: SceneContext) {
 
     const ambientLight = new THREE.AmbientLight(0x404040); // Soft ambient light
     scene.add(ambientLight);

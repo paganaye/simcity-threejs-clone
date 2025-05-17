@@ -1,15 +1,21 @@
-import * as THREE from "three";
-import { DEG2RAD } from "three/src/math/MathUtils";
-import { RoadBuilder } from "../RoadBuilder";
+import * as THREE from 'three';
+import { SceneContext, SceneInitResult } from "../..";
+import { RoadBuilder } from '../RoadBuilder';
+import { angle } from '../../utils/angle';
+//import { angle } from '../../utils/angle';
 
-export default function roadsSceneTest(scene: THREE.Scene) {
-    function angle(angleInDegree: number) {
-        return DEG2RAD * angleInDegree;
-    }
+export default function simpleTest({ scene }: SceneContext): SceneInitResult | void {
+    const cubeGeometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshStandardMaterial();
+    const cube = new THREE.Mesh(cubeGeometry, material);
+    scene.add(cube);
+
+
 
     let radius = 1;
 
-    const builder = new RoadBuilder({ x: -1, y: 0.015, z: 4, angle: 0 }, scene);
+    //      const builder =
+    let builder = new RoadBuilder({ x: -1, y: 0.015, z: 4, angle: 0 }, scene);
     builder.addStraightRoad(1, 'none', 'l1');
     builder.addTurningRoad(angle(30), radius, 'none', 'l1');
     builder.addStraightRoad(2, 'none', 'l2');
@@ -28,6 +34,11 @@ export default function roadsSceneTest(scene: THREE.Scene) {
 
 
 
+
+    return {
+        animate: (_elapsedTime: number) => {
+        }
+    };
 
 }
 

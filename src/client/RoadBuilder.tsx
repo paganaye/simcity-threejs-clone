@@ -232,27 +232,39 @@ export class RoadBuilder implements IOrientation2D {
 
     static showTextureInBody(canvas: HTMLCanvasElement) {
         const imageDataURL = canvas.toDataURL('image/png');
-        document.body.innerHTML += `<img style="position:fixed; top:20px; left:80px;" src="${imageDataURL}" >`;
+        const imgElement = document.createElement('img');
+
+        // Définir ses attributs et styles
+        imgElement.src = imageDataURL;
+        imgElement.style.position = 'fixed';
+        imgElement.style.top = '20px'; // Ou une autre position
+        imgElement.style.left = (80 + (document.querySelectorAll('img[id^="debugCanvasImage"]').length * (canvas.width + 10))) + 'px'; // Décale les images
+        imgElement.style.zIndex = '200'; // Pour s'assurer qu'elle est au-dessus
+
+        // Ajouter l'élément image au body (ou à un conteneur spécifique si vous préférez)
+        document.body.appendChild(imgElement);
+
+        //document.body.innerHTML += `<img style="position:fixed; top:20px; left:80px;" src="${imageDataURL}" >`;
 
     }
-    static openTextureInNewWindow(canvas: HTMLCanvasElement) {
-        const newWindow = window.open('', '_blank');
-        const imageDataURL = canvas.toDataURL('image/png');
+    //     static openTextureInNewWindow(canvas: HTMLCanvasElement) {
+    //         const newWindow = window.open('', '_blank');
+    //         const imageDataURL = canvas.toDataURL('image/png');
 
-        if (newWindow) {
-            newWindow.document.write(`<img src="${imageDataURL}">`);
-        } else {
-            console.error("La fenêtre popup n'a pas pu s'ouvrir. Veuillez vérifier les paramètres de votre navigateur.");
-        }
-    }
+    //         if (newWindow) {
+    //             newWindow.document.write(`<img src="${imageDataURL}">`);
+    //         } else {
+    //             console.error("La fenêtre popup n'a pas pu s'ouvrir. Veuillez vérifier les paramètres de votre navigateur.");
+    //         }
+    //     }
 
-    addSphere(x: number, z: number) {
-        const geometry = new THREE.SphereGeometry(0.05);
-        const material = new THREE.MeshStandardMaterial({ color: 0x333333, side: THREE.DoubleSide });
-        const sphere = new THREE.Mesh(geometry, material);
-        sphere.position.set(x, 0, z);
-        this.scene.add(sphere);
-    }
+    //     addSphere(x: number, z: number) {
+    //         const geometry = new THREE.SphereGeometry(0.05);
+    //         const material = new THREE.MeshStandardMaterial({ color: 0x333333, side: THREE.DoubleSide });
+    //         const sphere = new THREE.Mesh(geometry, material);
+    //         sphere.position.set(x, 0, z);
+    //         this.scene.add(sphere);
+    //     }
 
     addStraightRoad(length: number, leftType: RoadType = 'l1', rightType: RoadType = leftType) {
         const roadWidth = RoadBuilder.ROAD_WIDTH_UNITS;

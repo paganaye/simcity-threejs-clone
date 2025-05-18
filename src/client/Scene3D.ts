@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { AssetManager } from "./AssetManager"
 import { SimObject3D } from "./SimObject3D";
 import { Tiles3D } from './Tiles3D';
-import type { UIProps } from './GameUI';
+import type { UIProps } from './GamePage';
 //import { InputManager } from './InputManager';
 import { SimBridge } from '../sim/SimBridge';
 import { Cars3D } from './Cars3D';
@@ -10,8 +10,8 @@ import { ICityChanged } from '../sim/Init';
 import { random, randomize } from '../sim/Rng';
 import { appConstants } from '../AppConstants';
 import { Painter } from '../sim/Painter';
-import { SceneContext } from '..';
 import GUI from 'lil-gui';
+import { Page } from './Page';
 
 
 export class Scene3D {
@@ -28,18 +28,18 @@ export class Scene3D {
     grid?: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>;
     overlay?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>;
     painter!: Painter;
-    gui!: GUI;
+    gui?: GUI;
     camera!: THREE.PerspectiveCamera;
     container!: HTMLElement;
 
     constructor(readonly uiProps: UIProps) { }
 
-    async init(context: SceneContext) {
+    async init(context: Page) {
         this.scene = context.scene;
         this.renderer = context.renderer;
-        this.gui = context.gui;
+        this.gui = context.gui!;
         this.camera = context.camera;
-        this.container = context.container;
+        this.container = context.appContainer;
 
         let uiProps = this.uiProps;
 

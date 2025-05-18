@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { vert, frag } from "../../utils/glsl";
 import { random, randomize } from "../../sim/Rng";
-import { SceneContext } from "../..";
 import { GUI } from 'lil-gui';
+import { Page } from "../Page";
 
 let totalPopulation: number = 10_000;
 let instancedMeshes: THREE.InstancedMesh[] = [];
@@ -118,63 +118,88 @@ const fragmentShaderCode = frag`
 
 
 
+export default class MarblesTest extends Page {
+    readonly planeSize: number = 2;
+    readonly planeGeometry = new THREE.PlaneGeometry(this.planeSize, this.planeSize, 1, 1);
+    instancePositions!: Float32Array;
+    instanceSizes!: Float32Array;
+    instanceColors!: Float32Array;
+    standardMaterial = new THREE.MeshStandardMaterial();
+    shaderMaterial!: THREE.ShaderMaterial;
 
-function addCube(scene: THREE.Scene): void {
-    const cubeGeometry = new THREE.BoxGeometry(.1, 20, .1);
-    const material = new THREE.MeshStandardMaterial();
-    const cube = new THREE.Mesh(cubeGeometry, material);
-    scene.add(cube);
-}
+    addCube(): void {
+        const cubeGeometry = new THREE.BoxGeometry(.1, 20, .1);
+        const cube = new THREE.Mesh(cubeGeometry, this.standardMaterial);
+        this.scene.add(cube);
+    }
 
-export default function MarblesTest({ scene, camera, gui }: SceneContext): { animate: (elapsed: number) => void } {
-    addCube(scene);
+    async run() {
 
-    const planeSize: number = 2;
-    const planeGeometry = new THREE.PlaneGeometry(planeSize, planeSize, 1, 1);
-
-    // Initial attribute arrays (will be replaced if totalPopulation changes)
-    let instancePositions: Float32Array = new Float32Array(totalPopulation * 3);
-    let instanceSizes: Float32Array = new Float32Array(totalPopulation * 3); // Not currently used in shader
-    let instanceColors: Float32Array = new Float32Array(totalPopulation * 3); // This will now be populated and used
-
-    // Set initial attributes on the geometry
-    planeGeometry.setAttribute('instancePosition', new THREE.InstancedBufferAttribute(instancePositions, 3));
-    planeGeometry.setAttribute('instanceSize', new THREE.InstancedBufferAttribute(instanceSizes, 3));
-    planeGeometry.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(instanceColors, 3));
-
-    const sharedUniforms = {
-        uRadius: { value: 0.45 },
-        uTime: { value: 0.0 },
-        uCenter: { value: new THREE.Vector2(0.5, 0.5) },
-        uLightDirection: { value: new THREE.Vector3(0.5, 0.5, 0.7).normalize() },
-        uCameraPosition: { value: camera.position }, // Kept, though not used in gl_FragDepth logic
-        uUseFragDepth: { value: true },
-        uCameraNear: { value: camera.near },
-        uCameraFar: { value: camera.far },
-        projectionMatrix: { value: camera.projectionMatrix }, // <-- Ajoute la matrice de projection
-    };
+        this.addCube();
 
 
-    // Create the shared material once
-    const material = new THREE.ShaderMaterial({
-        vertexShader: ParallelBillboardVertexShader,
-        fragmentShader: fragmentShaderCode,
-        side: THREE.DoubleSide,
-        transparent: true,
-        depthWrite: true,
-        uniforms: sharedUniforms
-    });
+        // Initial attribute arrays (will be replaced if totalPopulation changes)
+        this.instancePositions = new Float32Array(totalPopulation * 3);
+        this.instanceSizes = new Float32Array(totalPopulation * 3); // Not currently used in shader
+        this.instanceColors = new Float32Array(totalPopulation * 3); // This will now be populated and used
+
+        // Set initial attributes on the geometry
+        this.planeGeometry.setAttribute('instancePosition', new THREE.InstancedBufferAttribute(this.instancePositions, 3));
+        this.planeGeometry.setAttribute('instanceSize', new THREE.InstancedBufferAttribute(this.instanceSizes, 3));
+        this.planeGeometry.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(this.instanceColors, 3));
+
+        const sharedUniforms = {
+            uRadius: { value: 0.45 },
+            uTime: { value: 0.0 },
+            uCenter: { value: new THREE.Vector2(0.5, 0.5) },
+            uLightDirection: { value: new THREE.Vector3(0.5, 0.5, 0.7).normalize() },
+            uCameraPosition: { value: this.camera.position }, // Kept, though not used in gl_FragDepth logic
+            uUseFragDepth: { value: true },
+            uCameraNear: { value: this.camera.near },
+            uCameraFar: { value: this.camera.far },
+            projectionMatrix: { value: this.camera.projectionMatrix }, // <-- Ajoute la matrice de projection
+        };
 
 
-    const logMin: number = Math.log10(1);
-    const logMax: number = Math.log10(1_000_000);
-    let logTotalPopulation: number = Math.log10(totalPopulation);
+        // Create the shared material once
+        this.shaderMaterial = new THREE.ShaderMaterial({
+            vertexShader: ParallelBillboardVertexShader,
+            fragmentShader: fragmentShaderCode,
+            side: THREE.DoubleSide,
+            transparent: true,
+            depthWrite: true,
+            uniforms: sharedUniforms
+        });
 
-    function createInstancedMeshes(popLog?: number): void {
+
+        const logMin: number = Math.log10(1);
+        const logMax: number = Math.log10(1_000_000);
+        let logTotalPopulation: number = Math.log10(totalPopulation);
+
+
+
+        // Initial creation of the instanced meshes when the scene is set up
+        this.createInstancedMeshes();
+
+
+        if (this.gui) {
+            this.gui.add({ logTotalPopulation }, 'logTotalPopulation')
+                .name('Total Population (Log 10)')
+                .min(logMin)
+                .max(logMax)
+                .step((logMax - logMin) / 10)
+                .onChange(this.createInstancedMeshes) // Recreate meshes when population changes
+                .listen(); // Keep GUI value updated if population changes programmatically
+            this.gui.add(sharedUniforms.uUseFragDepth, 'value').name('Use gl_FragDepth');
+        }
+
+    }
+
+    createInstancedMeshes(popLog?: number): void {
         // Dispose of existing meshes and remove from scene
         if (instancedMeshes.length > 0) {
             instancedMeshes.forEach(mesh => {
-                scene.remove(mesh);
+                this.scene.remove(mesh);
                 // Geometry and Material are shared, don't dispose here
             });
             instancedMeshes = [];
@@ -188,19 +213,19 @@ export default function MarblesTest({ scene, camera, gui }: SceneContext): { ani
         }
 
         // If total population changed, we need new attribute buffers
-        if (planeGeometry.attributes.instanceColor.count !== totalPopulation) {
-            instancePositions = new Float32Array(totalPopulation * 3);
-            instanceSizes = new Float32Array(totalPopulation * 3);
-            instanceColors = new Float32Array(totalPopulation * 3);
+        if (this.planeGeometry.attributes.instanceColor.count !== totalPopulation) {
+            this.instancePositions = new Float32Array(totalPopulation * 3);
+            this.instanceSizes = new Float32Array(totalPopulation * 3);
+            this.instanceColors = new Float32Array(totalPopulation * 3);
 
-            planeGeometry.setAttribute('instancePosition', new THREE.InstancedBufferAttribute(instancePositions, 3));
-            planeGeometry.setAttribute('instanceSize', new THREE.InstancedBufferAttribute(instanceSizes, 3));
-            planeGeometry.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(instanceColors, 3));
+            this.planeGeometry.setAttribute('instancePosition', new THREE.InstancedBufferAttribute(this.instancePositions, 3));
+            this.planeGeometry.setAttribute('instanceSize', new THREE.InstancedBufferAttribute(this.instanceSizes, 3));
+            this.planeGeometry.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(this.instanceColors, 3));
         } else {
             // If population didn't change, reuse existing attribute arrays
-            instancePositions = planeGeometry.attributes.instancePosition.array as Float32Array;
-            instanceSizes = planeGeometry.attributes.instanceSize.array as Float32Array;
-            instanceColors = planeGeometry.attributes.instanceColor.array as Float32Array;
+            this.instancePositions = this.planeGeometry.attributes.instancePosition.array as Float32Array;
+            this.instanceSizes = this.planeGeometry.attributes.instanceSize.array as Float32Array;
+            this.instanceColors = this.planeGeometry.attributes.instanceColor.array as Float32Array;
         }
 
 
@@ -212,18 +237,14 @@ export default function MarblesTest({ scene, camera, gui }: SceneContext): { ani
 
         let globalInstanceIndex: number = 0; // Keep track of the global instance index
 
-        // Clear previous mesh visibility states and destroy old GUI folder
-        for (const key in meshVisibilityStates) {
-            // meshVisibilityStates[key].close(); // Assuming these are GUI controls
-        }
         for (const key in meshVisibilityStates) {
             delete meshVisibilityStates[key];
         }
         if (meshGuiFolder) {
             meshGuiFolder.destroy();
         }
-        if (gui) {
-            meshGuiFolder = gui.addFolder('Mesh Visibility');
+        if (this.gui) {
+            meshGuiFolder = this.gui.addFolder('Mesh Visibility');
             meshGuiFolder.close(); // Close by default if preferred
         }
 
@@ -237,7 +258,7 @@ export default function MarblesTest({ scene, camera, gui }: SceneContext): { ani
                     if (currentMeshInstanceCount === 0) continue;
 
                     // Create a new InstancedMesh for this grid cell using the shared geometry and material
-                    const mesh = new THREE.InstancedMesh(planeGeometry, material, currentMeshInstanceCount);
+                    const mesh = new THREE.InstancedMesh(this.planeGeometry, this.shaderMaterial, currentMeshInstanceCount);
 
                     const cellMinX: number = (i / GRID_SIZE - 0.5) * WORLD_SIZE;
                     const cellMinY: number = (j / GRID_SIZE - 0.5) * WORLD_SIZE;
@@ -253,9 +274,9 @@ export default function MarblesTest({ scene, camera, gui }: SceneContext): { ani
                         mesh.setMatrixAt(l, tempMatrix);
 
                         // Assign a random color directly to the instanceColors attribute array
-                        instanceColors[globalInstanceIndex * 3] = random(); // R
-                        instanceColors[globalInstanceIndex * 3 + 1] = random(); // G
-                        instanceColors[globalInstanceIndex * 3 + 2] = random(); // B
+                        this.instanceColors[globalInstanceIndex * 3] = random(); // R
+                        this.instanceColors[globalInstanceIndex * 3 + 1] = random(); // G
+                        this.instanceColors[globalInstanceIndex * 3 + 2] = random(); // B
 
                         globalInstanceIndex++;
                     }
@@ -263,7 +284,7 @@ export default function MarblesTest({ scene, camera, gui }: SceneContext): { ani
                     // Mark the instance matrix buffer for update
                     mesh.instanceMatrix.needsUpdate = true;
 
-                    scene.add(mesh);
+                    this.scene.add(mesh);
                     instancedMeshes.push(mesh);
 
                     const meshName: string = `Mesh [${i},${j},${k}]`;
@@ -279,44 +300,32 @@ export default function MarblesTest({ scene, camera, gui }: SceneContext): { ani
         }
 
         // Mark the instanceColor attribute buffer for update after populating it
-        planeGeometry.attributes.instanceColor.needsUpdate = true;
+        this.planeGeometry.attributes.instanceColor.needsUpdate = true;
 
 
-        camera.lookAt(0, 0, 0);
+        this.camera.lookAt(0, 0, 0);
     }
 
-    // Initial creation of the instanced meshes when the scene is set up
-    createInstancedMeshes();
+    override loop(_elapsedTime: number) {
+
+        // function animate(elapsed: number): void {
+        //     sharedUniforms.uTime.value = elapsed;
+        //     if (sharedUniforms.uCameraPosition.value && camera.position) {
+        //         sharedUniforms.uCameraPosition.value.copy(camera.position);
+        //     }
+        //     if (sharedUniforms.uCameraNear.value !== camera.near) {
+        //         sharedUniforms.uCameraNear.value = camera.near;
+        //     }
+        //     if (sharedUniforms.uCameraFar.value !== camera.far) {
+        //         sharedUniforms.uCameraFar.value = camera.far;
+        //     }
+        //     const currentAnimatedRadius = 0.5; // Math.abs(Math.sin(sharedUniforms.uTime.value / 20) / 2);
+        //     sharedUniforms.uRadius.value = currentAnimatedRadius;
+        // }
 
 
-    if (gui) {
-        gui.add({ logTotalPopulation }, 'logTotalPopulation')
-            .name('Total Population (Log 10)')
-            .min(logMin)
-            .max(logMax)
-            .step((logMax - logMin) / 10)
-            .onChange(createInstancedMeshes) // Recreate meshes when population changes
-            .listen(); // Keep GUI value updated if population changes programmatically
-        gui.add(sharedUniforms.uUseFragDepth, 'value').name('Use gl_FragDepth');
+
+
     }
-
-    function animate(elapsed: number): void {
-        sharedUniforms.uTime.value = elapsed;
-        if (sharedUniforms.uCameraPosition.value && camera.position) {
-            sharedUniforms.uCameraPosition.value.copy(camera.position);
-        }
-        if (sharedUniforms.uCameraNear.value !== camera.near) {
-            sharedUniforms.uCameraNear.value = camera.near;
-        }
-        if (sharedUniforms.uCameraFar.value !== camera.far) {
-            sharedUniforms.uCameraFar.value = camera.far;
-        }
-        const currentAnimatedRadius = 0.5; // Math.abs(Math.sin(sharedUniforms.uTime.value / 20) / 2);
-        sharedUniforms.uRadius.value = currentAnimatedRadius;
-    }
-
-    return {
-        animate,
-
-    };
 }
+

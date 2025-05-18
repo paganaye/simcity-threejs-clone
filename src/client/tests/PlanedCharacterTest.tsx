@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import GUI from "lil-gui";
-import { SceneContext, SceneInitResult } from "../..";
+import { Page } from "../Page";
 
 interface IPoint { x: number; y: number; z: number; }
 interface IUV { u1: number; v1: number; u2: number; v2: number; }
@@ -225,43 +225,45 @@ function makePlaneFigure(animatedMeshes: IAnimatedMesh[], side: 'front' | 'left'
     return character;
 }
 
-export default function planedCharacterTest(scene: SceneContext): SceneInitResult {
+export default class PlanedCharacterTest extends Page {
+    async run() {
+        let scene = this.scene;
+        const animatedMeshes: IAnimatedMesh[] = [];
 
-    const animatedMeshes: IAnimatedMesh[] = [];
+        let char1 = makeBoxFigure(animatedMeshes); // Personnage en boîtes
+        char1.position.set(12, 0, 0);
+        scene.add(char1);
 
-    let char1 = makeBoxFigure(animatedMeshes); // Personnage en boîtes
-    char1.position.set(12, 0, 0);
-    scene.add(char1);
+        let char2 = makePlaneFigure(animatedMeshes, 'front');
+        char2.position.set(6, 0, 0);
+        scene.add(char2);
 
-    let char2 = makePlaneFigure(animatedMeshes, 'front');
-    char2.position.set(6, 0, 0);
-    scene.add(char2);
+        let char3 = makePlaneFigure(animatedMeshes, 'left');
+        char3.position.set(0, 0, 0);
+        scene.add(char3);
 
-    let char3 = makePlaneFigure(animatedMeshes, 'left');
-    char3.position.set(0, 0, 0);
-    scene.add(char3);
+        let char4 = makePlaneFigure(animatedMeshes, 'top');
+        char4.position.set(-6, 0, 0);
+        scene.add(char4);
 
-    let char4 = makePlaneFigure(animatedMeshes, 'top');
-    char4.position.set(-6, 0, 0);
-    scene.add(char4);
+        // const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+        // scene.add(ambientLight);
+        // const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        // directionalLight.position.set(3, 10, 7);
+        // directionalLight.target = char1; // La lumière cible le personnage du milieu
+        // scene.add(directionalLight);
+        // scene.add(directionalLight.target);
 
-    // const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
-    // scene.add(ambientLight);
-    // const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    // directionalLight.position.set(3, 10, 7);
-    // directionalLight.target = char1; // La lumière cible le personnage du milieu
-    // scene.add(directionalLight);
-    // scene.add(directionalLight.target);
-
-    return {
-        animate: (elapsedTime: number) => {
-            const overallSpeed = guiControls.speed;
-            // Toutes les parties dans animatedMeshes (des 3 personnages) s'animeront.
-            animatedMeshes.forEach(({ mesh, config }) => {
-                let angle = Math.sin(elapsedTime * config.animSpeedFactor * overallSpeed * 5.0) * config.maxAngle;
-                //if (side == 'top') angle += Math.PI / 2;
-                mesh.rotation.x = angle;
-            });
-        }
-    };
+        // return {
+        //     animate: (elapsedTime: number) => {
+        //         const overallSpeed = guiControls.speed;
+        //         // Toutes les parties dans animatedMeshes (des 3 personnages) s'animeront.
+        //         animatedMeshes.forEach(({ mesh, config }) => {
+        //             let angle = Math.sin(elapsedTime * config.animSpeedFactor * overallSpeed * 5.0) * config.maxAngle;
+        //             //if (side == 'top') angle += Math.PI / 2;
+        //             mesh.rotation.x = angle;
+        //         });
+        //     }
+        // };
+    }
 }

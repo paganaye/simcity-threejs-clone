@@ -4,9 +4,9 @@ import { random, randomize } from "../../sim/Rng";
 import { SceneContext } from "../..";
 import { GUI } from 'lil-gui';
 
-let totalPopulation: number = 1;
+let totalPopulation: number = 10_000;
 let instancedMeshes: THREE.InstancedMesh[] = [];
-const WORLD_SIZE: number = 0.01;
+const WORLD_SIZE: number = 100;
 const GRID_SIZE: number = 3;
 const NUM_GRID_MESHES: number = GRID_SIZE * GRID_SIZE * GRID_SIZE;
 
@@ -126,7 +126,7 @@ function addCube(scene: THREE.Scene): void {
     scene.add(cube);
 }
 
-export default function shaderTest({ scene, camera, gui }: SceneContext): { animate: (elapsed: number) => void } {
+export default function MarblesTest({ scene, camera, gui }: SceneContext): { animate: (elapsed: number) => void } {
     addCube(scene);
 
     const planeSize: number = 2;
@@ -315,5 +315,8 @@ export default function shaderTest({ scene, camera, gui }: SceneContext): { anim
         sharedUniforms.uRadius.value = currentAnimatedRadius;
     }
 
-    return { animate };
+    return {
+        animate,
+
+    };
 }

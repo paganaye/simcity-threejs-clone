@@ -34,83 +34,13 @@
   position: absolute;
   top: 64px;
   bottom: 0px;
+  width: 80px;
 
   box-shadow: 0px 0px 1px black;
 
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-}
-
-.ui-button {
-  height: 48px;
-  width: 48px;
-  margin: 4px 0;
-
-  transition: background-color 0.1s ease-in-out;
-
-  background-color: #1e2331cd;
-  border: none;
-  border-radius: 8px;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.ui-container {
-  background-color: #33333355;
-  padding: 16px;
-}
-
-.toolbar-icon {
-  width: 32px;
-  height: 32px;
-  pointer-events: none;
-}
-
-.title-bar-items {
-  flex: 1 1 33%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 1.5em;
-}
-
-.title-bar-items.title-bar-center-items {
-  font-size: 2em;
-}
-
-#population-icon {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  top: -3px;
-}
-
-#population-counter {
-  margin-left: 8px;
-}
-
-#info-panel {
-  position: fixed;
-  top: 64px;
-  right: 0px;
-  padding: 0;
-  padding-bottom: 16px;
-  width: 300px;
-  background-color: #00000048;
-}
-
-.info-heading {
-  text-align: center;
-  font-size: 1em;
-  margin-top: 12px;
-  margin-bottom: 12px;
-  background-color: #00000060;
-  box-shadow: 0px 0px 1px black;
-  color: white;
-  padding: 4px;
 }
 
 .ui-button {
@@ -137,6 +67,7 @@
 .ui-button:not(.selected):hover {
   background-color: #121622d3;
 }
+
 
 .container {
   background-color: #00000048;

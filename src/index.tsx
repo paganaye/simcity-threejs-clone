@@ -9,12 +9,13 @@ const DEFAULT_SCENE_KEY: SceneKey = "gameUI";
 const LOCAL_STORAGE_SCENE_KEY = 'game_scene';
 
 const scenes = {
-    shaderTest: "./client/tests/ShaderTest",
+    marblesTest: "./client/tests/MarblesTest",
     planedCharacter: "./client/tests/PlanedCharacterTest",
     roadScene: "./client/tests/RoadSceneTest",
     stencilBuffer: "./client/tests/StencilBufferTest",
     characterTest: "./client/tests/CharacterTest",
     simpleTest: "./client/tests/SimpleTest",
+    threeEditor: "./client/tests/ThreeEditor",
     gameUI: "./client/GameUI",
 };
 
@@ -26,6 +27,7 @@ export type SceneContext = THREE.Scene & {
     camera: THREE.PerspectiveCamera;
     gui: GUI;
     container: HTMLElement;
+    controls: OrbitControls;
 }
 
 export type SceneInitFunction = (context: SceneContext) => SceneInitResult | void;
@@ -34,14 +36,14 @@ export type SceneInitResult = {
     animate?: (elapsedTime: number) => void;
 };
 
-const root = document.getElementById('root') || document.body;
+const root = document.getElementById('root-container') || document.body;
 
 let currentSceneKey = (localStorage.getItem(LOCAL_STORAGE_SCENE_KEY) as SceneKey) || DEFAULT_SCENE_KEY;
 if (!scenes[currentSceneKey]) {
     currentSceneKey = DEFAULT_SCENE_KEY;
 }
 
-render(() => <div ref={el => el && setupScene(el, currentSceneKey)} />, root);
+render(() => <div class="root" style="width:100%; height: 100%; position: relative;" ref={el => el && setupScene(el, currentSceneKey)} />, root);
 
 async function setupScene(container: HTMLElement, sceneKeyToLoad: SceneKey) {
     let sceneInitFunction: SceneInitFunction | undefined;
@@ -70,8 +72,8 @@ async function setupScene(container: HTMLElement, sceneKeyToLoad: SceneKey) {
     scene.background = new THREE.Color(0x101010);
 
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 200);
-    camera.position.set(-1, 1, 1);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(-2, 5, 5);
+    camera.lookAt(10, 0, 5);
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
@@ -100,17 +102,17 @@ async function setupScene(container: HTMLElement, sceneKeyToLoad: SceneKey) {
 
     const statsFPS = new Stats();
     statsFPS.showPanel(0);
-    statsFPS.dom.style.cssText = 'position:absolute;top:0;left:0;z-index:100;';
+    statsFPS.dom.style.cssText = 'position:absolute;bottom:0;right:0px;z-index:100;';
     document.body.appendChild(statsFPS.dom);
 
     const statsMS = new Stats();
     statsMS.showPanel(1);
-    statsMS.dom.style.cssText = 'position:absolute;top:0;left:80px;z-index:100;';
+    statsMS.dom.style.cssText = 'position:absolute;bottom:0;right:80px;z-index:100;';
     document.body.appendChild(statsMS.dom);
 
     const statsMB = new Stats();
     statsMB.showPanel(2);
-    statsMB.dom.style.cssText = 'position:absolute;top:0;left:160px;z-index:100;';
+    statsMB.dom.style.cssText = 'position:absolute;bottom:0;right:160px;z-index:100;';
     document.body.appendChild(statsMB.dom);
 
     const allStatsPanels = [statsFPS.dom, statsMS.dom, statsMB.dom];
@@ -143,6 +145,7 @@ async function setupScene(container: HTMLElement, sceneKeyToLoad: SceneKey) {
     sceneContext.camera = camera;
     sceneContext.container = container;
     sceneContext.gui = gui;
+    sceneContext.controls = controls;
 
     const resultFromInit = sceneInitFunction?.(sceneContext);
     let sceneAnimationCallback = resultFromInit?.animate;

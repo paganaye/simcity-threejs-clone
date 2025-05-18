@@ -5,6 +5,13 @@ export interface IPoint2D {
     z: number;
 }
 
+export interface IPoint3D {
+    x: number;
+    y: number;
+    z: number;
+}
+
+
 export interface IOrientation2D extends IPoint2D {
     angle: number;
 }

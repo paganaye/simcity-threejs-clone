@@ -29,8 +29,8 @@ export class Character {
 
   createGeometry(): THREE.BufferGeometry {
     const geometry = new THREE.BufferGeometry();
-    // Current map rendering uses 1 world unit ~= 1 tile, so convert meters to tile-units.
-    const worldUnitsPerMeter = 1 / appConstants.TileSizeInMetre;
+    // 1 world unit = 1 meter, so character height in world units = height in meters.
+    const worldUnitsPerMeter = 1 / appConstants.WorldUnitInMetre;
     const targetHeightWorldUnits = appConstants.CharacterHeightInMetre * worldUnitsPerMeter;
     const unitScale = targetHeightWorldUnits / Character.BASE_MODEL_HEIGHT;
     const s = (value: number) => value * unitScale;

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { AssetManager } from "./AssetManager"
 import { SimObject3D } from "./SimObject3D";
-import { Tiles3D } from './Tiles3D';
+import { WorldMap3D } from './WorldMap3D';
 import type { UIProps } from './GamePage';
 import { SimBridge } from '../sim/SimBridge';
 import { Cars3D } from './Cars3D';
@@ -13,7 +13,7 @@ import { Page } from './Page';
 
 export class Scene3D {
     assetManager: AssetManager = new AssetManager(this)
-    tiles3D!: Tiles3D;
+    worldMap3D!: WorldMap3D;
     cars3D!: Cars3D;
     //cameraManager!: CameraManager;
     //inputManager!: InputManager;
@@ -22,7 +22,7 @@ export class Scene3D {
     renderer!: THREE.WebGLRenderer;
     scene!: THREE.Scene;
     raycaster!: THREE.Raycaster;
-    grid?: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>;
+    grid?: THREE.Mesh;
     overlay?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>;
     painter!: Painter;
     gui?: GUI;
@@ -41,7 +41,7 @@ export class Scene3D {
         let uiProps = this.uiProps;
 
         let pendingAssetManager = this.assetManager.init()
-        this.tiles3D = new Tiles3D(this);
+        this.worldMap3D = new WorldMap3D(this);
         this.cars3D = new Cars3D(this)
         //this.cameraManager = new CameraManager(uiProps.gameWindow);
 
@@ -64,7 +64,7 @@ export class Scene3D {
         //this.scene.clear();
         this.#setupLights();
 
-        this.tiles3D.init();
+        this.worldMap3D.init();
 
 
         await pendingAssetManager;
@@ -74,44 +74,38 @@ export class Scene3D {
         if (changes.cityChanged) {
             this.onCityChanged(changes.cityChanged);
         }
-        if (changes.tileChanged) {
-            this.tiles3D.onTileChanged(changes.tileChanged);
-        }
         if (changes.carChanged) {
             this.cars3D.onCarsChanged(changes.carChanged);
         }
 
     }
 
-    onTilesResized() {
-        this.#setupGrid();
+    onMapResized() {
+        this.#setupGround();
     }
 
     onCityChanged(cityChanged: ICityChanged) {
         this.uiProps.setCityName(cityChanged.name);
-        this.tiles3D.setSize(cityChanged.width, cityChanged.height);
-        if (cityChanged.clear) this.tiles3D.clearCity();
+        if (cityChanged.clear) this.worldMap3D.clearCity();
+        this.worldMap3D.setSize(cityChanged.width, cityChanged.height);
     }
 
-    #setupGrid() {
+    #setupGround() {
         if (this.grid) this.scene.remove(this.grid)
-        let { width, height } = this.tiles3D
-        // Add the grid
-        const gridMaterial = new THREE.MeshBasicMaterial({
-            color: 0x000000,
-            map: this.assetManager.textures['grid'],
-            transparent: true,
-            opacity: 0.2
+        let { width, height } = this.worldMap3D
+        const groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0x4f9d3a,
+            roughness: 0.95,
+            metalness: 0.0
         });
-        gridMaterial.map!.repeat = new THREE.Vector2(width, height);
-        gridMaterial.map!.wrapS = THREE.RepeatWrapping; // city.size; 
-        gridMaterial.map!.wrapT = THREE.RepeatWrapping; // city.size;
 
         const grid = new THREE.Mesh(
-            new THREE.BoxGeometry(width, 0.1, height),
-            gridMaterial
+            new THREE.PlaneGeometry(width, height),
+            groundMaterial
         );
-        grid.position.set(width / 2 - 0.5, -0.04, height / 2 - 0.5);
+        grid.rotation.x = -Math.PI / 2;
+        grid.position.set(width / 2 - 0.5, -0.05, height / 2 - 0.5);
+        grid.receiveShadow = true;
         this.grid = grid;
         this.scene.add(grid);
     }
@@ -142,7 +136,7 @@ export class Scene3D {
         //this.useTool();
         //}
         this.cars3D.drawFrame(now)
-        this.tiles3D.drawFrame(now)
+        this.worldMap3D.drawFrame(now)
     }
 
     updateSelectedObject() {
@@ -172,7 +166,7 @@ export class Scene3D {
 
         //this.raycaster.setFromCamera(coords, this.camera);
 
-        let intersections = this.raycaster.intersectObjects(this.tiles3D.root.children, true);
+        let intersections = this.raycaster.intersectObjects(this.worldMap3D.root.children, true);
         if (intersections.length > 0) {
             // The SimObject attached to the mesh is stored in the user data
             const selectedObject = intersections[0].object.userData as SimObject3D | null;

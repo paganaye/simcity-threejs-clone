@@ -1,8 +1,7 @@
 import { cars, ModelName } from "../client/AssetManager";
+import { appConstants } from "../AppConstants";
 import { Sim } from "./Sim";
 import { random } from "./Rng"
-import { findPathOrStartOfPath } from './AStar';
-import { SimTile } from "./SimTiles";
 
 export class SimCars {
     cars: SimCar[] = [];
@@ -26,25 +25,25 @@ export class SimCars {
     }
 
     #randomPath(): ICarPath[] {
+        const size = appConstants.defaultCitySize;
+        const speed = appConstants.STRAIGHT_SPEED;
 
+        const x0 = random(size);
+        const z0 = random(size);
 
-            let filter = (t: SimTile) => t.content?.isRoad()
-            let t0 = this.simCity.simTiles.randomTile(filter);
-            let t1 = this.simCity.simTiles.randomTile(filter);
-            let t2 = random(2) == 0 ? this.simCity.simTiles.randomTile(filter) : undefined;
-if (!t0 || !t1) {
-    return [];
-}
-            let path1 = findPathOrStartOfPath(this.simCity.simTiles, t0, t1).path;
-            if (t2) {
-                let path2 = findPathOrStartOfPath(this.simCity.simTiles, t1, t2).path;
-                let path3 = findPathOrStartOfPath(this.simCity.simTiles, t2, t0).path;
-                return [...path1, ...path2, ...path3];
-            } else {
-                let path2 = findPathOrStartOfPath(this.simCity.simTiles, t1, t0).path;
-                return [...path1, ...path2];
-            }
-    
+        const x1 = Math.min(size - 1, x0 + 1);
+        const z1 = Math.min(size - 1, z0 + 1);
+        const x2 = Math.max(0, x0 - 1);
+
+        // Temporary non-tile loop path while the continuous world model is rebuilt.
+        return [
+            { x: x0, z: z0, speed },
+            { x: x1, z: z0, speed },
+            { x: x1, z: z1, speed },
+            { x: x0, z: z1, speed },
+            { x: x2, z: z0, speed },
+            { x: x0, z: z0, speed }
+        ];
     }
 
     getCarChanged(): ICarChangedWithId[] {

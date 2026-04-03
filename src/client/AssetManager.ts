@@ -119,30 +119,30 @@ const modelsMetaData = {
     "type": "zone",
     "filename": "industry-warehouse.glb"
   },
-  "industrial-A2": {
-    "type": "zone",
-    "filename": "industry-factory.glb"
-  },
-  "industrial-B2": {
-    "type": "zone",
-    "filename": "industry-refinery.glb"
-  },
-  "industrial-C2": {
-    "type": "zone",
-    "filename": "industry-warehouse.glb"
-  },
-  "industrial-A3": {
-    "type": "zone",
-    "filename": "industry-factory.glb"
-  },
-  "industrial-B3": {
-    "type": "zone",
-    "filename": "industry-refinery.glb"
-  },
-  "industrial-C3": {
-    "type": "zone",
-    "filename": "industry-warehouse.glb"
-  },
+  // "industrial-A2": {
+  //   "type": "zone",
+  //   "filename": "industry-factory.glb"
+  // },
+  // "industrial-B2": {
+  //   "type": "zone",
+  //   "filename": "industry-refinery.glb"
+  // },
+  // "industrial-C2": {
+  //   "type": "zone",
+  //   "filename": "industry-warehouse.glb"
+  // },
+  // "industrial-A3": {
+  //   "type": "zone",
+  //   "filename": "industry-factory.glb"
+  // },
+  // "industrial-B3": {
+  //   "type": "zone",
+  //   "filename": "industry-refinery.glb"
+  // },
+  // "industrial-C3": {
+  //   "type": "zone",
+  //   "filename": "industry-warehouse.glb"
+  // },
   "power-plant": {
     "type": "power",
     "filename": "industry-factory-old.glb"
@@ -246,7 +246,7 @@ const modelsMetaData = {
 export const cars: ModelName[] = ["car-ambulance-pickup", "car-baywatch", "car-hippie-van", "car-passenger-race", "car-passenger", "car-police", "car-taxi", "car-tow-truck", "car-truck-armored-truck", "car-truck-dump", "car-veteran", "truck"];
 export const commercialBuildings: ModelName[] = ["commercial-A1", "commercial-A2", "commercial-A3", "commercial-B1", "commercial-B2", "commercial-B3", "commercial-C1", "commercial-C2", "commercial-C3"];
 export const otherTiles: ModelName[] = ["grass", "power-line", "under-construction"]
-export const industrialBuildings: ModelName[] = ["industrial-A1", "industrial-A2", "industrial-A3", "industrial-B1", "industrial-B2", "industrial-B3", "industrial-C1", "industrial-C2", "industrial-C3", "power-plant"];
+export const industrialBuildings: ModelName[] = ["industrial-A1", "industrial-B1", "industrial-C1", "power-plant"];
 export const residentialBuildings: ModelName[] = ["residential-A1", "residential-A2", "residential-A3", "residential-B1", "residential-B2", "residential-B3", "residential-C1", "residential-C2", "residential-C3"]
 export const roads: ModelName[] = ["road-corner", "road-end", "road-four-way", "road-straight", "road-three-way"];
 
@@ -268,11 +268,26 @@ export interface IFastMesh {
   parent: IFastMeshes;
   index: number;
   rotation: number;
+  scale: number;
 }
 
 export interface IAssetOptions {
   zOffset: number;
+  scale: number
+}
 
+export interface IFootprintPoint {
+  x: number;
+  z: number;
+}
+
+export interface IModelFootprint {
+  baseY: number;
+  centerX: number;
+  centerZ: number;
+  width: number;
+  depth: number;
+  polygon: IFootprintPoint[];
 }
 
 export class AssetManager {
@@ -293,6 +308,7 @@ export class AssetManager {
 
   models: Record<ModelName, THREE.Mesh> = {} as any;
   fastMeshes: Record<string, IFastMeshes> = {};
+  modelFootprints: Partial<Record<ModelName, IModelFootprint>> = {};
 
   sprites = {};
   modelCount!: number;
@@ -308,7 +324,11 @@ export class AssetManager {
     await Promise.all(Object.entries(modelsMetaData).map(async ([name, meta]) => {
       let updateMaterials = 'updateMaterials' in meta ? meta.updateMaterials : true;
       const model = await this.#loadModel(meta, { updateMaterials });
-      this.models[name as ModelName] = model;
+      const modelName = name as ModelName;
+      this.models[modelName] = model;
+      if (meta.type === 'zone') {
+        this.modelFootprints[modelName] = this.#computeModelFootprint(model);
+      }
       this.loadedModelCount += 1;
     }));
 
@@ -327,10 +347,11 @@ export class AssetManager {
     const instanceIndex = hasFreeSlot ? fastMeshes.freeIndices.pop()! : fastMeshes.index++;
     let result: IFastMesh = {
       rotation,
+      scale: options?.scale ?? 1,
       parent: fastMeshes,
       index: instanceIndex
     };
-    this.moveFastMesh(result, x, y, z, rotation);
+    this.moveFastMesh(result, x, y, z, rotation, options?.scale);
     return result;
   }
 
@@ -398,13 +419,18 @@ export class AssetManager {
     this.scene.scene.add(newMesh);
   }
 
-  moveFastMesh(fastMesh: IFastMesh, x: number, y: number = 0, z: number, rotation?: number) {
+  moveFastMesh(fastMesh: IFastMesh, x: number, y: number = 0, z: number, rotation?: number, scale?: number) {
     const matrix = new THREE.Matrix4();
     const pos = new THREE.Vector3(x, y, z);
     const rot = rotation ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotation) : new THREE.Quaternion();
-    matrix.compose(pos, rot, new THREE.Vector3(1, 1, 1));
+    const s = scale ?? fastMesh.scale ?? 1;
+    matrix.compose(pos, rot, new THREE.Vector3(s, s, s));
     fastMesh.parent.instancedMesh.setMatrixAt(fastMesh.index, matrix);
     fastMesh.parent.instancedMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  getModelFootprint(modelName: ModelName): IModelFootprint | undefined {
+    return this.modelFootprints[modelName];
   }
 
 
@@ -424,6 +450,12 @@ export class AssetManager {
     let castShadow = meta.castShadow ?? true;
     let scale = meta.scale ?? 1
     let rotation = meta.rotation ?? 0
+    const isBuilding = meta.type === 'zone';
+    const base = appConstants.ModelNormalizationBase;
+    // Buildings are pre-scaled to TileSizeInMetre so addFastMesh can use scale=1.
+    const meshScale = isBuilding
+      ? scale * appConstants.BuildingsScale / base
+      : scale / base;
 
     return new Promise((resolve, reject) => {
       this.modelLoader.load(`${assetsBaseUrl}models/${filename}`,
@@ -446,8 +478,13 @@ export class AssetManager {
             console.log("wtf");
           }
           mesh.rotation.set(0, THREE.MathUtils.degToRad(rotation), 0);
-          mesh.scale.set(scale / 30, scale / 30, scale / 30);
+          mesh.scale.set(meshScale, meshScale, meshScale);
 
+          if (isBuilding) {
+            // Pivot at footprint center (XZ) and ground contact (Y) for precise placement.
+            const fp = this.#computeModelFootprint(mesh);
+            mesh.position.set(-fp.centerX, -fp.baseY, -fp.centerZ);
+          }
 
           resolve(mesh);
         },
@@ -460,6 +497,129 @@ export class AssetManager {
         });
     })
 
+  }
+
+  #computeModelFootprint(meshRoot: THREE.Object3D): IModelFootprint {
+    meshRoot.updateMatrixWorld(true);
+    const worldBox = new THREE.Box3().setFromObject(meshRoot);
+    const minY = worldBox.min.y;
+    const epsilon = Math.max(0.01, (worldBox.max.y - worldBox.min.y) * 0.03);
+
+    let minX = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let minZ = Number.POSITIVE_INFINITY;
+    let maxZ = Number.NEGATIVE_INFINITY;
+    let found = false;
+    const groundPoints: THREE.Vector2[] = [];
+
+    const p = new THREE.Vector3();
+    meshRoot.traverse((obj) => {
+      const asMesh = obj as THREE.Mesh;
+      const geometry = asMesh.geometry as THREE.BufferGeometry | undefined;
+      const pos = geometry?.attributes?.position as THREE.BufferAttribute | undefined;
+      if (!pos || !asMesh.isMesh) return;
+
+      for (let i = 0; i < pos.count; i++) {
+        p.fromBufferAttribute(pos, i).applyMatrix4(asMesh.matrixWorld);
+        if (p.y <= minY + epsilon) {
+          found = true;
+          groundPoints.push(new THREE.Vector2(p.x, p.z));
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+          if (p.z < minZ) minZ = p.z;
+          if (p.z > maxZ) maxZ = p.z;
+        }
+      }
+    });
+
+    if (!found) {
+      minX = worldBox.min.x;
+      maxX = worldBox.max.x;
+      minZ = worldBox.min.z;
+      maxZ = worldBox.max.z;
+    }
+
+    const hull = this.#computeConvexHull(groundPoints.length > 2 ? groundPoints : [
+      new THREE.Vector2(minX, minZ),
+      new THREE.Vector2(maxX, minZ),
+      new THREE.Vector2(maxX, maxZ),
+      new THREE.Vector2(minX, maxZ),
+    ]);
+
+    const margin = appConstants.BuildingsFootprintMarginMetre;
+    const inflatedHull = margin > 0 ? this.#inflatePolygon(hull, margin) : hull;
+
+    let outMinX = Number.POSITIVE_INFINITY;
+    let outMaxX = Number.NEGATIVE_INFINITY;
+    let outMinZ = Number.POSITIVE_INFINITY;
+    let outMaxZ = Number.NEGATIVE_INFINITY;
+    for (const p of inflatedHull) {
+      if (p.x < outMinX) outMinX = p.x;
+      if (p.x > outMaxX) outMaxX = p.x;
+      if (p.y < outMinZ) outMinZ = p.y;
+      if (p.y > outMaxZ) outMaxZ = p.y;
+    }
+
+    return {
+      baseY: minY,
+      centerX: (outMinX + outMaxX) / 2,
+      centerZ: (outMinZ + outMaxZ) / 2,
+      width: outMaxX - outMinX,
+      depth: outMaxZ - outMinZ,
+      polygon: inflatedHull.map((pt) => ({ x: pt.x, z: pt.y })),
+    };
+  }
+
+  #inflatePolygon(points: THREE.Vector2[], margin: number): THREE.Vector2[] {
+    if (points.length < 3 || margin <= 0) return points;
+
+    let cx = 0;
+    let cz = 0;
+    for (const p of points) {
+      cx += p.x;
+      cz += p.y;
+    }
+    cx /= points.length;
+    cz /= points.length;
+
+    return points.map((p) => {
+      const dx = p.x - cx;
+      const dz = p.y - cz;
+      const len = Math.hypot(dx, dz);
+      if (len < 1e-6) return new THREE.Vector2(p.x, p.y);
+      const inv = margin / len;
+      return new THREE.Vector2(p.x + dx * inv, p.y + dz * inv);
+    });
+  }
+
+  #computeConvexHull(points: THREE.Vector2[]): THREE.Vector2[] {
+    if (points.length <= 3) return points;
+
+    const sorted = [...points].sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
+    const cross = (o: THREE.Vector2, a: THREE.Vector2, b: THREE.Vector2) => {
+      return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    };
+
+    const lower: THREE.Vector2[] = [];
+    for (const p of sorted) {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+        lower.pop();
+      }
+      lower.push(p);
+    }
+
+    const upper: THREE.Vector2[] = [];
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const p = sorted[i];
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+        upper.pop();
+      }
+      upper.push(p);
+    }
+
+    upper.pop();
+    lower.pop();
+    return lower.concat(upper);
   }
 }
 

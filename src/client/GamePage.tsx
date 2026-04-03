@@ -124,7 +124,7 @@ export default class GamePage extends Page {
             this.scene3DInstance = new Scene3D(uiProps);
             await this.scene3DInstance.init(this);
             this.population = new Population(this.scene);
-            this.population.init(this.scene3DInstance.tiles3D.width, this.scene3DInstance.tiles3D.height);
+            this.population.init(this.scene3DInstance.worldMap3D.width, this.scene3DInstance.worldMap3D.height);
 
             console.log("GameUI: Scene3D initialized after UI loaded.");
             uiProps.setIsLoading(false);

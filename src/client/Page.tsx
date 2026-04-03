@@ -69,8 +69,7 @@ export abstract class Page {
 
     protected createCamera() {
         this.camera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 200);
-        this.camera.position.set(-2, 5, 5);
-        this.camera.lookAt(10, 0, 5);
+        this.camera.position.set(60, 220, 120);
     }
 
     protected createLights() {

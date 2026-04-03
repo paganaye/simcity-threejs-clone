@@ -167,10 +167,6 @@ export class CarPath extends CarState {
                 pA = arc3.ptB;
             } else if (nextAngle !== 0) {
                 let radius = 0.25;
-                let tile = this.car.scene.tiles3D.getTile({ x: Math.floor(pA.x), z: Math.floor(pA.z) });
-                if (tile && tile._floor!.parent.modelName == 'road-corner') {
-                    radius = 1
-                }
                 let arc = calculateArc(pA, pB, pC, radius)!;
                 this.segments.push(new StraightSegment(pA, arc.ptA));
                 this.segments.push(new TurningSegment(arc.center, arc.radius, arc.startAngle, arc.sweep));

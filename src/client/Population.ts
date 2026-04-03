@@ -58,7 +58,7 @@ export class Population {
 
         const walkWeights = new Float32Array(targetCrowd);
         const walkPhases = new Float32Array(targetCrowd);
-        const worldUnitsPerMeter = 1 / appConstants.TileSizeInMetre;
+        const worldUnitsPerMeter = 1 / appConstants.WorldUnitInMetre;
 
         for (let i = 0; i < targetCrowd; i++) {
             const x = Math.random() * (safeWidth - 1);

@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { Page } from "../Page";
 import { Character } from "../Character";
-import { appConstants } from "../../AppConstants";
 
 export default class MazeTest extends Page {
   private maze: boolean[][] = [];
@@ -11,7 +10,6 @@ export default class MazeTest extends Page {
   private readonly walkerCharacter = new Character();
   private readonly walkerPosition = new THREE.Vector3();
   private readonly walkerScale = new THREE.Vector3(1, 1, 1);
-  private readonly walkerModelScale = appConstants.TileSizeInMetre;
   private walkerPath: Array<{ x: number; y: number }> = [];
   private walkerNextWaypoint = 1;
   private walkerSpeed = 1.4;
@@ -306,7 +304,7 @@ export default class MazeTest extends Page {
     }
     const matrix = new THREE.Matrix4();
     const quat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), heading);
-    this.walkerScale.set(this.walkerModelScale, this.walkerModelScale, this.walkerModelScale);
+    this.walkerScale.set(1, 1, 1);
     matrix.compose(position, quat, this.walkerScale);
     this.walkerMesh.setMatrixAt(0, matrix);
     this.walkerMesh.instanceMatrix.needsUpdate = true;

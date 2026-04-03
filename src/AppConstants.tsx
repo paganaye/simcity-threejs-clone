@@ -1,4 +1,4 @@
-const DefaultCitySize = 5;
+const DefaultCitySize = 80;
 
 export var appConstants = {
     defaultCitySize: DefaultCitySize,
@@ -10,7 +10,11 @@ export var appConstants = {
     MeshInstancesMin: 8,
     MeshInstancesGrowth: 1.6,
     // City scale chosen for this project.
-    TileSizeInMetre: 20,
+    BuildingsScale: 20,
+    BuildingsMaxLength: 20,
+    BuildingsFootprintMarginMetre: 1,
+    // Asset pipeline normalization base for imported GLB dimensions.
+    ModelNormalizationBase: 30,
     // Average adult height used by procedural characters.
     CharacterHeightInMetre: 1.75,
     ChildHeightInMetre: 1.0,

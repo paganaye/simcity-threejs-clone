@@ -24,6 +24,8 @@ export class Population {
     private readonly crowdCharacter = new Character();
     private crowdLastElapsed = 0;
     private readonly crowdAgents: PopulationAgent[] = [];
+    private mapWidth = 0;
+    private mapHeight = 0;
 
     private readonly tempMatrix = new THREE.Matrix4();
     private readonly tempPosition = new THREE.Vector3();
@@ -33,8 +35,10 @@ export class Population {
     constructor(private readonly scene: THREE.Scene) { }
 
     init(mapWidth: number, mapHeight: number, options: PopulationOptions = {}): void {
-        const safeWidth = Math.max(8, mapWidth || 64);
-        const safeHeight = Math.max(8, mapHeight || 64);
+        this.mapWidth = mapWidth;
+        this.mapHeight = mapHeight;
+        const safeWidth = mapWidth;
+        const safeHeight = mapHeight;
         const area = safeWidth * safeHeight;
 
         const density = options.density ?? 0.2;
@@ -86,7 +90,7 @@ export class Population {
         this.crowdMesh.instanceMatrix.needsUpdate = true;
     }
 
-    update(elapsed: number, mapWidth: number, mapHeight: number): void {
+    update(elapsed: number): void {
         this.crowdCharacter.updateAnimation(elapsed);
 
         if (!this.crowdMesh) {
@@ -100,12 +104,10 @@ export class Population {
             return;
         }
 
-        const safeWidth = Math.max(8, mapWidth || 64);
-        const safeHeight = Math.max(8, mapHeight || 64);
         const minX = 0;
-        const maxX = safeWidth - 1;
+        const maxX = this.mapWidth - 1;
         const minZ = 0;
-        const maxZ = safeHeight - 1;
+        const maxZ = this.mapHeight - 1;
 
         for (let i = 0; i < this.crowdAgents.length; i++) {
             const agent = this.crowdAgents[i];

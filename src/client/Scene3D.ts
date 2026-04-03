@@ -3,12 +3,9 @@ import { AssetManager } from "./AssetManager"
 import { SimObject3D } from "./SimObject3D";
 import { Tiles3D } from './Tiles3D';
 import type { UIProps } from './GamePage';
-//import { InputManager } from './InputManager';
 import { SimBridge } from '../sim/SimBridge';
 import { Cars3D } from './Cars3D';
 import { ICityChanged } from '../sim/Init';
-import { random, randomize } from '../sim/Rng';
-import { appConstants } from '../AppConstants';
 import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
@@ -88,7 +85,6 @@ export class Scene3D {
 
     onTilesResized() {
         this.#setupGrid();
-        this.#setupOverlay();
     }
 
     onCityChanged(cityChanged: ICityChanged) {
@@ -111,7 +107,6 @@ export class Scene3D {
         gridMaterial.map!.wrapS = THREE.RepeatWrapping; // city.size; 
         gridMaterial.map!.wrapT = THREE.RepeatWrapping; // city.size;
 
-
         const grid = new THREE.Mesh(
             new THREE.BoxGeometry(width, 0.1, height),
             gridMaterial
@@ -119,60 +114,6 @@ export class Scene3D {
         grid.position.set(width / 2 - 0.5, -0.04, height / 2 - 0.5);
         this.grid = grid;
         this.scene.add(grid);
-    }
-
-    #setupOverlay() {
-        let { width, height } = this.tiles3D;
-        if (this.overlay) this.scene.remove(this.overlay);
-        if (width || height) {
-            let pw = width * appConstants.PixelPerTile;
-            let ph = height * appConstants.PixelPerTile;
-            randomize(1);
-            const data = new Uint8Array(pw * ph * 4); // RGBA
-            for (let i = 0; i < data.length; i += 4) {
-                let v = random(255);
-                data[i] = 0;       // R
-                data[i + 1] = 0;   // G
-                data[i + 2] = v;   // B
-                data[i + 3] = 80;   // A
-
-            }
-
-            const texture = new THREE.DataTexture(data, pw, ph, THREE.RGBAFormat);
-            texture.needsUpdate = true;
-
-            const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-            const geometry = new THREE.PlaneGeometry(width, height);
-            const overlay = new THREE.Mesh(geometry, material);
-            this.overlay = overlay;
-
-            overlay.position.set(width / 2 - 0.5, -0.5, height / 2 - 0.5);
-            overlay.rotation.x = -Math.PI / 2; // à plat au sol
-
-            function getPixel(x: number, y: number): boolean {
-                if (x >= 0 && y >= 0 && x < pw && y < ph) {
-                    let index = (pw * y + x) * 4 + 2;
-                    return data[index + 2] > 0
-                }
-                return false;
-            }
-            function setPixel(x: number, y: number, value: boolean): void {
-                if (x >= 0 && y >= 0 && x < pw && y < ph) {
-                    let v = value ? 255 : 0;
-                    let index = (pw * y + x) * 4 + 2;
-                    data[index] = v
-                }
-
-            }
-
-            this.scene.add(overlay);
-            this.painter = new Painter({
-                get: getPixel,
-                set: setPixel,
-                width: pw,
-                height: ph
-            });
-        }
     }
 
     #setupLights() {

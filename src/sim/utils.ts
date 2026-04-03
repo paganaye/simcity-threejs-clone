@@ -1,4 +1,4 @@
-import { DEG2RAD, RAD2DEG } from "three/src/math/MathUtils";
+import { DEG2RAD, RAD2DEG } from "three/src/math/MathUtils.js";
 import { IPoint2D } from "./IPoint";
 
 

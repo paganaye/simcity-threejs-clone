@@ -30,9 +30,19 @@ https://dgreenheck.github.io/simcity-threejs-clone
 
 This code is covered by the MIT License. TLDR; you can do whatever you want with it!
 
-## Road Grid System
-We use a Square Grid
-But for roads we allow 16-Directions
-* 4 cardinal N, S, E, W  (±1,0) and (±1,0)
-* 4 diagonal NE, NW, SE, SW  (±1,±1)
-* 8 intermediate using simple ratios (±2,±1) and (±1,±2)
+## World Coordinates and Road Directions
+
+World space follows Three.js conventions:
+* Ground plane: XZ
+* Vertical axis: Y
+* Position unit: meters
+* Orientation unit: radians (rotation around Y for heading)
+
+For usability, non-mobile object placement is snapped to 1-meter coordinates on the ground plane:
+* x = round(x)
+* z = round(z)
+
+Road orientation keeps a 16-direction model:
+* 4 cardinal: N, S, E, W using (±1, 0) and (0, ±1)
+* 4 diagonal: NE, NW, SE, SW using (±1, ±1)
+* 8 intermediate using simple ratios (±2, ±1) and (±1, ±2)

@@ -14,8 +14,6 @@ export var appConstants = {
     // Average adult height used by procedural characters.
     CharacterHeightInMetre: 1.75,
     ChildHeightInMetre: 1.0,
-    // Crowd/traffic occupancy grid resolution inside one tile.
-    PixelPerTile: 40,
 
     //carZOffset: 0.05
 

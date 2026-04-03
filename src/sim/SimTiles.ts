@@ -54,16 +54,16 @@ export class SimTiles {
         for (let z = 0; z < this.height; z++) {
             for (let x = 0; x < this.width; x++) {
                 let tile = this.getTile(x, z)!;
-                if (random(0) == 0) {
-                    // building
-                    //setFloor(floor, random(4) * 90)
-                    if (random(2) == 0) tile.setContent(new SimRoad(tile));
-                    else if (random(2)) tile.setFloor("firstprim")
-                    else tile.setContent(new SimGrass(tile));
-
-                } else {
-                    tile.setContent(SimBuilding.newRandom(tile));
-
+                switch (random(3)) {
+                    case 0:
+                        tile.setContent(new SimRoad(tile));
+                        break;
+                    case 1:
+                        tile.setContent(new SimGrass(tile));
+                        break;
+                    case 2:
+                         tile.setContent(SimBuilding.newRandom(tile));
+                        break;
                 }
             }
         }

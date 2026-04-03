@@ -138,7 +138,7 @@ export default class GamePage extends Page {
     override loop(elapsed: number): void {
         this.scene3DInstance?.drawFrame(elapsed);
         if (this.scene3DInstance) {
-            this.population?.update(elapsed, this.scene3DInstance.tiles3D.width, this.scene3DInstance.tiles3D.height);
+            this.population?.update(elapsed);
         }
     }
 

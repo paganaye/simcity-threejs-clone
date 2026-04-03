@@ -16,7 +16,7 @@ export default class CharacterTest extends Page {
   }
 
   override loop(elapsed: number): void {
-    this.population?.update(elapsed, 64, 64);
+    this.population?.update(elapsed);
   }
 
   override cleanup(): void {

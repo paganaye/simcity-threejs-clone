@@ -15,7 +15,12 @@ interface IQuadTreeNode<T extends IPoint2D> {
 export class QuadTree<T extends IPoint2D> {
     root: IQuadTreeNode<T>;
 
-    constructor(readonly boundary: IRectangle, readonly capacity: number) {
+    /**
+     * @param minCellSize Minimum cell full-width/height in the same units as the boundary.
+     *                    Subdivision stops when a cell would become smaller than this.
+     *                    0 means no limit.
+     */
+    constructor(readonly boundary: IRectangle, readonly capacity: number, readonly minCellSize: number = 0) {
         let w2 = boundary.width / 2;
         let h2 = boundary.height / 2;
         let midX = boundary.x + w2;
@@ -39,7 +44,7 @@ export class QuadTree<T extends IPoint2D> {
             this.#insertIntoNode(quarter!, value);
         } else if (!node.values) {
             node.values = [value];
-        } else if (node.values!.length < this.capacity) {
+        } else if (node.values!.length < this.capacity || node.width < this.minCellSize) {
             node.values!.push(value);
             return;
         } else {

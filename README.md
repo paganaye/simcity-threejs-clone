@@ -29,3 +29,10 @@ https://dgreenheck.github.io/simcity-threejs-clone
 ## License
 
 This code is covered by the MIT License. TLDR; you can do whatever you want with it!
+
+## Road Grid System
+We use a Square Grid
+But for roads we allow 16-Directions
+* 4 cardinal N, S, E, W  (±1,0) and (±1,0)
+* 4 diagonal NE, NW, SE, SW  (±1,±1)
+* 8 intermediate using simple ratios (±2,±1) and (±1,±2)

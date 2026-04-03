@@ -26,19 +26,25 @@ export class SimCars {
     }
 
     #randomPath(): ICarPath[] {
-        let filter = (t: SimTile) => t.content?.isRoad()
-        let t0 = this.simCity.simTiles.randomTile(filter);
-        let t1 = this.simCity.simTiles.randomTile(filter);
-        let t2 = random(2) == 0 ? this.simCity.simTiles.randomTile(filter) : undefined;
+        try {
 
-        let path1 = findPathOrStartOfPath(this.simCity.simTiles, t0, t1).path;
-        if (t2) {
-            let path2 = findPathOrStartOfPath(this.simCity.simTiles, t1, t2).path;
-            let path3 = findPathOrStartOfPath(this.simCity.simTiles, t2, t0).path;
-            return [...path1, ...path2, ...path3];
-        } else {
-            let path2 = findPathOrStartOfPath(this.simCity.simTiles, t1, t0).path;
-            return [...path1, ...path2];
+
+            let filter = (t: SimTile) => t.content?.isRoad()
+            let t0 = this.simCity.simTiles.randomTile(filter);
+            let t1 = this.simCity.simTiles.randomTile(filter);
+            let t2 = random(2) == 0 ? this.simCity.simTiles.randomTile(filter) : undefined;
+
+            let path1 = findPathOrStartOfPath(this.simCity.simTiles, t0, t1).path;
+            if (t2) {
+                let path2 = findPathOrStartOfPath(this.simCity.simTiles, t1, t2).path;
+                let path3 = findPathOrStartOfPath(this.simCity.simTiles, t2, t0).path;
+                return [...path1, ...path2, ...path3];
+            } else {
+                let path2 = findPathOrStartOfPath(this.simCity.simTiles, t1, t0).path;
+                return [...path1, ...path2];
+            }
+        } catch (error) {
+            return [];
         }
     }
 

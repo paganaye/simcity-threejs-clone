@@ -13,6 +13,7 @@ export var appConstants = {
     TileSizeInMetre: 20,
     // Average adult height used by procedural characters.
     CharacterHeightInMetre: 1.75,
+    ChildHeightInMetre: 1.0,
     // Crowd/traffic occupancy grid resolution inside one tile.
     PixelPerTile: 40,
 

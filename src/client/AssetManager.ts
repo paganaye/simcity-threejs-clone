@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils';
+import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { appConstants } from '../AppConstants';
 import { Scene3D } from './Scene3D';
 
@@ -427,7 +427,7 @@ export class AssetManager {
 
     return new Promise((resolve, reject) => {
       this.modelLoader.load(`${assetsBaseUrl}models/${filename}`,
-        (glb) => {
+        (glb: GLTF) => {
           let mesh: THREE.Mesh = glb.scene! as any;
 
           mesh.name = filename;
@@ -451,10 +451,10 @@ export class AssetManager {
 
           resolve(mesh);
         },
-        (_xhr: any) => {
+        (_xhr: ProgressEvent<EventTarget>) => {
           //console.log(`${name} ${(xhr.loaded / xhr.total) * 100}% loaded`);
         },
-        (error) => {
+        (error: unknown) => {
           console.error(error);
           reject(error)
         });

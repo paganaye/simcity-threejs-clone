@@ -27,14 +27,14 @@ randomize(30_05_2007);
 export function random(): number;
 export function random<T>(array: T[]): T;
 export function random(max: number): number;
-export function random<T>(arg?: T[] | number): T | number {
+export function random<T>(arg?: T[] | number): T | number | undefined {
     if (!arg) return rng.next();
     if (typeof arg === "number") {
         return Math.floor(rng.next() * arg);
     } else {
         let len = arg.length;
         if (len == 0) {
-            throw Error('Cannot get a random element from an empty array.')
+            return undefined;
         }
         const index = random(len);
         return arg[index];

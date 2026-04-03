@@ -26,14 +26,15 @@ export class SimCars {
     }
 
     #randomPath(): ICarPath[] {
-        try {
 
 
             let filter = (t: SimTile) => t.content?.isRoad()
             let t0 = this.simCity.simTiles.randomTile(filter);
             let t1 = this.simCity.simTiles.randomTile(filter);
             let t2 = random(2) == 0 ? this.simCity.simTiles.randomTile(filter) : undefined;
-
+if (!t0 || !t1) {
+    return [];
+}
             let path1 = findPathOrStartOfPath(this.simCity.simTiles, t0, t1).path;
             if (t2) {
                 let path2 = findPathOrStartOfPath(this.simCity.simTiles, t1, t2).path;
@@ -43,9 +44,7 @@ export class SimCars {
                 let path2 = findPathOrStartOfPath(this.simCity.simTiles, t1, t0).path;
                 return [...path1, ...path2];
             }
-        } catch (error) {
-            return [];
-        }
+    
     }
 
     getCarChanged(): ICarChangedWithId[] {

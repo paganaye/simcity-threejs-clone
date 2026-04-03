@@ -11,6 +11,7 @@ const pages = {
     "Simple Test": "client/tests/SimpleTest",
     "Three Editor": "client/editor/ThreeEditor",
     "Game": "client/GamePage",
+    "Maze": "client/tests/MazeTest"
 };
 
 let app = new App(pages);

@@ -9,7 +9,7 @@ import { ICityChanged } from '../sim/Init';
 import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
-import type { ModelName } from './AssetManager';
+import { CustomTransformGizmo } from './editor/CustomTransformGizmo';
 
 type SelectedInstance = {
     mesh: THREE.InstancedMesh;
@@ -42,6 +42,9 @@ export class Scene3D {
     readonly tempQuaternion = new THREE.Quaternion();
     readonly tempScale = new THREE.Vector3();
     pageContext?: Page;
+    customGizmo?: CustomTransformGizmo;
+    readonly transformProxy = new THREE.Object3D();
+    lastTransformValid = true;
 
     constructor(readonly uiProps: UIProps) { }
 
@@ -81,6 +84,7 @@ export class Scene3D {
         this.#setupLights();
         this.#setupSelectionHalo();
         this.#setupSelectionInput();
+        this.#setupCustomGizmo(context);
 
         this.worldMap3D.init();
 
@@ -229,6 +233,13 @@ export class Scene3D {
                 ((event.clientX - rect.left) / rect.width) * 2 - 1,
                 -((event.clientY - rect.top) / rect.height) * 2 + 1
             );
+            if (!mouse) return;
+
+            if (this.customGizmo?.onPointerDown(event)) {
+                event.stopPropagation();
+                event.preventDefault();
+                return;
+            }
 
             this.raycaster.setFromCamera(mouse, this.camera);
             const hits = this.raycaster.intersectObjects(this.scene.children, true);
@@ -248,35 +259,128 @@ export class Scene3D {
                 break;
             }
 
+            // Ignore non-selectable clicks
+            // to keep current selection and avoid interfering with gizmo interaction.
+            if (!selected) return;
+
             this.selectedInstance = selected;
-            if (!selected && this.selectionHalo) this.selectionHalo.visible = false;
+            this.lastTransformValid = true;
+            this.#syncTransformSelection();
+        });
+
+        this.renderDom?.addEventListener('pointermove', (event) => {
+            if (this.customGizmo?.onPointerMove(event)) {
+                this.#onTransformChanged();
+                this.customGizmo.syncPoseFromProxy();
+            }
+        });
+
+        this.renderDom?.addEventListener('pointerup', () => {
+            this.customGizmo?.onPointerUp();
+        });
+
+        this.renderDom?.addEventListener('pointercancel', () => {
+            this.customGizmo?.onPointerUp();
         });
     }
 
     #updateSelectionHalo() {
-        if (!this.selectionHalo || !this.selectedInstance) return;
+        if (!this.selectionHalo) return;
+        if (!this.selectedInstance) {
+            this.selectionHalo.visible = false;
+            return;
+        }
 
         const { mesh, instanceId, selectableType } = this.selectedInstance;
+        if (selectableType === 'building') {
+            // Buildings already have a custom transform ring; avoid duplicate circles.
+            this.selectionHalo.visible = false;
+            return;
+        }
         mesh.getMatrixAt(instanceId, this.tempMatrix);
         this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
 
         let radius = 1.0;
-        if (selectableType === 'building') {
-            const modelName = mesh.userData?.modelName as ModelName | undefined;
-            if (modelName) {
-                const fp = this.assetManager.getModelFootprint(modelName);
-                if (fp) {
-                    radius = Math.max(0.8, Math.max(fp.width, fp.depth) * 0.55);
-                }
-            }
-        } else {
-            radius = Math.max(0.5, this.tempScale.x * 0.8);
-        }
+        radius = Math.max(0.5, this.tempScale.x * 0.8);
 
         this.selectionHalo.position.set(this.tempPosition.x, 0.08, this.tempPosition.z);
         this.selectionHalo.scale.set(radius, radius, 1);
+        const haloMat = this.selectionHalo.material as THREE.MeshBasicMaterial;
+        haloMat.color.setHex(this.lastTransformValid ? 0xffe066 : 0xff2d2d);
         this.selectionHalo.visible = true;
     }
 
+    #setupCustomGizmo(context: Page) {
+        this.transformProxy.visible = false;
+        this.scene.add(this.transformProxy);
+        this.customGizmo = new CustomTransformGizmo({
+            scene: this.scene,
+            camera: this.camera,
+            raycaster: this.raycaster,
+            domElement: context.renderer.domElement,
+            proxy: this.transformProxy,
+            onDraggingChanged: (dragging) => {
+                if (context.controls) context.controls.enabled = !dragging;
+            },
+        });
+    }
+
+    #syncTransformSelection() {
+        const gizmo = this.customGizmo;
+        const selected = this.selectedInstance;
+        if (!gizmo) return;
+
+        if (!selected || selected.selectableType !== 'building') {
+            this.transformProxy.visible = false;
+            gizmo.setVisible(false);
+            return;
+        }
+
+        const { mesh, instanceId } = selected;
+        mesh.getMatrixAt(instanceId, this.tempMatrix);
+        this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
+
+        this.transformProxy.position.copy(this.tempPosition);
+        this.transformProxy.position.y = 0;
+        this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
+        this.transformProxy.visible = true;
+        gizmo.syncPoseFromProxy();
+        gizmo.setVisible(true);
+    }
+
+    #onTransformChanged() {
+        const selected = this.selectedInstance;
+        if (!selected || selected.selectableType !== 'building') return;
+
+        const { mesh, instanceId } = selected;
+        this.transformProxy.position.y = 0;
+        this.transformProxy.position.x = Math.round(this.transformProxy.position.x);
+        this.transformProxy.position.z = Math.round(this.transformProxy.position.z);
+        const yaw = this.#snap16Angles(this.transformProxy.rotation.y);
+        this.transformProxy.rotation.y = yaw;
+
+        const ok = this.worldMap3D.tryUpdateBuildingTransform(
+            mesh,
+            instanceId,
+            this.transformProxy.position.x,
+            this.transformProxy.position.z,
+            yaw
+        );
+        this.lastTransformValid = ok;
+
+        if (!ok) {
+            mesh.getMatrixAt(instanceId, this.tempMatrix);
+            this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
+            this.transformProxy.position.copy(this.tempPosition);
+            this.transformProxy.position.y = 0;
+            this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
+        }
+        this.customGizmo?.syncPoseFromProxy();
+    }
+
+    #snap16Angles(angle: number): number {
+        const step = (Math.PI * 2) / 16;
+        return Math.round(angle / step) * step;
+    }
 
 }

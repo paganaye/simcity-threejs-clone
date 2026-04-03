@@ -27,6 +27,11 @@ type PlacedFootprint = {
     maxZ: number;
 };
 
+type PlacedBuilding = PlacedFootprint & {
+    mesh: THREE.InstancedMesh;
+    instanceId: number;
+};
+
 export class WorldMap3D {
     private readonly buildingModels: ModelName[] = [
         ...residentialBuildings,
@@ -34,6 +39,11 @@ export class WorldMap3D {
         ...industrialBuildings
     ];
     private readonly buildings: IFastMesh[] = [];
+    private readonly placedByInstance = new Map<string, PlacedBuilding>();
+    private readonly tempMatrix = new THREE.Matrix4();
+    private readonly tempPosition = new THREE.Vector3();
+    private readonly tempQuaternion = new THREE.Quaternion();
+    private readonly tempScale = new THREE.Vector3(1, 1, 1);
 
     root = new THREE.Group();
     width = 0;
@@ -59,6 +69,7 @@ export class WorldMap3D {
             this.scene.assetManager.removeFastMesh(mesh);
         }
         this.buildings.length = 0;
+        this.placedByInstance.clear();
     }
 
     drawFrame(_now: number) {
@@ -125,6 +136,11 @@ export class WorldMap3D {
 
             const mesh = this.scene.assetManager.addFastMesh(model, x, 0.0, z, orientation);
             this.buildings.push(mesh);
+            this.placedByInstance.set(this.instanceKey(mesh.parent.instancedMesh, mesh.index), {
+                ...candidate,
+                mesh: mesh.parent.instancedMesh,
+                instanceId: mesh.index,
+            });
 
             const newIndex = placed.length;
             placed.push(candidate);
@@ -167,6 +183,48 @@ export class WorldMap3D {
             { x: half, z: half },
             { x: -half, z: half },
         ];
+    }
+
+    getBuildingYaw(mesh: THREE.InstancedMesh, instanceId: number): number {
+        mesh.getMatrixAt(instanceId, this.tempMatrix);
+        this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
+        const euler = new THREE.Euler().setFromQuaternion(this.tempQuaternion, 'YXZ');
+        return euler.y;
+    }
+
+    tryUpdateBuildingTransform(mesh: THREE.InstancedMesh, instanceId: number, x: number, z: number, yaw: number): boolean {
+        const selfKey = this.instanceKey(mesh, instanceId);
+        const current = this.placedByInstance.get(selfKey);
+        if (!current) return false;
+
+        const modelName = mesh.userData?.modelName as ModelName | undefined;
+        if (!modelName) return false;
+
+        const modelFootprint = this.scene.assetManager.getModelFootprint(modelName);
+        const moved = this.buildPlacementFootprint(x, z, yaw, modelFootprint);
+        if (!moved) return false;
+        if (!polygonInsideBounds(moved.polygon, 0, 0, this.width, this.height)) return false;
+
+        // Overlap checks disabled for interactive transform.
+
+        mesh.getMatrixAt(instanceId, this.tempMatrix);
+        this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
+        this.tempPosition.set(x, this.tempPosition.y, z);
+        this.tempQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+        this.tempMatrix.compose(this.tempPosition, this.tempQuaternion, this.tempScale);
+        mesh.setMatrixAt(instanceId, this.tempMatrix);
+        mesh.instanceMatrix.needsUpdate = true;
+
+        this.placedByInstance.set(selfKey, {
+            ...moved,
+            mesh,
+            instanceId,
+        });
+        return true;
+    }
+
+    private instanceKey(mesh: THREE.InstancedMesh, instanceId: number): string {
+        return `${mesh.id}:${instanceId}`;
     }
 
 }

@@ -4,13 +4,15 @@ export var appConstants = {
     defaultCitySize: DefaultCitySize,
     DefaultCarCount: 3,
     AssetsBaseUrl: "./",
+    // 1 world unit = 1 meter.
+    WorldUnitInMetre: 1,
     // In order to relieve the Graphic card all mesh are used as MeshInstances.
     MeshInstancesMin: 8,
     MeshInstancesGrowth: 1.6,
-    // This give the scale of every buildings
-    TileSizeInMetre: 10,
-    // this is used by cars so that no two car or people a    
-    PixelPerTile: 10, // we can't have two things in a square meter.
+    // Recommended city-builder scale: one tile is 12m x 12m.
+    TileSizeInMetre: 12,
+    // Crowd/traffic occupancy grid resolution inside one tile.
+    PixelPerTile: 12,
 
     //carZOffset: 0.05
 

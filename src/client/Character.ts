@@ -5,6 +5,8 @@ type FaceName = "front" | "back" | "left" | "right" | "top" | "bottom";
 
 export class Character {
   private walkShader?: { uniforms: Record<string, { value: unknown }> };
+  private static readonly DEFAULT_HEIGHT_METERS = 1.75;
+  private static readonly BASE_MODEL_HEIGHT = 1.8;
 
   createMaterial(): THREE.MeshPhongMaterial {
     const material = new THREE.MeshPhongMaterial({
@@ -27,6 +29,8 @@ export class Character {
 
   createGeometry(): THREE.BufferGeometry {
     const geometry = new THREE.BufferGeometry();
+    const unitScale = Character.DEFAULT_HEIGHT_METERS / Character.BASE_MODEL_HEIGHT;
+    const s = (value: number) => value * unitScale;
 
     const positions: number[] = [];
     const normals: number[] = [];
@@ -99,7 +103,7 @@ export class Character {
       });
     };
 
-    addCube(0.4, 0.4, 0.4, 0, 1.6, 0, skin, {
+    addCube(s(0.4), s(0.4), s(0.4), 0, s(1.6), 0, skin, {
       top: [hair, hair],
       back: [hair, hair],
       left: [hair, skin],
@@ -108,11 +112,11 @@ export class Character {
       bottom: [skin, skin],
     }, PART_BODY);
 
-    addCube(0.4, 0.6, 0.4, 0, 0.9, 0, torso, undefined, PART_BODY);
-    addCube(0.15, 0.6, 0.15, -0.35, 1.0, 0, arms, undefined, PART_LEFT_ARM, [-0.35, 1.28, 0]);
-    addCube(0.15, 0.6, 0.15, 0.35, 1.0, 0, arms, undefined, PART_RIGHT_ARM, [0.35, 1.28, 0]);
-    addCube(0.15, 0.6, 0.15, -0.15, 0.3, 0, legs, undefined, PART_LEFT_LEG, [-0.15, 0.6, 0]);
-    addCube(0.15, 0.6, 0.15, 0.15, 0.3, 0, legs, undefined, PART_RIGHT_LEG, [0.15, 0.6, 0]);
+    addCube(s(0.4), s(0.6), s(0.4), 0, s(0.9), 0, torso, undefined, PART_BODY);
+    addCube(s(0.15), s(0.6), s(0.15), s(-0.35), s(1.0), 0, arms, undefined, PART_LEFT_ARM, [s(-0.35), s(1.28), 0]);
+    addCube(s(0.15), s(0.6), s(0.15), s(0.35), s(1.0), 0, arms, undefined, PART_RIGHT_ARM, [s(0.35), s(1.28), 0]);
+    addCube(s(0.15), s(0.6), s(0.15), s(-0.15), s(0.3), 0, legs, undefined, PART_LEFT_LEG, [s(-0.15), s(0.6), 0]);
+    addCube(s(0.15), s(0.6), s(0.15), s(0.15), s(0.3), 0, legs, undefined, PART_RIGHT_LEG, [s(0.15), s(0.6), 0]);
 
     geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(positions), 3));
     geometry.setAttribute("normal", new THREE.BufferAttribute(new Float32Array(normals), 3));

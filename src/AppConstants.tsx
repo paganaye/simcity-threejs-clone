@@ -9,10 +9,12 @@ export var appConstants = {
     // In order to relieve the Graphic card all mesh are used as MeshInstances.
     MeshInstancesMin: 8,
     MeshInstancesGrowth: 1.6,
-    // Recommended city-builder scale: one tile is 12m x 12m.
-    TileSizeInMetre: 12,
+    // City scale chosen for this project.
+    TileSizeInMetre: 20,
+    // Average adult height used by procedural characters.
+    CharacterHeightInMetre: 1.75,
     // Crowd/traffic occupancy grid resolution inside one tile.
-    PixelPerTile: 12,
+    PixelPerTile: 40,
 
     //carZOffset: 0.05
 

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { Character } from "./Character";
+import { appConstants } from "../AppConstants";
 
 interface PopulationAgent {
   x: number;
@@ -49,13 +50,15 @@ export class Population {
 
     const walkWeights = new Float32Array(targetCrowd);
     const walkPhases = new Float32Array(targetCrowd);
+    const worldUnitsPerMeter = 1 / appConstants.TileSizeInMetre;
 
     for (let i = 0; i < targetCrowd; i++) {
       const x = Math.random() * (safeWidth - 1);
       const z = Math.random() * (safeHeight - 1);
       const heading = Math.random() * Math.PI * 2;
       const walking = Math.random() < walkingRatio;
-      const speed = walking ? 1.2 + Math.random() * 0.6 : 0;
+      const speedMetersPerSecond = 1.2 + Math.random() * 0.6;
+      const speed = walking ? speedMetersPerSecond * worldUnitsPerMeter : 0;
 
       this.crowdAgents.push({ x, z, heading, speed, walking });
 

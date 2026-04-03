@@ -15,13 +15,12 @@ export interface IAssetMeta {
 }
 
 //const ZERO_VECTOR = new THREE.Vector3(0, 0, 0);
-const ONE_VECTOR = new THREE.Vector3(1, 1, 1);
+const HIDE_SCALE = new THREE.Vector3(0, 0, 0);
 const IDENTITY_QUATERNION = new THREE.Quaternion();
 const HIDE_MATRIX = new THREE.Matrix4().compose(
-  new THREE.Vector3(0, 3, 0),
+  new THREE.Vector3(0, -9999, 0),
   IDENTITY_QUATERNION,
-
-  ONE_VECTOR
+  HIDE_SCALE
 );
 
 const modelsMetaData = {
@@ -262,6 +261,7 @@ interface IFastMeshes {
   instancedMesh: THREE.InstancedMesh;
   index: number;
   count: number;
+  freeIndices: number[];
 }
 
 export interface IFastMesh {
@@ -320,31 +320,28 @@ export class AssetManager {
       fastMeshes = this.#createFastMesh(modelName, fastMeshes, options);
 
     }
-    if (fastMeshes.index >= fastMeshes.count) {
+    const hasFreeSlot = fastMeshes.freeIndices.length > 0;
+    if (!hasFreeSlot && fastMeshes.index >= fastMeshes.count) {
       this.#growFastMesh(fastMeshes);
     }
+    const instanceIndex = hasFreeSlot ? fastMeshes.freeIndices.pop()! : fastMeshes.index++;
     let result: IFastMesh = {
       rotation,
       parent: fastMeshes,
-      index: fastMeshes.index++
+      index: instanceIndex
     };
     this.moveFastMesh(result, x, y, z, rotation);
     return result;
   }
 
   removeFastMesh(fastMesh: IFastMesh) {
-    // we swap the last instancedMesh with the one we just clear
-    // not tested
     let fastMeshes = fastMesh.parent;
-    let lastInstance = fastMeshes.count - 1;
-    let tempMatrix = new THREE.Matrix4();
     let instancedMesh = fastMeshes.instancedMesh;
-    if (fastMesh.index !== lastInstance) {
-      instancedMesh.getMatrixAt(lastInstance, tempMatrix);
-      instancedMesh.setMatrixAt(fastMesh.index, tempMatrix);
-    }
-    instancedMesh.setMatrixAt(lastInstance, HIDE_MATRIX);
-    fastMeshes.count -= 1;
+
+    // Mark slot hidden and reusable; do not mutate capacity.
+    instancedMesh.setMatrixAt(fastMesh.index, HIDE_MATRIX);
+    instancedMesh.instanceMatrix.needsUpdate = true;
+    fastMeshes.freeIndices.push(fastMesh.index);
   }
 
   #createFastMesh(modelName: ModelName, fastMeshes: IFastMeshes, options?: IAssetOptions) {
@@ -369,7 +366,8 @@ export class AssetManager {
       count,
       geometry,
       material,
-      index: 0
+      index: 0,
+      freeIndices: []
     };
 
     this.#clearFastMeshes(fastMeshes, 1);

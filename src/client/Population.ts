@@ -54,6 +54,7 @@ export class Population {
         const material = this.crowdCharacter.createMaterial();
 
         this.crowdMesh = new THREE.InstancedMesh(geometry, material, targetCrowd);
+        this.crowdMesh.userData.selectableType = "character";
         this.scene.add(this.crowdMesh);
 
         const walkWeights = new Float32Array(targetCrowd);

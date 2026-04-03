@@ -9,7 +9,13 @@ import { ICityChanged } from '../sim/Init';
 import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
+import type { ModelName } from './AssetManager';
 
+type SelectedInstance = {
+    mesh: THREE.InstancedMesh;
+    instanceId: number;
+    selectableType: 'building' | 'character';
+};
 
 export class Scene3D {
     assetManager: AssetManager = new AssetManager(this)
@@ -28,15 +34,25 @@ export class Scene3D {
     gui?: GUI;
     camera!: THREE.PerspectiveCamera;
     container!: HTMLElement;
+    renderDom?: HTMLCanvasElement;
+    selectionHalo?: THREE.Mesh;
+    selectedInstance?: SelectedInstance;
+    readonly tempMatrix = new THREE.Matrix4();
+    readonly tempPosition = new THREE.Vector3();
+    readonly tempQuaternion = new THREE.Quaternion();
+    readonly tempScale = new THREE.Vector3();
+    pageContext?: Page;
 
     constructor(readonly uiProps: UIProps) { }
 
     async init(context: Page) {
+        this.pageContext = context;
         this.scene = context.scene;
         this.renderer = context.renderer;
         this.gui = context.gui!;
         this.camera = context.camera;
         this.container = context.appContainer;
+        this.renderDom = context.renderer.domElement;
 
         let uiProps = this.uiProps;
 
@@ -63,6 +79,8 @@ export class Scene3D {
 
         //this.scene.clear();
         this.#setupLights();
+        this.#setupSelectionHalo();
+        this.#setupSelectionInput();
 
         this.worldMap3D.init();
 
@@ -88,6 +106,15 @@ export class Scene3D {
         this.uiProps.setCityName(cityChanged.name);
         if (cityChanged.clear) this.worldMap3D.clearCity();
         this.worldMap3D.setSize(cityChanged.width, cityChanged.height);
+
+        const centerX = cityChanged.width / 2 - 0.5;
+        const centerZ = cityChanged.height / 2 - 0.5;
+        this.camera.lookAt(centerX, 0, centerZ);
+        if (this.pageContext?.controls) {
+            this.pageContext.controls.target.set(centerX, 0, centerZ);
+            this.pageContext.controls.update();
+        }
+
     }
 
     #setupGround() {
@@ -131,6 +158,7 @@ export class Scene3D {
     drawFrame(_elapsedTime: number) {
         let now = performance.now();
         this.updateFocusedObject();
+        this.#updateSelectionHalo();
 
         //if (this.inputManager.isLeftMouseDown) {
         //this.useTool();
@@ -174,6 +202,80 @@ export class Scene3D {
         } else {
             return null;
         }
+    }
+
+    #setupSelectionHalo() {
+        const halo = new THREE.Mesh(
+            new THREE.RingGeometry(0.8, 1.0, 48),
+            new THREE.MeshBasicMaterial({
+                color: 0xffe066,
+                transparent: true,
+                opacity: 0.95,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+            })
+        );
+        halo.rotation.x = -Math.PI / 2;
+        halo.visible = false;
+        this.selectionHalo = halo;
+        this.scene.add(halo);
+    }
+
+    #setupSelectionInput() {
+        this.renderDom?.addEventListener('pointerdown', (event) => {
+            if (!this.renderDom) return;
+            const rect = this.renderDom.getBoundingClientRect();
+            const mouse = new THREE.Vector2(
+                ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                -((event.clientY - rect.top) / rect.height) * 2 + 1
+            );
+
+            this.raycaster.setFromCamera(mouse, this.camera);
+            const hits = this.raycaster.intersectObjects(this.scene.children, true);
+
+            let selected: SelectedInstance | undefined;
+            for (const hit of hits) {
+                const obj = hit.object as THREE.InstancedMesh;
+                const selectableType = obj.userData?.selectableType as ('building' | 'character' | undefined);
+                if (!selectableType) continue;
+                if (hit.instanceId == null) continue;
+
+                selected = {
+                    mesh: obj,
+                    instanceId: hit.instanceId,
+                    selectableType,
+                };
+                break;
+            }
+
+            this.selectedInstance = selected;
+            if (!selected && this.selectionHalo) this.selectionHalo.visible = false;
+        });
+    }
+
+    #updateSelectionHalo() {
+        if (!this.selectionHalo || !this.selectedInstance) return;
+
+        const { mesh, instanceId, selectableType } = this.selectedInstance;
+        mesh.getMatrixAt(instanceId, this.tempMatrix);
+        this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
+
+        let radius = 1.0;
+        if (selectableType === 'building') {
+            const modelName = mesh.userData?.modelName as ModelName | undefined;
+            if (modelName) {
+                const fp = this.assetManager.getModelFootprint(modelName);
+                if (fp) {
+                    radius = Math.max(0.8, Math.max(fp.width, fp.depth) * 0.55);
+                }
+            }
+        } else {
+            radius = Math.max(0.5, this.tempScale.x * 0.8);
+        }
+
+        this.selectionHalo.position.set(this.tempPosition.x, 0.08, this.tempPosition.z);
+        this.selectionHalo.scale.set(radius, radius, 1);
+        this.selectionHalo.visible = true;
     }
 
 

@@ -68,8 +68,9 @@ export abstract class Page {
     }
 
     protected createCamera() {
-        this.camera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 200);
+        this.camera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
         this.camera.position.set(60, 220, 120);
+        // we want took at the center of the map, but since we don't know the size yet, we'll update this in onCityChanged
     }
 
     protected createLights() {

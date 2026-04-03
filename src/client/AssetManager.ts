@@ -393,6 +393,12 @@ export class AssetManager {
 
     this.#clearFastMeshes(fastMeshes, 1);
 
+    const meta = modelsMetaData[modelName];
+    if (meta.type === 'zone') {
+      fastMeshes.instancedMesh.userData.selectableType = 'building';
+      fastMeshes.instancedMesh.userData.modelName = modelName;
+    }
+
     this.scene.scene.add(fastMeshes.instancedMesh);
     this.fastMeshes[modelName] = fastMeshes;
     return fastMeshes;

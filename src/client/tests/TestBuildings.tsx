@@ -68,7 +68,7 @@ export default class TestBuildings extends Page {
 
         const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
 
-        const promises = BUILDINGS.map((entry, i) => {
+        BUILDINGS.forEach((entry, i) => {
             const col = i % COLUMNS;
             const row = Math.floor(i / COLUMNS);
             const cx = col * TILE;

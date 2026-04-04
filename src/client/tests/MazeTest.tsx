@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { Page } from "../Page";
-import { Character, CharacterPath } from "../Character";
+import { Character } from "../Character";
+import { CharacterPath } from "../CharacterPath";
 import { MazeBuilder, type GridPoint } from "./MazeBuilder";
 import { PathFinder } from "./PathFinder";
 
@@ -15,12 +16,7 @@ export default class MazeTest extends Page {
   private walkerWalkData?: Float32Array;
   private walkerWalkAttr?: THREE.InstancedBufferAttribute;
   private readonly walkerCount = 4;
-  private readonly walkerPaths: CharacterPath[] = [
-    new CharacterPath({ speed: 1.4, turnSpeed: 10 }),
-    new CharacterPath({ speed: 1.55, turnSpeed: 10 }),
-    new CharacterPath({ speed: 1.7, turnSpeed: 10 }),
-    new CharacterPath({ speed: 1.85, turnSpeed: 10 }),
-  ];
+  private readonly walkers: Character[] = Array.from({ length: this.walkerCount }, () => new Character());
   private readonly walkerCurrentCells: GridPoint[] = [];
   private readonly walkerTargetCells: GridPoint[] = [];
   private readonly mazeBuilder = new MazeBuilder();
@@ -31,6 +27,10 @@ export default class MazeTest extends Page {
   private onKeyDown?: (event: KeyboardEvent) => void;
 
   run(): Promise<void> | void {
+    this.walkers.forEach((walker, i) => {
+      walker.path = new CharacterPath({ speed: 1.4 + i * 0.15, turnSpeed: 10 });
+    });
+
     this.generateAndRenderMaze();
 
     this.onKeyDown = (event: KeyboardEvent) => {
@@ -62,7 +62,12 @@ export default class MazeTest extends Page {
     }
 
     for (let i = 0; i < this.walkerCount; i++) {
-      const update = this.walkerPaths[i].update(delta, (x, y) => this.cellToWorld(x, y));
+      const path = this.walkers[i].path;
+      if (!path) {
+        continue;
+      }
+
+      const update = path.update(delta, (x, y) => this.cellToWorld(x, y));
       this.updateWalkerMatrix(i, update.position, update.heading);
       this.setWalkerWalking(i, update.isWalking);
 
@@ -212,7 +217,11 @@ export default class MazeTest extends Page {
     const goal = this.pickRandomWalkableCell(start);
 
     const path = this.pathFinder.findPathBFS(this.maze, start, goal);
-    const state = this.walkerPaths[index].setPath(path, (x, y) => this.cellToWorld(x, y));
+    const walkerPath = this.walkers[index].path;
+    if (!walkerPath) {
+      return;
+    }
+    const state = walkerPath.setPath(path, (x, y) => this.cellToWorld(x, y));
 
     this.walkerCurrentCells[index] = start;
     this.walkerTargetCells[index] = goal;
@@ -220,13 +229,13 @@ export default class MazeTest extends Page {
     // Spread walkers a bit along the route to avoid complete overlap.
     const warmupSteps = Math.min(index * 18, 80);
     for (let i = 0; i < warmupSteps; i++) {
-      const warm = this.walkerPaths[index].update(1 / 60, (x, y) => this.cellToWorld(x, y));
+      const warm = walkerPath.update(1 / 60, (x, y) => this.cellToWorld(x, y));
       if (warm.reachedEnd) {
         break;
       }
     }
 
-    const update = this.walkerPaths[index].update(0, (x, y) => this.cellToWorld(x, y));
+    const update = walkerPath.update(0, (x, y) => this.cellToWorld(x, y));
     this.updateWalkerMatrix(index, update.position, update.heading);
     this.setWalkerWalking(index, state.isWalking);
   }

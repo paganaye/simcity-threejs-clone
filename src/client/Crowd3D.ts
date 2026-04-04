@@ -79,9 +79,6 @@ export class Crowd3D {
             characters[i].tick(delta, i, walkAttribute, this.crowdMesh);
         }
 
-        for (let i = 0; i < characters.length; i++) {
-            characters[i].updateDebugCollision();
-        }
 
         if (walkAttribute) walkAttribute.needsUpdate = true;
         this.crowdMesh.instanceMatrix.needsUpdate = true;

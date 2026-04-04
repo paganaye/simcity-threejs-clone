@@ -10,7 +10,7 @@ type FaceName = "front" | "back" | "left" | "right" | "top" | "bottom";
 
 export class Character {
   static readonly characterRadius = 0.4;
-  private static mismatchCaptured = false;
+  static readonly detectionDiameter = Character.characterRadius * 2;
   private static readonly yAxis = new THREE.Vector3(0, 1, 0);
   private static readonly tempPosition = new THREE.Vector3();
   private static readonly tempQuaternion = new THREE.Quaternion();
@@ -24,10 +24,16 @@ export class Character {
     const maxZ = this.population.mapHeight - 1;
 
     const quadTree = this.population.quadTree;
+    this.isBlocked = this.isWalking && this.checkForwardBlockage();
 
-    // Compute blockage once per tick to avoid duplicate detection work
-    this.cachedFrameBlockage = this.isWalking ? this.checkForwardBlockage() : false;
-    const shouldWalk = this.isWalking && !this.cachedFrameBlockage;
+    // If blocked, accumulate time; if stuck too long, turn randomly
+    if (this.isBlocked) {
+      if (Math.random() > 0.99) {
+        this.heading += (Math.random() - 0.5) * Math.PI;
+      }
+    }
+
+    const shouldWalk = this.isWalking && !this.isBlocked;
     if (walkAttribute) {
       walkAttribute.setX(index, shouldWalk ? 1 : 0);
     }
@@ -46,169 +52,6 @@ export class Character {
     crowdMesh.setMatrixAt(index, Character.tempMatrix);
   }
 
-  updateDebugCollision(): void {
-    const collisionDistance = Character.characterRadius * 2;
-    const all = this.population.characters;
-    const selfIndex = all.indexOf(this);
-    const quadTree = this.population.quadTree;
-
-    // Reuse cached blockage result from tick() to avoid duplicate detection in same frame
-    this.debugCollision = this.cachedFrameBlockage;
-
-    const queryRect = {
-      x: this.x - collisionDistance,
-      z: this.z - collisionDistance,
-      width: collisionDistance * 2,
-      height: collisionDistance * 2,
-    };
-
-    const nearbyQuad = quadTree
-      ? quadTree.queryRectangle(queryRect)
-      : all;
-
-    const quadHits = new Set<Character>();
-    let quadCollision = false;
-    for (const other of nearbyQuad) {
-      if (other === this) continue;
-      const dist = Math.hypot(other.x - this.x, other.z - this.z);
-      if (dist < collisionDistance) {
-        quadCollision = true;
-        quadHits.add(other);
-      }
-    }
-
-    const bruteHits = new Set<Character>();
-    let bruteCollision = false;
-    for (const other of all) {
-      if (other === this) continue;
-      const dist = Math.hypot(other.x - this.x, other.z - this.z);
-      if (dist < collisionDistance) {
-        bruteCollision = true;
-        bruteHits.add(other);
-      }
-    }
-
-    if ((quadCollision !== bruteCollision || quadHits.size !== bruteHits.size) && !Character.mismatchCaptured) {
-      Character.mismatchCaptured = true;
-      const quadOnly: number[] = [];
-      const bruteOnly: number[] = [];
-
-      for (const c of quadHits) {
-        if (!bruteHits.has(c)) {
-          quadOnly.push(all.indexOf(c));
-        }
-      }
-      for (const c of bruteHits) {
-        if (!quadHits.has(c)) {
-          bruteOnly.push(all.indexOf(c));
-        }
-      }
-
-      const expandedRect = {
-        x: queryRect.x - 0.001,
-        z: queryRect.z - 0.001,
-        width: queryRect.width + 0.002,
-        height: queryRect.height + 0.002,
-      };
-      const expandedNearby = quadTree ? quadTree.queryRectangle(expandedRect) : all;
-      const expandedSet = new Set(expandedNearby);
-
-      const bruteOnlyDetails = bruteOnly.map((idx) => {
-        const other = all[idx];
-        const dx = other.x - this.x;
-        const dz = other.z - this.z;
-        const dist = Math.hypot(dx, dz);
-        const inRect =
-          other.x >= queryRect.x &&
-          other.x < queryRect.x + queryRect.width &&
-          other.z >= queryRect.z &&
-          other.z < queryRect.z + queryRect.height;
-
-        return {
-          otherIndex: idx,
-          otherPos: { x: other.x, z: other.z },
-          dx,
-          dz,
-          dist,
-          inRect,
-          inExpandedRect: expandedSet.has(other),
-          quadtreeLocate: quadTree ? quadTree.debugLocateValue(other) : undefined,
-          quadtreeLeafAtPoint: quadTree ? quadTree.debugFindLeafForPoint(other) : undefined,
-          quadtreeOccurrenceCount: quadTree ? quadTree.debugCountValueOccurrences(other) : undefined,
-        };
-      });
-
-      const quadOnlyDetails = quadOnly.map((idx) => {
-        const other = all[idx];
-        const dx = other.x - this.x;
-        const dz = other.z - this.z;
-        const dist = Math.hypot(dx, dz);
-        return {
-          otherIndex: idx,
-          otherPos: { x: other.x, z: other.z },
-          dx,
-          dz,
-          dist,
-          quadtreeLocate: quadTree ? quadTree.debugLocateValue(other) : undefined,
-          quadtreeLeafAtPoint: quadTree ? quadTree.debugFindLeafForPoint(other) : undefined,
-          quadtreeOccurrenceCount: quadTree ? quadTree.debugCountValueOccurrences(other) : undefined,
-        };
-      });
-
-      const perCharacter = all.map((c, idx) => {
-        const dx = c.x - this.x;
-        const dz = c.z - this.z;
-        const dist = Math.hypot(dx, dz);
-        const inQueryRect =
-          c.x >= queryRect.x &&
-          c.x < queryRect.x + queryRect.width &&
-          c.z >= queryRect.z &&
-          c.z < queryRect.z + queryRect.height;
-        return {
-          idx,
-          x: c.x,
-          z: c.z,
-          dist,
-          inQueryRect,
-          inNearbyQuad: nearbyQuad.includes(c),
-          inExpandedNearby: expandedSet.has(c),
-          inBruteHits: bruteHits.has(c),
-          inQuadHits: quadHits.has(c),
-          locate: quadTree ? quadTree.debugLocateValue(c) : undefined,
-          leafAtPoint: quadTree ? quadTree.debugFindLeafForPoint(c) : undefined,
-          occurrences: quadTree ? quadTree.debugCountValueOccurrences(c) : undefined,
-        };
-      });
-
-      const payload = {
-        selfIndex,
-        pos: { x: this.x, z: this.z },
-        queryRect,
-        quadtreeSelfLocate: quadTree ? quadTree.debugLocateValue(this) : undefined,
-        quadtreeSelfLeafAtPoint: quadTree ? quadTree.debugFindLeafForPoint(this) : undefined,
-        quadtreeSelfOccurrenceCount: quadTree ? quadTree.debugCountValueOccurrences(this) : undefined,
-        quadtreeTreeStats: quadTree ? quadTree.debugTreeStats() : undefined,
-        queryStats: quadTree ? quadTree.debugQueryRectangleStats(queryRect) : undefined,
-        expandedQueryStats: quadTree ? quadTree.debugQueryRectangleStats(expandedRect) : undefined,
-        collisionDistance,
-        quadCollision,
-        bruteCollision,
-        quadCount: quadHits.size,
-        bruteCount: bruteHits.size,
-        nearbyQuadIndices: nearbyQuad.map((c) => all.indexOf(c)),
-        expandedNearbyIndices: expandedNearby.map((c) => all.indexOf(c)),
-        quadOnly,
-        bruteOnly,
-        quadOnlyDetails,
-        bruteOnlyDetails,
-        perCharacter,
-      };
-
-      console.log("[collision-mismatch:first]", payload);
-      console.log("[collision-mismatch:first:json]", JSON.stringify(payload, null, 2));
-      throw new Error("Stopping on first collision mismatch (forensic log captured)");
-    }
-  }
   path: CharacterPath | undefined;
   readonly walkPhase = Math.random() * Math.PI * 2;
   x = 0;
@@ -216,43 +59,42 @@ export class Character {
   heading = 0;
   speed = 0;
   scale = 1;
-  debugCollision = false;
-  private cachedFrameBlockage = false;
   isWalking = true;
+  isBlocked = false;
   private static readonly BASE_MODEL_HEIGHT = 1.8;
   private static readonly walkTimeUniform = { value: 0 };
 
-  constructor(readonly population: Population) {
-    this.cachedFrameBlockage = false;
+  constructor(readonly population: Population) { }
+
+  setWalking(walking: boolean): void {
+    this.isWalking = walking;
   }
 
   private checkForwardBlockage(): boolean {
-    const quadTree = this.population.quadTree;
-    const fx = Math.sin(this.heading);
-    const fz = Math.cos(this.heading);
-    const detectionRadius = Character.characterRadius;
-    const detectionCenterX = this.x + fx * detectionRadius;
-    const detectionCenterZ = this.z + fz * detectionRadius;
+    //const quadTree = this.population.quadTree;
+    const fx = Math.sin(this.heading) * Character.characterRadius;
+    const fz = Math.cos(this.heading) * Character.characterRadius;
 
-    const nearby = quadTree
-      ? quadTree.queryRectangle({
-        x: detectionCenterX - detectionRadius,
-        z: detectionCenterZ - detectionRadius,
-        width: detectionRadius * 2,
-        height: detectionRadius * 2,
-      })
-      : this.population.characters;
+    const detectionCenterX = this.x + fx;
+    const detectionCenterZ = this.z + fz;
+
+    //   const nearby = quadTree
+    //     ? quadTree.queryRectangle({
+    //       x: detectionCenterX - detectionRadius,
+    //       z: detectionCenterZ - detectionRadius,
+    //       width: detectionRadius * 2,
+    //       height: detectionRadius * 2,
+    //     })
+    //     : this.population.characters;
+    const nearby = this.population.characters;
 
     for (const other of nearby) {
       if (other === this) continue;
 
-      const dx = other.x - this.x;
-      const dz = other.z - this.z;
-      if (dx * fx + dz * fz <= 0) continue;
 
       const cdx = other.x - detectionCenterX;
       const cdz = other.z - detectionCenterZ;
-      if (cdx * cdx + cdz * cdz < detectionRadius * detectionRadius) {
+      if (Math.hypot(cdx, cdz) < Character.detectionDiameter) {
         return true;
       }
     }
@@ -261,10 +103,6 @@ export class Character {
   }
 
 
-
-  getWalkingWeight(): number {
-    return this.isWalking ? 1 : 0;
-  }
 
   move(delta: number, minX: number, maxX: number, minZ: number, maxZ: number): void {
     if (!this.isWalking) {
@@ -284,7 +122,7 @@ export class Character {
   }
 
   writeInstanceAnimationData(index: number, walkData: Float32Array, phaseData?: Float32Array): void {
-    walkData[index] = this.getWalkingWeight();
+    walkData[index] = this.isWalking ? 1 : 0;
     if (phaseData) {
       phaseData[index] = this.walkPhase;
     }
@@ -550,7 +388,7 @@ export class CharacterOccupancyMesh {
       this.tempPosition.set(c.x, this.y, c.z);
       this.tempMatrix.compose(this.tempPosition, this.tempRotation, this.tempScale);
       this.mesh.setMatrixAt(i, this.tempMatrix);
-      this.mesh.setColorAt(i, c.debugCollision ? this.collisionColor : this.freeColor);
+      this.mesh.setColorAt(i, c.isWalking && !c.isBlocked ? this.freeColor : this.collisionColor);
     }
 
     this.mesh.instanceMatrix.needsUpdate = true;

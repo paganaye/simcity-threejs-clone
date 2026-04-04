@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { rotateTowards } from "./Character";
+import { rotateTowards } from "../sim/utils";
 
 export type CharacterPathPoint = { x: number; y: number };
 export type CharacterCellToWorld = (x: number, y: number) => THREE.Vector3;

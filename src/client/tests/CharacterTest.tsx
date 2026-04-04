@@ -1,26 +1,24 @@
 import { Page } from "../Page";
-import { Population } from "../Population";
+import { Crowd3D } from "../Crowd3D";
 
 export default class CharacterTest extends Page {
-  private population?: Population;
+  private crowd3D?: Crowd3D;
 
   run(): Promise<void> | void {
-    this.population = new Population(this.scene);
-    this.population.init(8, 8, {
-      density: 0.08,
-      minCount: 120,
-      maxCount: 300,
+    this.crowd3D = new Crowd3D(this.scene);
+    this.crowd3D.init(8, 8, {
+      count: 120,
       childRatio: 0.18,
       walkingRatio: 0.7,
     });
   }
 
   override loop(elapsed: number): void {
-    this.population?.update(elapsed);
+    this.crowd3D?.tick(elapsed);
   }
 
   override cleanup(): void {
-    this.population?.dispose();
-    this.population = undefined;
+    this.crowd3D?.dispose();
+    this.crowd3D = undefined;
   }
 }

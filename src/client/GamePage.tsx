@@ -4,7 +4,7 @@ import { Scene3D } from "./Scene3D";
 import type { SimObject3D } from "./SimObject3D";
 import "./GameUI.css";
 import { Page } from './Page';
-import { Population } from './Population';
+import { Crowd3D } from './Crowd3D';
 export type ActiveTool = "select" | "bulldoze" | "residential" | "commercial" | "industrial" | "road" | "power-plant" | "power-line";
 export interface UIProps {
     gameWindow: HTMLElement;
@@ -113,7 +113,7 @@ function GameUIComponent(props: {
 
 export default class GamePage extends Page {
     scene3DInstance: Scene3D | undefined;
-    private population?: Population;
+    private crowd3D?: Crowd3D;
 
     async run() {
 
@@ -123,8 +123,8 @@ export default class GamePage extends Page {
 
             this.scene3DInstance = new Scene3D(uiProps);
             await this.scene3DInstance.init(this);
-            this.population = new Population(this.scene);
-            this.population.init(this.scene3DInstance.worldMap3D.width, this.scene3DInstance.worldMap3D.height);
+            this.crowd3D = new Crowd3D(this.scene);
+            this.crowd3D.init(this.scene3DInstance.worldMap3D.width, this.scene3DInstance.worldMap3D.height);
 
             console.log("GameUI: Scene3D initialized after UI loaded.");
             uiProps.setIsLoading(false);
@@ -138,13 +138,13 @@ export default class GamePage extends Page {
     override loop(elapsed: number): void {
         this.scene3DInstance?.drawFrame(elapsed);
         if (this.scene3DInstance) {
-            this.population?.update(elapsed);
+            this.crowd3D?.tick(elapsed);
         }
     }
 
     override cleanup(): void {
-        this.population?.dispose();
-        this.population = undefined;
+        this.crowd3D?.dispose();
+        this.crowd3D = undefined;
     }
 
 

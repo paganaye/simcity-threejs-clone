@@ -11,7 +11,9 @@ const pages = {
     "Three Editor": "client/editor/ThreeEditor",
     "Game": "client/GamePage",
     "Maze": "client/tests/MazeTest",
-    "Buildings": "client/tests/TestBuildings"
+    "Buildings": "client/tests/TestBuildings",
+    "Path2": "client/tests/Path2",
+
 };
 
 let app = new App(pages);

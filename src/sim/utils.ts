@@ -40,6 +40,7 @@ export function normalizeAngle(angle: number): number {
     return angle;
 }
 
+
 export function normalizeAngleDeg(angle: number): number {
     return normalizeAngle(angle) * RAD2DEG;
 }
@@ -147,3 +148,12 @@ export function calculateTurnArc(origin: IPoint2D, direction: number, radius: nu
 
     return { center, startAngle, endAngle: direction + sweep, radius, sweep, ptA: origin, ptB: final };
 }
+
+export function rotateTowards(current: number, target: number, maxDelta: number): number {
+    const delta = normalizeAngle(target - current);
+    if (Math.abs(delta) <= maxDelta) {
+        return target;
+    }
+    return current + Math.sign(delta) * maxDelta;
+}
+

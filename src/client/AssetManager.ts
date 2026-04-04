@@ -480,8 +480,6 @@ export class AssetManager {
               obj.castShadow = castShadow;
               //}
             });
-          } else {
-            console.log("wtf");
           }
           mesh.rotation.set(0, THREE.MathUtils.degToRad(rotation), 0);
           mesh.scale.set(meshScale, meshScale, meshScale);

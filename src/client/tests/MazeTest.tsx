@@ -4,19 +4,21 @@ import { Character } from "../Character";
 import { CharacterPath } from "../CharacterPath";
 import { MazeBuilder, type GridPoint } from "./MazeBuilder";
 import { PathFinder } from "./PathFinder";
+import { Population } from "../Population";
 
 export default class MazeTest extends Page {
   private maze: boolean[][] = [];
   private wallMesh?: THREE.InstancedMesh;
   private floorMesh?: THREE.Mesh;
   private walkerMesh?: THREE.InstancedMesh;
-  private readonly walkerCharacter = new Character();
   private readonly walkerScale = new THREE.Vector3(1, 1, 1);
   private walkerLastElapsed = 0;
   private walkerWalkData?: Float32Array;
+  private walkerPhaseData?: Float32Array;
   private walkerWalkAttr?: THREE.InstancedBufferAttribute;
   private readonly walkerCount = 4;
-  private readonly walkers: Character[] = Array.from({ length: this.walkerCount }, () => new Character());
+  private readonly population = new Population();
+  private readonly walkers: Character[] = Array.from({ length: this.walkerCount }, () => this.population.newCharacter());
   private readonly walkerCurrentCells: GridPoint[] = [];
   private readonly walkerTargetCells: GridPoint[] = [];
   private readonly mazeBuilder = new MazeBuilder();
@@ -48,7 +50,7 @@ export default class MazeTest extends Page {
   }
 
   override loop(elapsed: number): void {
-    this.walkerCharacter.updateAnimation(elapsed);
+    Character.updateAnimation(elapsed);
 
     if (!this.walkerMesh || !this.walkerWalkData || !this.walkerWalkAttr) {
       return;
@@ -116,6 +118,7 @@ export default class MazeTest extends Page {
       }
       this.walkerMesh = undefined;
       this.walkerWalkData = undefined;
+      this.walkerPhaseData = undefined;
       this.walkerWalkAttr = undefined;
     }
   }
@@ -130,7 +133,7 @@ export default class MazeTest extends Page {
         if (x % quarterWidth === 0 || y % quarterHeight === 0) {
           this.maze[y][x] = false;
         }
-      } 
+      }
     }
     this.renderMaze(this.maze);
     this.setupWalkerPaths();
@@ -276,28 +279,29 @@ export default class MazeTest extends Page {
       return;
     }
 
-    const geometry = this.walkerCharacter.createGeometry();
-    const material = this.walkerCharacter.createMaterial();
+    const geometry = Character.createGeometry();
+    const material = Character.createMaterial();
     this.walkerMesh = new THREE.InstancedMesh(geometry, material, this.walkerCount);
     this.scene.add(this.walkerMesh);
 
     this.walkerWalkData = new Float32Array(this.walkerCount);
-    this.walkerWalkData.fill(1);
-    const walkPhase = new Float32Array(this.walkerCount);
+    this.walkerPhaseData = new Float32Array(this.walkerCount);
     for (let i = 0; i < this.walkerCount; i++) {
-      walkPhase[i] = Math.random() * Math.PI * 2;
+      this.walkers[i].writeInstanceAnimationData(i, this.walkerWalkData, this.walkerPhaseData);
     }
     this.walkerWalkAttr = new THREE.InstancedBufferAttribute(this.walkerWalkData, 1);
 
     geometry.setAttribute("aWalk", this.walkerWalkAttr);
-    geometry.setAttribute("aPhase", new THREE.InstancedBufferAttribute(walkPhase, 1));
+    geometry.setAttribute("aPhase", new THREE.InstancedBufferAttribute(this.walkerPhaseData, 1));
   }
 
   private setWalkerWalking(index: number, isWalking: boolean): void {
     if (!this.walkerWalkData || !this.walkerWalkAttr) {
       return;
     }
-    this.walkerWalkData[index] = isWalking ? 1 : 0;
+    const walker = this.walkers[index];
+    walker.isWalking = isWalking;
+    walker.writeInstanceAnimationData(index, this.walkerWalkData);
   }
 
   private updateWalkerMatrix(index: number, position: THREE.Vector3, heading: number): void {

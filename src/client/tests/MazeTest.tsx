@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { Page } from "../Page";
-import { Character } from "../Character";
+import { Character, CharacterPath } from "../Character";
+import { MazeBuilder, type GridPoint } from "./MazeBuilder";
+import { PathFinder } from "./PathFinder";
 
 export default class MazeTest extends Page {
   private maze: boolean[][] = [];
@@ -8,14 +10,21 @@ export default class MazeTest extends Page {
   private floorMesh?: THREE.Mesh;
   private walkerMesh?: THREE.InstancedMesh;
   private readonly walkerCharacter = new Character();
-  private readonly walkerPosition = new THREE.Vector3();
   private readonly walkerScale = new THREE.Vector3(1, 1, 1);
-  private walkerPath: Array<{ x: number; y: number }> = [];
-  private walkerNextWaypoint = 1;
-  private walkerSpeed = 1.4;
   private walkerLastElapsed = 0;
   private walkerWalkData?: Float32Array;
   private walkerWalkAttr?: THREE.InstancedBufferAttribute;
+  private readonly walkerCount = 4;
+  private readonly walkerPaths: CharacterPath[] = [
+    new CharacterPath({ speed: 1.4, turnSpeed: 10 }),
+    new CharacterPath({ speed: 1.55, turnSpeed: 10 }),
+    new CharacterPath({ speed: 1.7, turnSpeed: 10 }),
+    new CharacterPath({ speed: 1.85, turnSpeed: 10 }),
+  ];
+  private readonly walkerCurrentCells: GridPoint[] = [];
+  private readonly walkerTargetCells: GridPoint[] = [];
+  private readonly mazeBuilder = new MazeBuilder();
+  private readonly pathFinder = new PathFinder();
   private readonly mazeWidth = 41;
   private readonly mazeHeight = 41;
   private readonly wallHeight = 1;
@@ -41,7 +50,7 @@ export default class MazeTest extends Page {
   override loop(elapsed: number): void {
     this.walkerCharacter.updateAnimation(elapsed);
 
-    if (!this.walkerMesh || this.walkerPath.length < 2) {
+    if (!this.walkerMesh || !this.walkerWalkData || !this.walkerWalkAttr) {
       return;
     }
 
@@ -52,41 +61,16 @@ export default class MazeTest extends Page {
       return;
     }
 
-    if (this.walkerNextWaypoint >= this.walkerPath.length) {
-      this.setWalkerWalking(false);
-      return;
+    for (let i = 0; i < this.walkerCount; i++) {
+      const update = this.walkerPaths[i].update(delta, (x, y) => this.cellToWorld(x, y));
+      this.updateWalkerMatrix(i, update.position, update.heading);
+      this.setWalkerWalking(i, update.isWalking);
+
+      if (update.reachedEnd) {
+        this.setupWalkerPath(i, this.walkerTargetCells[i]);
+      }
     }
-
-    const targetCell = this.walkerPath[this.walkerNextWaypoint];
-    const target = this.cellToWorld(targetCell.x, targetCell.y);
-    const dx = target.x - this.walkerPosition.x;
-    const dz = target.z - this.walkerPosition.z;
-    const distance = Math.hypot(dx, dz);
-
-    if (distance < 0.0001) {
-      this.walkerPosition.copy(target);
-      this.walkerNextWaypoint += 1;
-      this.updateWalkerMatrix(this.walkerPosition, 0);
-      return;
-    }
-
-    const heading = Math.atan2(dx, dz);
-    const step = this.walkerSpeed * delta;
-
-    if (step >= distance) {
-      this.walkerPosition.copy(target);
-      this.walkerNextWaypoint += 1;
-    } else {
-      const inv = 1 / distance;
-      this.walkerPosition.x += dx * inv * step;
-      this.walkerPosition.z += dz * inv * step;
-    }
-
-    this.updateWalkerMatrix(this.walkerPosition, heading);
-
-    if (this.walkerNextWaypoint >= this.walkerPath.length) {
-      this.setWalkerWalking(false);
-    }
+    this.walkerWalkAttr.needsUpdate = true;
   }
 
   override cleanup(): void {
@@ -132,56 +116,20 @@ export default class MazeTest extends Page {
   }
 
   private generateAndRenderMaze(): void {
-    this.maze = this.generateMazeDFS(this.mazeWidth, this.mazeHeight);
-    this.renderMaze(this.maze);
-    this.setupWalkerPath();
-    this.walkerLastElapsed = 0;
-  }
+    this.maze = this.mazeBuilder.buildDFS(this.mazeWidth, this.mazeHeight);
+    const quarterWidth = Math.floor(this.mazeWidth / 4);
+    const quarterHeight = Math.floor(this.mazeHeight / 4);
 
-  private generateMazeDFS(width: number, height: number): boolean[][] {
-    const w = width % 2 === 0 ? width + 1 : width;
-    const h = height % 2 === 0 ? height + 1 : height;
-
-    const grid: boolean[][] = Array.from({ length: h }, () => Array.from({ length: w }, () => true));
-    const stack: Array<{ x: number; y: number }> = [];
-    const directions = [
-      { dx: 2, dy: 0 },
-      { dx: -2, dy: 0 },
-      { dx: 0, dy: 2 },
-      { dx: 0, dy: -2 },
-    ];
-
-    const start = { x: 1, y: 1 };
-    grid[start.y][start.x] = false;
-    stack.push(start);
-
-    while (stack.length > 0) {
-      const current = stack[stack.length - 1];
-      const neighbors = directions
-        .map((d) => ({
-          nx: current.x + d.dx,
-          ny: current.y + d.dy,
-          wx: current.x + d.dx / 2,
-          wy: current.y + d.dy / 2,
-        }))
-        .filter((n) => n.nx > 0 && n.nx < w - 1 && n.ny > 0 && n.ny < h - 1 && grid[n.ny][n.nx]);
-
-      if (neighbors.length === 0) {
-        stack.pop();
-        continue;
-      }
-
-      const picked = neighbors[Math.floor(Math.random() * neighbors.length)];
-      grid[picked.wy][picked.wx] = false;
-      grid[picked.ny][picked.nx] = false;
-      stack.push({ x: picked.nx, y: picked.ny });
+    for (let y = 1; y < this.maze.length - 1; y++) {
+      for (let x = 1; x < this.maze[y].length - 1; x++) {
+        if (x % quarterWidth === 0 || y % quarterHeight === 0) {
+          this.maze[y][x] = false;
+        }
+      } 
     }
-
-    // Entrance / exit
-    grid[1][0] = false;
-    grid[h - 2][w - 1] = false;
-
-    return grid;
+    this.renderMaze(this.maze);
+    this.setupWalkerPaths();
+    this.walkerLastElapsed = 0;
   }
 
   private renderMaze(grid: boolean[][]): void {
@@ -246,30 +194,72 @@ export default class MazeTest extends Page {
     this.scene.add(floor);
   }
 
-  private setupWalkerPath(): void {
+  private setupWalkerPaths(): void {
     this.ensureWalkerMesh();
 
+    for (let i = 0; i < this.walkerCount; i++) {
+      const start = this.pickRandomWalkableCell();
+      this.setupWalkerPath(i, start);
+    }
+
+    if (this.walkerWalkAttr) {
+      this.walkerWalkAttr.needsUpdate = true;
+    }
+  }
+
+  private setupWalkerPath(index: number, startCell?: GridPoint): void {
+    const start = startCell ?? this.walkerTargetCells[index] ?? this.pickRandomWalkableCell();
+    const goal = this.pickRandomWalkableCell(start);
+
+    const path = this.pathFinder.findPathBFS(this.maze, start, goal);
+    const state = this.walkerPaths[index].setPath(path, (x, y) => this.cellToWorld(x, y));
+
+    this.walkerCurrentCells[index] = start;
+    this.walkerTargetCells[index] = goal;
+
+    // Spread walkers a bit along the route to avoid complete overlap.
+    const warmupSteps = Math.min(index * 18, 80);
+    for (let i = 0; i < warmupSteps; i++) {
+      const warm = this.walkerPaths[index].update(1 / 60, (x, y) => this.cellToWorld(x, y));
+      if (warm.reachedEnd) {
+        break;
+      }
+    }
+
+    const update = this.walkerPaths[index].update(0, (x, y) => this.cellToWorld(x, y));
+    this.updateWalkerMatrix(index, update.position, update.heading);
+    this.setWalkerWalking(index, state.isWalking);
+  }
+
+  private pickRandomWalkableCell(except?: GridPoint): GridPoint {
     const h = this.maze.length;
     const w = this.maze[0]?.length ?? 0;
-    const start = { x: 0, y: 1 };
-    const goal = { x: w - 1, y: h - 2 };
 
-    this.walkerPath = this.findPathBFS(this.maze, start, goal);
-    this.walkerNextWaypoint = Math.min(1, this.walkerPath.length - 1);
+    for (let tries = 0; tries < 200; tries++) {
+      const x = Math.floor(Math.random() * w);
+      const y = Math.floor(Math.random() * h);
+      if (this.maze[y]?.[x]) {
+        continue;
+      }
+      if (except && except.x === x && except.y === y) {
+        continue;
+      }
+      return { x, y };
+    }
 
-    const initialCell = this.walkerPath[0] ?? start;
-    const initialPosition = this.cellToWorld(initialCell.x, initialCell.y);
-    this.walkerPosition.copy(initialPosition);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (this.maze[y][x]) {
+          continue;
+        }
+        if (except && except.x === x && except.y === y) {
+          continue;
+        }
+        return { x, y };
+      }
+    }
 
-    const initialHeading = this.walkerPath.length > 1
-      ? Math.atan2(
-        this.cellToWorld(this.walkerPath[1].x, this.walkerPath[1].y).x - initialPosition.x,
-        this.cellToWorld(this.walkerPath[1].x, this.walkerPath[1].y).z - initialPosition.z
-      )
-      : 0;
-
-    this.updateWalkerMatrix(initialPosition, initialHeading);
-    this.setWalkerWalking(this.walkerPath.length > 1);
+    return except ?? { x: 0, y: 0 };
   }
 
   private ensureWalkerMesh(): void {
@@ -279,26 +269,29 @@ export default class MazeTest extends Page {
 
     const geometry = this.walkerCharacter.createGeometry();
     const material = this.walkerCharacter.createMaterial();
-    this.walkerMesh = new THREE.InstancedMesh(geometry, material, 1);
+    this.walkerMesh = new THREE.InstancedMesh(geometry, material, this.walkerCount);
     this.scene.add(this.walkerMesh);
 
-    this.walkerWalkData = new Float32Array([1]);
-    const walkPhase = new Float32Array([Math.random() * Math.PI * 2]);
+    this.walkerWalkData = new Float32Array(this.walkerCount);
+    this.walkerWalkData.fill(1);
+    const walkPhase = new Float32Array(this.walkerCount);
+    for (let i = 0; i < this.walkerCount; i++) {
+      walkPhase[i] = Math.random() * Math.PI * 2;
+    }
     this.walkerWalkAttr = new THREE.InstancedBufferAttribute(this.walkerWalkData, 1);
 
     geometry.setAttribute("aWalk", this.walkerWalkAttr);
     geometry.setAttribute("aPhase", new THREE.InstancedBufferAttribute(walkPhase, 1));
   }
 
-  private setWalkerWalking(isWalking: boolean): void {
+  private setWalkerWalking(index: number, isWalking: boolean): void {
     if (!this.walkerWalkData || !this.walkerWalkAttr) {
       return;
     }
-    this.walkerWalkData[0] = isWalking ? 1 : 0;
-    this.walkerWalkAttr.needsUpdate = true;
+    this.walkerWalkData[index] = isWalking ? 1 : 0;
   }
 
-  private updateWalkerMatrix(position: THREE.Vector3, heading: number): void {
+  private updateWalkerMatrix(index: number, position: THREE.Vector3, heading: number): void {
     if (!this.walkerMesh) {
       return;
     }
@@ -306,7 +299,7 @@ export default class MazeTest extends Page {
     const quat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), heading);
     this.walkerScale.set(1, 1, 1);
     matrix.compose(position, quat, this.walkerScale);
-    this.walkerMesh.setMatrixAt(0, matrix);
+    this.walkerMesh.setMatrixAt(index, matrix);
     this.walkerMesh.instanceMatrix.needsUpdate = true;
   }
 
@@ -318,60 +311,4 @@ export default class MazeTest extends Page {
     return new THREE.Vector3(offsetX + x, 0, offsetZ + y);
   }
 
-  private findPathBFS(
-    grid: boolean[][],
-    start: { x: number; y: number },
-    goal: { x: number; y: number }
-  ): Array<{ x: number; y: number }> {
-    const height = grid.length;
-    const width = grid[0]?.length ?? 0;
-    const key = (x: number, y: number) => `${x},${y}`;
-    const directions = [
-      { dx: 1, dy: 0 },
-      { dx: -1, dy: 0 },
-      { dx: 0, dy: 1 },
-      { dx: 0, dy: -1 },
-    ];
-
-    const queue: Array<{ x: number; y: number }> = [start];
-    const visited = new Set<string>([key(start.x, start.y)]);
-    const parent = new Map<string, { x: number; y: number }>();
-
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      if (current.x === goal.x && current.y === goal.y) {
-        const path: Array<{ x: number; y: number }> = [];
-        let cur: { x: number; y: number } | undefined = current;
-        while (cur) {
-          path.push(cur);
-          cur = parent.get(key(cur.x, cur.y));
-        }
-        path.reverse();
-        return path;
-      }
-
-      for (const dir of directions) {
-        const nx = current.x + dir.dx;
-        const ny = current.y + dir.dy;
-
-        if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
-          continue;
-        }
-        if (grid[ny][nx]) {
-          continue;
-        }
-
-        const k = key(nx, ny);
-        if (visited.has(k)) {
-          continue;
-        }
-        visited.add(k);
-        parent.set(k, current);
-        queue.push({ x: nx, y: ny });
-      }
-    }
-
-    // Fallback to start if no path found (should not happen with this maze generation).
-    return [start];
-  }
 }

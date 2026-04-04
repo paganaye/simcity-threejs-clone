@@ -9,7 +9,7 @@ type ICustomTransformGizmoProps = {
     domElement: HTMLCanvasElement;
     proxy: THREE.Object3D;
     onDraggingChanged?: (dragging: boolean) => void;
-    onSnapping?: (position: THREE.Vector3, rotationY: number) => void;
+    onSnapping?: (position: THREE.Vector3, rotationY: number) => { x: number; z: number; angle: number } | undefined;
 };
 
 export class CustomGizmo {
@@ -19,7 +19,7 @@ export class CustomGizmo {
     private readonly domElement: HTMLCanvasElement;
     private readonly proxy: THREE.Object3D;
     private readonly onDraggingChanged?: (dragging: boolean) => void;
-    private readonly onSnapping?: (position: THREE.Vector3, rotationY: number) => { x: number; z: number; angle: number };
+    private readonly onSnapping?: (position: THREE.Vector3, rotationY: number) => { x: number; z: number; angle: number } | undefined;
 
     private readonly root = new THREE.Group();
     private activeAxis?: GizmoAxis;
@@ -52,9 +52,17 @@ export class CustomGizmo {
         this.#build();
     }
 
+    #positionRoot() {
+        //this.gizmo.syncPoseFromProxy(this.proxy.position, this.proxy.rotation.y);
+        this.root.position.set(this.proxy.position.x, 0.06, this.proxy.position.z);
+        this.root.rotation.set(0, this.proxy.rotation.y, 0);
+    }
+
     setVisible(visible: boolean) {
         this.root.visible = visible;
-        if (!visible) {
+        if (visible) {
+            this.#positionRoot();
+        } else {
             this.activeAxis = undefined;
             this.hoveredAxis = undefined;
             this.#applyAxisColors();
@@ -172,6 +180,7 @@ export class CustomGizmo {
 
     onPointerUp() {
         if (!this.activeAxis) return;
+        this.#positionRoot()
         this.activeAxis = undefined;
         this.#applyAxisColors();
         this.onDraggingChanged?.(false);

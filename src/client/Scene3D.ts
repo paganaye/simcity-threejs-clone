@@ -344,6 +344,7 @@ export class Scene3D {
         this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
         this.transformProxy.visible = true;
         gizmo.setVisible(true);
+        gizmo.syncPoseFromProxy(this.transformProxy.position, this.transformProxy.rotation.y);
     }
 
     #onTransformChanged() {
@@ -375,7 +376,7 @@ export class Scene3D {
             this.transformProxy.position.y = 0;
             this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
         }
-        //this.customGizmo?.syncPoseFromProxy();
+        this.customGizmo?.syncPoseFromProxy(this.transformProxy.position, this.transformProxy.rotation.y);
     }
 
     #snap16Angles(angle: number): number {

@@ -9,7 +9,7 @@ import { ICityChanged } from '../sim/Init';
 import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
-import { CustomTransformGizmo } from './editor/CustomTransformGizmo';
+import { CustomGizmo } from './editor/CustomGizmo';
 
 type SelectedInstance = {
     mesh: THREE.InstancedMesh;
@@ -42,7 +42,7 @@ export class Scene3D {
     readonly tempQuaternion = new THREE.Quaternion();
     readonly tempScale = new THREE.Vector3();
     pageContext?: Page;
-    customGizmo?: CustomTransformGizmo;
+    customGizmo?: CustomGizmo;
     readonly transformProxy = new THREE.Object3D();
     lastTransformValid = true;
 
@@ -313,7 +313,7 @@ export class Scene3D {
     #setupCustomGizmo(context: Page) {
         this.transformProxy.visible = false;
         this.scene.add(this.transformProxy);
-        this.customGizmo = new CustomTransformGizmo({
+        this.customGizmo = new CustomGizmo({
             scene: this.scene,
             camera: this.camera,
             raycaster: this.raycaster,

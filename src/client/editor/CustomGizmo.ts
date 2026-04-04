@@ -11,7 +11,7 @@ type ICustomTransformGizmoProps = {
     onDraggingChanged?: (dragging: boolean) => void;
 };
 
-export class CustomTransformGizmo {
+export class CustomGizmo {
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.PerspectiveCamera;
     private readonly raycaster: THREE.Raycaster;

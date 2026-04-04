@@ -13,6 +13,7 @@ const pages = {
     "Maze": "client/tests/MazeTest",
     "Buildings": "client/tests/TestBuildings",
     "Path2": "client/tests/Path2",
+    "Gizmo": "client/tests/Gizmo",
 
 };
 

@@ -3,27 +3,46 @@ import { Page } from "../Page";
 import { CustomGizmo } from '../editor/CustomGizmo';
 
 export default class GizmoTest extends Page {
-  private gizmo: CustomGizmo;
+  private gizmo!: CustomGizmo;
   private proxy?: THREE.Group;
   private raycaster = new THREE.Raycaster();
+  private isGizmoDragging = false;
+  //private snapCallback?: (x: number, z: number, angleRadians: number) => { x: number; z: number; angle: number };
+  private onPointerDown = (e: PointerEvent) => {
+    if (this.gizmo?.onPointerDown(e)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+  private onPointerMove = (e: PointerEvent) => {
+    if (this.gizmo?.onPointerMove(e)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+  private onPointerUp = (e: PointerEvent) => {
+    if (this.isGizmoDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    this.gizmo?.onPointerUp();
+  };
 
   async run() {
-    console.log("a");
+    this.camera.position.set(8, 8, 8);
 
-    //super.run();
     // Create a proxy object that will be manipulated by the gizmo
     this.proxy = new THREE.Group();
     this.proxy.position.set(0, 0, 0);
     this.proxy.rotation.y = 0;
     this.scene.add(this.proxy);
 
-    this.proxy.position.set(1, 0, 1);
+    this.proxy.position.set(5, 0, 1);
 
     // // Add a visual representation to the proxy
-    const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+    const geometry = new THREE.BoxGeometry(4, 1, 4);
     const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.y = 0.25;
     this.proxy.add(mesh);
 
 
@@ -35,34 +54,53 @@ export default class GizmoTest extends Page {
       domElement: this.renderer.domElement,
       proxy: this.proxy,
       onDraggingChanged: (dragging) => {
-        console.log('Dragging:', dragging);
+        this.isGizmoDragging = dragging;
+        if (this.controls) {
+          this.controls.enabled = !dragging;
+        }
       },
+      onSnapping: (position, rotationY) => {
+        let x = Math.round(position.x / 2) * 2;
+        let z = Math.round(position.z / 2) * 2;
+        let angle = Math.round(rotationY / (Math.PI / 8)) * (Math.PI / 8);
+        return { x, z, angle };
+      }
     });
     this.gizmo.setVisible(true);
-    this.gizmo.syncPoseFromProxy();
+    //this.gizmo.syncPoseFromProxy();
 
-    // // Add ground plane for reference
-    // const groundGeom = new THREE.PlaneGeometry(20, 20);
-    // const groundMat = new THREE.MeshPhongMaterial({ color: 0x808080 });
-    // const ground = new THREE.Mesh(groundGeom, groundMat);
-    // ground.rotation.x = -Math.PI / 2;
-    // this.scene.add(ground);
 
-    // // Setup mouse event listeners
-    // this.renderer.domElement.addEventListener('pointerdown', (e) => this.gizmo?.onPointerDown(e));
-    // this.renderer.domElement.addEventListener('pointermove', (e) => this.gizmo?.onPointerMove(e));
-    // this.renderer.domElement.addEventListener('pointerup', (e) => this.gizmo?.onPointerUp());
 
-    // console.log('Gizmo test initialized. Drag the gizmo arrows to move/rotate the box.');
+    // Wire pointer events in this test page so hover/cursor feedback works.
+    this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown, true);
+    this.renderer.domElement.addEventListener('pointermove', this.onPointerMove, true);
+    window.addEventListener('pointerup', this.onPointerUp, true);
+
+
   }
 
   override loop(_elapsed: number): void {
-    // if (this.gizmo && this.proxy) {
-    //   this.gizmo.syncPoseFromProxy();
-    // }
+    //if (this.gizmo && this.proxy && this.snapCallback) {
+    // this.gizmo.syncPoseFromProxy();
+
+    // // Apply snapping to proxy position and rotation
+    // const snapped = this.snapCallback(
+    //   this.proxy.position.x,
+    //   this.proxy.position.z,
+    //   this.proxy.rotation.y
+    // );
+    // this.proxy.position.x = snapped.x;
+    // this.proxy.position.z = snapped.z;
+    // this.proxy.rotation.y = snapped.angle;
+    //}
   }
 
   override cleanup(): void {
-    // Clean up
+    this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown, true);
+    this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove, true);
+    window.removeEventListener('pointerup', this.onPointerUp, true);
+    if (this.controls) {
+      this.controls.enabled = true;
+    }
   }
 }

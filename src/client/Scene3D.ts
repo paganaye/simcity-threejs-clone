@@ -271,7 +271,6 @@ export class Scene3D {
         this.renderDom?.addEventListener('pointermove', (event) => {
             if (this.customGizmo?.onPointerMove(event)) {
                 this.#onTransformChanged();
-                this.customGizmo.syncPoseFromProxy();
             }
         });
 
@@ -344,7 +343,6 @@ export class Scene3D {
         this.transformProxy.position.y = 0;
         this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
         this.transformProxy.visible = true;
-        gizmo.syncPoseFromProxy();
         gizmo.setVisible(true);
     }
 
@@ -377,7 +375,7 @@ export class Scene3D {
             this.transformProxy.position.y = 0;
             this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
         }
-        this.customGizmo?.syncPoseFromProxy();
+        //this.customGizmo?.syncPoseFromProxy();
     }
 
     #snap16Angles(angle: number): number {

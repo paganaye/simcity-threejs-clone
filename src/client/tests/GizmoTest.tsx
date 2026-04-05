@@ -5,8 +5,7 @@ import { CustomGizmo } from '../editor/CustomGizmo';
 
 export default class GizmoTest extends Page {
   private gizmo!: CustomGizmo;
-  private readonly selectableObjects: THREE.Object3D[] = [];
-  //private snapCallback?: (x: number, z: number, angleRadians: number) => { x: number; z: number; angle: number };
+  private readonly selectableSet = new Set<THREE.Object3D>();
   private onPointerDown = (e: PointerEvent) => {
     this.gizmo?.onPointerDown(e);
   };
@@ -40,7 +39,7 @@ export default class GizmoTest extends Page {
     );
     box.position.set(0, 0.5, 0);
     this.scene.add(box);
-    this.selectableObjects.push(box);
+    this.selectableSet.add(box);
 
     const box2 = new THREE.Mesh(
       new THREE.BoxGeometry(2, 1, 2),
@@ -48,7 +47,7 @@ export default class GizmoTest extends Page {
     );
     box2.position.set(2, 0.5, 0);
     this.scene.add(box2);
-    this.selectableObjects.push(box2);
+    this.selectableSet.add(box2);
 
     const box3 = new THREE.Mesh(
       new THREE.BoxGeometry(2, 1, 2),
@@ -56,7 +55,7 @@ export default class GizmoTest extends Page {
     );
     box3.position.set(0, 0.5, 2);
     this.scene.add(box3);
-    this.selectableObjects.push(box3);
+    this.selectableSet.add(box3);
 
     const box4 = new THREE.Mesh(
       new THREE.BoxGeometry(2, 1, 2),
@@ -64,15 +63,15 @@ export default class GizmoTest extends Page {
     );
     box4.position.set(2, 0.5, 2);
     this.scene.add(box4);
-    this.selectableObjects.push(box4);
+    this.selectableSet.add(box4);
 
 
-    // // Create the gizmo
+    // Create the gizmo
     this.gizmo = new CustomGizmo({
       scene: this.scene,
       camera: this.camera,
       domElement: this.renderer.domElement,
-      selectableObjects: this.selectableObjects,
+      isSelectable: (obj) => this.selectableSet.has(obj),
       onDraggingChanged: (dragging) => {
         if (this.controls) {
           this.controls.enabled = !dragging;

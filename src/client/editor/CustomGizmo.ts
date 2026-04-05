@@ -2,12 +2,24 @@ import * as THREE from 'three';
 
 type GizmoAxis = 'x' | 'z' | 'xz' | 'yaw';
 
+export type GizmoSelectableType = 'building' | 'character';
+
+export type GizmoSelectedInstance = {
+    mesh: THREE.InstancedMesh;
+    instanceId: number;
+    selectableType: GizmoSelectableType;
+};
+
 type ICustomTransformGizmoProps = {
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
     raycaster?: THREE.Raycaster;
     domElement: HTMLCanvasElement;
-    selectableObjects?: readonly THREE.Object3D[];
+    isSelectable: (object: THREE.Object3D) => boolean;
+    getSelectedInstance?: () => GizmoSelectedInstance | undefined;
+    getInstanceYaw?: (mesh: THREE.InstancedMesh, instanceId: number) => number;
+    onTryUpdateSelectedInstanceTransform?: (mesh: THREE.InstancedMesh, instanceId: number, x: number, z: number, yaw: number) => boolean;
+    onTransformValidityChanged?: (valid: boolean) => void;
     onSelectObject?: (object: THREE.Object3D) => void;
     onDraggingChanged?: (dragging: boolean) => void;
     onSnapping?: (position: THREE.Vector3, rotationY: number) => { x: number; z: number; angle: number } | undefined;
@@ -30,7 +42,11 @@ export class CustomGizmo {
     private readonly domElement: HTMLCanvasElement;
     private readonly proxy = new THREE.Group();
     private selectedObject?: THREE.Object3D;
-    private readonly selectableObjects: readonly THREE.Object3D[];
+    private readonly isSelectable: (object: THREE.Object3D) => boolean;
+    private readonly getSelectedInstance?: () => GizmoSelectedInstance | undefined;
+    private readonly getInstanceYaw?: (mesh: THREE.InstancedMesh, instanceId: number) => number;
+    private readonly onTryUpdateSelectedInstanceTransform?: (mesh: THREE.InstancedMesh, instanceId: number, x: number, z: number, yaw: number) => boolean;
+    private readonly onTransformValidityChanged?: (valid: boolean) => void;
     private readonly onSelectObject?: (object: THREE.Object3D) => void;
     private readonly onDraggingChanged?: (dragging: boolean) => void;
     private readonly onSnapping?: (position: THREE.Vector3, rotationY: number) => { x: number; z: number; angle: number } | undefined;
@@ -53,13 +69,22 @@ export class CustomGizmo {
     private dragStartYaw = 0;
     private dragStartAngle = 0;
     private readonly tempRayHit = new THREE.Vector3();
+    private readonly tempMatrix = new THREE.Matrix4();
+    private readonly tempPosition = new THREE.Vector3();
+    private readonly tempQuaternion = new THREE.Quaternion();
+    private readonly tempScale = new THREE.Vector3();
+    private readonly tempEuler = new THREE.Euler();
 
     constructor(props: ICustomTransformGizmoProps) {
         this.scene = props.scene;
         this.camera = props.camera;
         this.raycaster = props.raycaster ?? new THREE.Raycaster();
         this.domElement = props.domElement;
-        this.selectableObjects = props.selectableObjects ?? [];
+        this.isSelectable = props.isSelectable;
+        this.getSelectedInstance = props.getSelectedInstance;
+        this.getInstanceYaw = props.getInstanceYaw;
+        this.onTryUpdateSelectedInstanceTransform = props.onTryUpdateSelectedInstanceTransform;
+        this.onTransformValidityChanged = props.onTransformValidityChanged;
         this.onSelectObject = props.onSelectObject;
         this.onDraggingChanged = props.onDraggingChanged;
         this.onSnapping = props.onSnapping;
@@ -71,6 +96,13 @@ export class CustomGizmo {
     }
 
     setSelection(object: THREE.Object3D): void {
+        if (object === this.proxy) {
+            this.selectedObject = undefined;
+            this.proxy.visible = true;
+            this.setVisible(true);
+            return;
+        }
+
         if (this.selectedObject === object) {
             this.setVisible(true);
             return;
@@ -105,6 +137,29 @@ export class CustomGizmo {
         }
         this.proxy.visible = false;
         this.setVisible(false);
+    }
+
+    syncSelectionFromSelectedInstance(): void {
+        const selected = this.getSelectedInstance?.();
+        if (!selected || selected.selectableType !== 'building') {
+            this.proxy.visible = false;
+            this.clearSelection();
+            return;
+        }
+
+        const { mesh, instanceId } = selected;
+        mesh.getMatrixAt(instanceId, this.tempMatrix);
+        this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
+        const yaw = this.getInstanceYaw
+            ? this.getInstanceYaw(mesh, instanceId)
+            : this.tempEuler.setFromQuaternion(this.tempQuaternion, 'YXZ').y;
+
+        this.clearSelection();
+        this.proxy.position.copy(this.tempPosition);
+        this.proxy.position.y = 0;
+        this.proxy.rotation.set(0, yaw, 0);
+        this.proxy.visible = true;
+        this.setVisible(true);
     }
 
     #positionRoot() {
@@ -163,6 +218,31 @@ export class CustomGizmo {
             position.set(snapped.x, position.y, snapped.z);
             rotationY = snapped.angle;
         }
+
+        const selected = this.getSelectedInstance?.();
+        if (selected && selected.selectableType === 'building' && this.onTryUpdateSelectedInstanceTransform) {
+            const ok = this.onTryUpdateSelectedInstanceTransform(
+                selected.mesh,
+                selected.instanceId,
+                position.x,
+                position.z,
+                rotationY,
+            );
+            this.onTransformValidityChanged?.(ok);
+
+            if (!ok) {
+                selected.mesh.getMatrixAt(selected.instanceId, this.tempMatrix);
+                this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
+                const yaw = this.getInstanceYaw
+                    ? this.getInstanceYaw(selected.mesh, selected.instanceId)
+                    : this.tempEuler.setFromQuaternion(this.tempQuaternion, 'YXZ').y;
+                this.proxy.position.copy(this.tempPosition);
+                this.proxy.position.y = 0;
+                this.proxy.rotation.set(0, yaw, 0);
+                return;
+            }
+        }
+
         this.proxy.position.copy(position);
         this.proxy.rotation.y = rotationY;
     }
@@ -205,15 +285,23 @@ export class CustomGizmo {
     }
 
     #pickSelectableAtPointer(event: PointerEvent): THREE.Object3D | undefined {
-        if (this.selectableObjects.length === 0) {
-            return undefined;
-        }
-
         const mouse = this.#pointerToNdc(event);
         if (!mouse) return undefined;
 
         this.raycaster.setFromCamera(mouse, this.camera);
-        const hits = this.raycaster.intersectObjects(this.selectableObjects as THREE.Object3D[], false);
+        
+        const selectableObjects: THREE.Object3D[] = [];
+        this.scene.traverse((obj) => {
+            if (this.isSelectable?.(obj)) {
+                selectableObjects.push(obj);
+            }
+        });
+
+        if (selectableObjects.length === 0) {
+            return undefined;
+        }
+
+        const hits = this.raycaster.intersectObjects(selectableObjects, false);
         return hits[0]?.object;
     }
 

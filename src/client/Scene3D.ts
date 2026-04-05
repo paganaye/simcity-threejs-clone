@@ -9,13 +9,7 @@ import { ICityChanged } from '../sim/Init';
 import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
-import { CustomGizmo } from './editor/CustomGizmo';
-
-type SelectedInstance = {
-    mesh: THREE.InstancedMesh;
-    instanceId: number;
-    selectableType: 'building' | 'character';
-};
+import { CustomGizmo, type GizmoSelectedInstance } from './editor/CustomGizmo';
 
 export class Scene3D {
     assetManager: AssetManager = new AssetManager(this)
@@ -36,14 +30,14 @@ export class Scene3D {
     container!: HTMLElement;
     renderDom?: HTMLCanvasElement;
     selectionHalo?: THREE.Mesh;
-    selectedInstance?: SelectedInstance;
+    selectedInstance?: GizmoSelectedInstance;
     readonly tempMatrix = new THREE.Matrix4();
     readonly tempPosition = new THREE.Vector3();
     readonly tempQuaternion = new THREE.Quaternion();
     readonly tempScale = new THREE.Vector3();
     pageContext?: Page;
     customGizmo?: CustomGizmo;
-    //readonly transformProxy = new THREE.Object3D();
+    readonly transformProxy = new THREE.Object3D();
     lastTransformValid = true;
 
     constructor(readonly uiProps: UIProps) { }
@@ -191,13 +185,6 @@ export class Scene3D {
 
 
     #raycast(): SimObject3D | null {
-        // var coords = new THREE.Vector2(
-        //     (this.inputManager.x / this.renderer.domElement.clientWidth) * 2 - 1,
-        //     -(this.inputManager.y / this.renderer.domElement.clientHeight) * 2 + 1
-        // );
-
-        //this.raycaster.setFromCamera(coords, this.camera);
-
         let intersections = this.raycaster.intersectObjects(this.worldMap3D.root.children, true);
         if (intersections.length > 0) {
             // The SimObject attached to the mesh is stored in the user data
@@ -244,8 +231,11 @@ export class Scene3D {
             this.raycaster.setFromCamera(mouse, this.camera);
             const hits = this.raycaster.intersectObjects(this.scene.children, true);
 
-            let selected: SelectedInstance | undefined;
+            let selected: GizmoSelectedInstance | undefined;
             for (const hit of hits) {
+                // Skip the proxy itself
+                if (hit.object === this.transformProxy) continue;
+
                 const obj = hit.object as THREE.InstancedMesh;
                 const selectableType = obj.userData?.selectableType as ('building' | 'character' | undefined);
                 if (!selectableType) continue;
@@ -256,18 +246,14 @@ export class Scene3D {
                     instanceId: hit.instanceId,
                     selectableType,
                 };
-                //TODO this.#attachSelection(hits[0].object);
 
                 break;
             }
 
-            // Ignore non-selectable clicks
-            // to keep current selection and avoid interfering with gizmo interaction.
-            if (!selected) return;
-
+            // If nothing selected, deselect current
             this.selectedInstance = selected;
             this.lastTransformValid = true;
-            //this.#syncTransformSelection();
+            this.customGizmo?.syncSelectionFromSelectedInstance();
         });
 
         this.renderDom?.addEventListener('pointermove', (event) => {
@@ -312,109 +298,32 @@ export class Scene3D {
     }
 
     #setupCustomGizmo(context: Page) {
-        //this.transformProxy.visible = false;
-        //this.scene.add(this.transformProxy);
+        this.scene.add(this.transformProxy);
         this.customGizmo = new CustomGizmo({
             scene: this.scene,
             camera: this.camera,
             raycaster: this.raycaster,
             domElement: context.renderer.domElement,
+            getSelectedInstance: () => this.selectedInstance,
+            getInstanceYaw: (mesh, instanceId) => this.worldMap3D.getBuildingYaw(mesh, instanceId),
+            onTryUpdateSelectedInstanceTransform: (mesh, instanceId, x, z, yaw) => {
+                return this.worldMap3D.tryUpdateBuildingTransform(mesh, instanceId, x, z, yaw);
+            },
+            onTransformValidityChanged: (valid) => {
+                this.lastTransformValid = valid;
+            },
+            isSelectable: (obj) => {
+                // Only the proxy is directly selectable by the gizmo
+                return obj === this.transformProxy;
+            },
+            onSelectObject: () => {
+                // Re-sync proxy pose with active selected instance.
+                this.customGizmo?.syncSelectionFromSelectedInstance();
+            },
             onDraggingChanged: (dragging) => {
                 if (context.controls) context.controls.enabled = !dragging;
             },
         });
     }
-
-    //#syncTransformSelection() {
-    // const gizmo = this.customGizmo;
-    // const selected = this.selectedInstance;
-    // if (!gizmo) return;
-
-    // if (!selected || selected.selectableType !== 'building') {
-    //     this.transformProxy.visible = false;
-    //     gizmo.setVisible(false);
-    //     return;
-    // }
-
-    // const { mesh, instanceId } = selected;
-    // mesh.getMatrixAt(instanceId, this.tempMatrix);
-    // this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
-
-    // this.transformProxy.position.copy(this.tempPosition);
-    // this.transformProxy.position.y = 0;
-    // this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
-    // this.transformProxy.visible = true;
-    // gizmo.setVisible(true);
-
-    // }
-
-    //    #onTransformChanged() {
-    //         const selected = this.selectedInstance;
-    //         if (!selected || selected.selectableType !== 'building') return;
-
-    //         const { mesh, instanceId } = selected;
-    //         this.transformProxy.position.y = 0;
-    //         // Snap angle first so position snap uses the correct lattice type.
-    //         const yaw = this.#snap16Angles(this.transformProxy.rotation.y);
-    //         this.transformProxy.rotation.y = yaw;
-    //         const snapped = this.#snapPositionToGrid(this.transformProxy.position.x, this.transformProxy.position.z, yaw);
-    //         this.transformProxy.position.x = snapped.x;
-    //         this.transformProxy.position.z = snapped.z;
-
-    //         const ok = this.worldMap3D.tryUpdateBuildingTransform(
-    //             mesh,
-    //             instanceId,
-    //             this.transformProxy.position.x,
-    //             this.transformProxy.position.z,
-    //             yaw
-    //    &     );
-    //         this.lastTransformValid = ok;
-
-    //         if (!ok) {
-    //             mesh.getMatrixAt(instanceId, this.tempMatrix);
-    //             this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
-    //             this.transformProxy.position.copy(this.tempPosition);
-    //             this.transformProxy.position.y = 0;
-    //             this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
-    //         }
-    //         //this.customGizmo?.syncPoseFromProxy(this.transformProxy.position, this.transformProxy.rotation.y);
-    //    }
-
-    // #snap16Angles(angle: number): number {
-    //     const step = (Math.PI * 2) / 16;
-    //     return Math.round(angle / step) * step;
-    // }
-
-    /**
-     * Snap world position (x, z) to the spatial lattice implied by the building's
-     * orientation. The 16 orientation types fall into 4 families:
-     *   type 0 — cardinal      (0°, 90°…):  1 m grid,   basis (1,0)/(0,1)
-     *   type 1 — ~(2,1) dir   (22.5°…):    √5 m steps, basis (2,±1)/(-±1,2)
-     *   type 2 — diagonal     (45°, 135°…): √2 m steps, basis (1,±1)/(-±1,1)
-     *   type 3 — ~(1,2) dir   (67.5°…):    √5 m steps, basis (1,±2)/(-±2,1)
-     *
-     * Method: approximate local X axis as integer vector at the right scale,
-     * derive local Z as its perpendicular, then project (x,z) onto that lattice.
-     */
-    // #snapPositionToGrid(x: number, z: number, yaw: number): { x: number; z: number } {
-    //     const idx = Math.round(yaw / (Math.PI / 8));
-    //     const type = ((idx % 4) + 4) % 4;
-    //     // Scale factors so (cos yaw, -sin yaw)*scale ≈ integer vector for each type.
-    //     const scales = [1, Math.sqrt(5), Math.sqrt(2), Math.sqrt(5)];
-    //     const scale = scales[type];
-
-    //     // Integer local X axis in XZ world coords: Three.js local X = (cos y, 0, -sin y)
-    //     const lx = Math.round(Math.cos(yaw) * scale);
-    //     const lz = Math.round(-Math.sin(yaw) * scale);
-    //     // Local Z perpendicular (90° CCW in XZ): (-lz, lx)
-    //     const px = -lz, pz = lx;
-
-    //     // Decompose (x,z) in the {(lx,lz),(px,pz)} lattice basis and round.
-    //     const det = lx * pz - lz * px; // = scale²
-    //     if (det === 0) return { x: Math.round(x), z: Math.round(z) };
-    //     const a = Math.round((pz * x - px * z) / det);
-    //     const b = Math.round((-lz * x + lx * z) / det);
-    //     return { x: a * lx + b * px, z: a * lz + b * pz };
-    // }
-
+    
 }

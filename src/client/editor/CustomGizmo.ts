@@ -5,12 +5,24 @@ type GizmoAxis = 'x' | 'z' | 'xz' | 'yaw';
 type ICustomTransformGizmoProps = {
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
-    raycaster: THREE.Raycaster;
+    raycaster?: THREE.Raycaster;
     domElement: HTMLCanvasElement;
     proxy: THREE.Object3D;
+    selectableObjects?: readonly THREE.Object3D[];
+    onSelectObject?: (object: THREE.Object3D) => void;
     onDraggingChanged?: (dragging: boolean) => void;
     onSnapping?: (position: THREE.Vector3, rotationY: number) => { x: number; z: number; angle: number } | undefined;
 };
+
+const SLOPE_1_2 = Math.atan2(1, 2); // 26.565051177077986
+const SLOPE_1_2_DELTA = SLOPE_1_2 - Math.PI / 8;
+const GRID_SNAP = 1;
+const SECTOR_ANGLE = Math.PI / 8; // 16 secteurs
+
+function Rad2Deg(rad: number): number {
+    return rad * 180 / Math.PI;
+}
+
 
 export class CustomGizmo {
     private readonly scene: THREE.Scene;
@@ -18,6 +30,8 @@ export class CustomGizmo {
     private readonly raycaster: THREE.Raycaster;
     private readonly domElement: HTMLCanvasElement;
     private readonly proxy: THREE.Object3D;
+    private readonly selectableObjects: readonly THREE.Object3D[];
+    private readonly onSelectObject?: (object: THREE.Object3D) => void;
     private readonly onDraggingChanged?: (dragging: boolean) => void;
     private readonly onSnapping?: (position: THREE.Vector3, rotationY: number) => { x: number; z: number; angle: number } | undefined;
 
@@ -43,9 +57,11 @@ export class CustomGizmo {
     constructor(props: ICustomTransformGizmoProps) {
         this.scene = props.scene;
         this.camera = props.camera;
-        this.raycaster = props.raycaster;
+        this.raycaster = props.raycaster ?? new THREE.Raycaster();
         this.domElement = props.domElement;
         this.proxy = props.proxy;
+        this.selectableObjects = props.selectableObjects ?? [];
+        this.onSelectObject = props.onSelectObject;
         this.onDraggingChanged = props.onDraggingChanged;
         this.onSnapping = props.onSnapping;
 
@@ -70,12 +86,38 @@ export class CustomGizmo {
         }
     }
 
-    syncPoseFromProxy(position: THREE.Vector3, rotationY: number) {
+    defaultSnapping(position: THREE.Vector3, rotationY: number): { x: number; z: number; angle: number } | undefined {
+        let x = position.x;
+        let z = position.z;
+
+        let xi = Math.round(x / GRID_SNAP);
+        let zi = Math.round(z / GRID_SNAP);
+        x = xi * GRID_SNAP;
+        z = zi * GRID_SNAP;
+
+        let sector = Math.round(rotationY / SECTOR_ANGLE);
+        const type = ((sector % 4) + 4) % 4;
+        let angle = sector * SECTOR_ANGLE;
+
+        switch (type) {
+            case 1: // 1:2
+                angle += SLOPE_1_2_DELTA;
+                break;
+
+            case 3: // 2:1
+                angle -= SLOPE_1_2_DELTA;
+                break;
+        }
+        console.log(`Snapping ${position.x}, ${position.z} to ${x},${z}, angle: ${Rad2Deg(angle)}° (type ${type})`);
+        return { x, z, angle };
+    }
+
+    #syncPoseFromProxy(position: THREE.Vector3, rotationY: number) {
         this.root.position.set(position.x, 0.06, position.z);
         this.root.rotation.set(0, rotationY, 0);
 
         // Call snapping callback first
-        let snapped = this.onSnapping?.(position, rotationY);
+        let snapped = (this.onSnapping ?? this.defaultSnapping)(position, rotationY);
 
         // Apply the transform to the proxy
         if (snapped) {
@@ -87,10 +129,17 @@ export class CustomGizmo {
     }
 
     onPointerDown(event: PointerEvent): boolean {
-        if (!this.root.visible) return false;
-
-        const axis = this.#pickAxisAtPointer(event);
-        if (!axis) return false;
+        const axis = this.root.visible ? this.#pickAxisAtPointer(event) : undefined;
+        if (!axis) {
+            const selectable = this.#pickSelectableAtPointer(event);
+            if (selectable) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.onSelectObject?.(selectable);
+                return true;
+            }
+            return false;
+        }
 
         if (!this.raycaster.ray.intersectPlane(this.groundPlane, this.tempRayHit)) return false;
 
@@ -108,9 +157,24 @@ export class CustomGizmo {
             );
         }
 
+        event.preventDefault();
+        event.stopPropagation();
         this.onDraggingChanged?.(true);
         this.domElement.style.cursor = 'grabbing';
         return true;
+    }
+
+    #pickSelectableAtPointer(event: PointerEvent): THREE.Object3D | undefined {
+        if (this.selectableObjects.length === 0) {
+            return undefined;
+        }
+
+        const mouse = this.#pointerToNdc(event);
+        if (!mouse) return undefined;
+
+        this.raycaster.setFromCamera(mouse, this.camera);
+        const hits = this.raycaster.intersectObjects(this.selectableObjects as THREE.Object3D[], false);
+        return hits[0]?.object;
     }
 
     onPointerMove(event: PointerEvent): boolean {
@@ -174,12 +238,16 @@ export class CustomGizmo {
             newPosition.copy(this.dragStartProxyPosition);
         }
 
-        this.syncPoseFromProxy(newPosition, newRotationY);
+        event.preventDefault();
+        event.stopPropagation();
+        this.#syncPoseFromProxy(newPosition, newRotationY);
         return true;
     }
 
-    onPointerUp() {
+    onPointerUp(event?: PointerEvent) {
         if (!this.activeAxis) return;
+        event?.preventDefault();
+        event?.stopPropagation();
         this.#positionRoot()
         this.activeAxis = undefined;
         this.#applyAxisColors();

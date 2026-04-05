@@ -256,6 +256,8 @@ export class Scene3D {
                     instanceId: hit.instanceId,
                     selectableType,
                 };
+                //TODO this.#attachSelection(hits[0].object);
+
                 break;
             }
 
@@ -265,12 +267,12 @@ export class Scene3D {
 
             this.selectedInstance = selected;
             this.lastTransformValid = true;
-            this.#syncTransformSelection();
+            //this.#syncTransformSelection();
         });
 
         this.renderDom?.addEventListener('pointermove', (event) => {
             if (this.customGizmo?.onPointerMove(event)) {
-                this.#onTransformChanged();
+                //this.#onTransformChanged();
             }
         });
 
@@ -324,65 +326,65 @@ export class Scene3D {
         });
     }
 
-    #syncTransformSelection() {
-        const gizmo = this.customGizmo;
-        const selected = this.selectedInstance;
-        if (!gizmo) return;
+    //#syncTransformSelection() {
+    // const gizmo = this.customGizmo;
+    // const selected = this.selectedInstance;
+    // if (!gizmo) return;
 
-        if (!selected || selected.selectableType !== 'building') {
-            this.transformProxy.visible = false;
-            gizmo.setVisible(false);
-            return;
-        }
+    // if (!selected || selected.selectableType !== 'building') {
+    //     this.transformProxy.visible = false;
+    //     gizmo.setVisible(false);
+    //     return;
+    // }
 
-        const { mesh, instanceId } = selected;
-        mesh.getMatrixAt(instanceId, this.tempMatrix);
-        this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
+    // const { mesh, instanceId } = selected;
+    // mesh.getMatrixAt(instanceId, this.tempMatrix);
+    // this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
 
-        this.transformProxy.position.copy(this.tempPosition);
-        this.transformProxy.position.y = 0;
-        this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
-        this.transformProxy.visible = true;
-        gizmo.setVisible(true);
-        gizmo.syncPoseFromProxy(this.transformProxy.position, this.transformProxy.rotation.y);
-    }
+    // this.transformProxy.position.copy(this.tempPosition);
+    // this.transformProxy.position.y = 0;
+    // this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
+    // this.transformProxy.visible = true;
+    // gizmo.setVisible(true);
 
-    #onTransformChanged() {
-        const selected = this.selectedInstance;
-        if (!selected || selected.selectableType !== 'building') return;
+    // }
 
-        const { mesh, instanceId } = selected;
-        this.transformProxy.position.y = 0;
-        // Snap angle first so position snap uses the correct lattice type.
-        const yaw = this.#snap16Angles(this.transformProxy.rotation.y);
-        this.transformProxy.rotation.y = yaw;
-        const snapped = this.#snapPositionToGrid(this.transformProxy.position.x, this.transformProxy.position.z, yaw);
-        this.transformProxy.position.x = snapped.x;
-        this.transformProxy.position.z = snapped.z;
+    //    #onTransformChanged() {
+    //         const selected = this.selectedInstance;
+    //         if (!selected || selected.selectableType !== 'building') return;
 
-        const ok = this.worldMap3D.tryUpdateBuildingTransform(
-            mesh,
-            instanceId,
-            this.transformProxy.position.x,
-            this.transformProxy.position.z,
-            yaw
-        );
-        this.lastTransformValid = ok;
+    //         const { mesh, instanceId } = selected;
+    //         this.transformProxy.position.y = 0;
+    //         // Snap angle first so position snap uses the correct lattice type.
+    //         const yaw = this.#snap16Angles(this.transformProxy.rotation.y);
+    //         this.transformProxy.rotation.y = yaw;
+    //         const snapped = this.#snapPositionToGrid(this.transformProxy.position.x, this.transformProxy.position.z, yaw);
+    //         this.transformProxy.position.x = snapped.x;
+    //         this.transformProxy.position.z = snapped.z;
 
-        if (!ok) {
-            mesh.getMatrixAt(instanceId, this.tempMatrix);
-            this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
-            this.transformProxy.position.copy(this.tempPosition);
-            this.transformProxy.position.y = 0;
-            this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
-        }
-        this.customGizmo?.syncPoseFromProxy(this.transformProxy.position, this.transformProxy.rotation.y);
-    }
+    //         const ok = this.worldMap3D.tryUpdateBuildingTransform(
+    //             mesh,
+    //             instanceId,
+    //             this.transformProxy.position.x,
+    //             this.transformProxy.position.z,
+    //             yaw
+    //    &     );
+    //         this.lastTransformValid = ok;
 
-    #snap16Angles(angle: number): number {
-        const step = (Math.PI * 2) / 16;
-        return Math.round(angle / step) * step;
-    }
+    //         if (!ok) {
+    //             mesh.getMatrixAt(instanceId, this.tempMatrix);
+    //             this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
+    //             this.transformProxy.position.copy(this.tempPosition);
+    //             this.transformProxy.position.y = 0;
+    //             this.transformProxy.rotation.set(0, this.worldMap3D.getBuildingYaw(mesh, instanceId), 0);
+    //         }
+    //         //this.customGizmo?.syncPoseFromProxy(this.transformProxy.position, this.transformProxy.rotation.y);
+    //    }
+
+    // #snap16Angles(angle: number): number {
+    //     const step = (Math.PI * 2) / 16;
+    //     return Math.round(angle / step) * step;
+    // }
 
     /**
      * Snap world position (x, z) to the spatial lattice implied by the building's
@@ -395,25 +397,25 @@ export class Scene3D {
      * Method: approximate local X axis as integer vector at the right scale,
      * derive local Z as its perpendicular, then project (x,z) onto that lattice.
      */
-    #snapPositionToGrid(x: number, z: number, yaw: number): { x: number; z: number } {
-        const idx = Math.round(yaw / (Math.PI / 8));
-        const type = ((idx % 4) + 4) % 4;
-        // Scale factors so (cos yaw, -sin yaw)*scale ≈ integer vector for each type.
-        const scales = [1, Math.sqrt(5), Math.sqrt(2), Math.sqrt(5)];
-        const scale = scales[type];
+    // #snapPositionToGrid(x: number, z: number, yaw: number): { x: number; z: number } {
+    //     const idx = Math.round(yaw / (Math.PI / 8));
+    //     const type = ((idx % 4) + 4) % 4;
+    //     // Scale factors so (cos yaw, -sin yaw)*scale ≈ integer vector for each type.
+    //     const scales = [1, Math.sqrt(5), Math.sqrt(2), Math.sqrt(5)];
+    //     const scale = scales[type];
 
-        // Integer local X axis in XZ world coords: Three.js local X = (cos y, 0, -sin y)
-        const lx = Math.round(Math.cos(yaw) * scale);
-        const lz = Math.round(-Math.sin(yaw) * scale);
-        // Local Z perpendicular (90° CCW in XZ): (-lz, lx)
-        const px = -lz, pz = lx;
+    //     // Integer local X axis in XZ world coords: Three.js local X = (cos y, 0, -sin y)
+    //     const lx = Math.round(Math.cos(yaw) * scale);
+    //     const lz = Math.round(-Math.sin(yaw) * scale);
+    //     // Local Z perpendicular (90° CCW in XZ): (-lz, lx)
+    //     const px = -lz, pz = lx;
 
-        // Decompose (x,z) in the {(lx,lz),(px,pz)} lattice basis and round.
-        const det = lx * pz - lz * px; // = scale²
-        if (det === 0) return { x: Math.round(x), z: Math.round(z) };
-        const a = Math.round((pz * x - px * z) / det);
-        const b = Math.round((-lz * x + lx * z) / det);
-        return { x: a * lx + b * px, z: a * lz + b * pz };
-    }
+    //     // Decompose (x,z) in the {(lx,lz),(px,pz)} lattice basis and round.
+    //     const det = lx * pz - lz * px; // = scale²
+    //     if (det === 0) return { x: Math.round(x), z: Math.round(z) };
+    //     const a = Math.round((pz * x - px * z) / det);
+    //     const b = Math.round((-lz * x + lx * z) / det);
+    //     return { x: a * lx + b * px, z: a * lz + b * pz };
+    // }
 
 }

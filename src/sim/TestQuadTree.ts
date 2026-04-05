@@ -7,9 +7,7 @@ assertTrue("TestQuadTree", testQuadTree);
 
 export function testQuadTree(): boolean {
     const boundary: IRectangle = { x: 0, z: 0, width: 100, height: 100 };
-    const capacity = 1;
-    const quadtree = new QuadTree<IPoint2D>(boundary, capacity, 16);
-
+    const quadtree = new QuadTree<IPoint2D>(boundary, 16);
     const points: IPoint2D[] = [
         { x: 10, z: 10 },
         { x: 80, z: 80 },

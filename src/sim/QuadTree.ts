@@ -21,7 +21,8 @@ export class QuadTree<T extends IPoint2D> {
      *                    Subdivision stops when a cell would become smaller than this.
      *                    0 means no limit.
      */
-    constructor(readonly boundary: IRectangle, readonly capacity: number, readonly minCellSize: number = 1) {
+    constructor(readonly boundary: IRectangle,
+        readonly minCellSize: number = 1) {
         let w2 = boundary.width / 2;
         let h2 = boundary.height / 2;
         let midX = boundary.x + w2;
@@ -45,7 +46,7 @@ export class QuadTree<T extends IPoint2D> {
             this.#insertIntoNode(quarter!, value);
         } else if (!node.values) {
             node.values = [value];
-        } else if (node.values!.length < this.capacity || node.width < this.minCellSize) {
+        } else if (node.width <= this.minCellSize) {
             node.values!.push(value);
             return;
         } else {
@@ -143,9 +144,9 @@ export class QuadTree<T extends IPoint2D> {
 
     #nodeContains(node: IQuadTreeNode<T>, value: IPoint2D): boolean {
         return value.x >= node.midX - node.width &&
-               value.x <  node.midX + node.width &&
-               value.z >= node.midY - node.height &&
-               value.z <  node.midY + node.height;
+            value.x < node.midX + node.width &&
+            value.z >= node.midY - node.height &&
+            value.z < node.midY + node.height;
     }
 
     findPoint(point: IPoint2D): T[] {

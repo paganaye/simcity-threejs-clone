@@ -3,17 +3,18 @@ import { App } from "./client/App";
 
 
 const pages = {
-    "Marbles Test": "client/tests/MarblesTest",
-    "Road Scene": "client/tests/RoadSceneTest",
-    "Stencil Buffer": "client/tests/StencilBufferTest",
-    "Character Test": "client/tests/CharacterTest",
-    "Simple Test": "client/tests/SimpleTest",
-    "Three Editor": "client/editor/ThreeEditor",
-    "Game": "client/GamePage",
-    "Maze": "client/tests/MazeTest",
     "Buildings": "client/tests/TestBuildings",
-    "Path2": "client/tests/Path2",
-    "Gizmo": "client/tests/Gizmo",
+    "Character Test": "client/tests/CharacterTest",
+    "Game": "client/GamePage",
+    "Gizmo": "client/tests/GizmoTest",
+    "Marbles Test": "client/tests/MarblesTest",
+    "Maze": "client/tests/MazeTest",
+    "Path": "client/tests/PathTest",
+    "QuaternionTest": "client/tests/QuaternionTest",
+    "Road Scene": "client/tests/RoadSceneTest",
+    "Simple Test": "client/tests/SimpleTest",
+    "Stencil Buffer": "client/tests/StencilBufferTest",
+    "Three Editor": "client/editor/ThreeEditor",
 
 };
 

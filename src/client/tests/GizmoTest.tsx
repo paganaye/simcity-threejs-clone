@@ -2,6 +2,16 @@ import * as THREE from 'three';
 import { Page } from "../Page";
 import { CustomGizmo } from '../editor/CustomGizmo';
 
+const SLOPE_1_2 = Math.atan2(1, 2); // 26.565051177077986
+const SLOPE_1_2_DELTA = SLOPE_1_2 - Math.PI / 8;
+const GRID_SNAP = 1;
+const HALF_SNAP = GRID_SNAP / 2;
+const SECTOR_ANGLE = Math.PI / 8; // 16 secteurs
+
+function Rad2Deg(rad: number): number {
+  return rad * 180 / Math.PI;
+}
+
 export default class GizmoTest extends Page {
   private gizmo!: CustomGizmo;
   private proxy?: THREE.Group;
@@ -63,7 +73,7 @@ export default class GizmoTest extends Page {
       new THREE.BoxGeometry(2, 1, 2),
       new THREE.MeshPhongMaterial({ color: 0x23a455 })
     );
-    box.position.set(5, 0.5, 1);
+    box.position.set(0, 0.5, 0);
     this.scene.add(box);
     this.selectableObjects.push(box);
 
@@ -71,7 +81,7 @@ export default class GizmoTest extends Page {
       new THREE.BoxGeometry(2, 1, 2),
       new THREE.MeshPhongMaterial({ color: 0x2b6de0 })
     );
-    box2.position.set(0, 0.5, 5);
+    box2.position.set(2, 0.5, 0);
     this.scene.add(box2);
     this.selectableObjects.push(box2);
 
@@ -79,9 +89,17 @@ export default class GizmoTest extends Page {
       new THREE.BoxGeometry(2, 1, 2),
       new THREE.MeshPhongMaterial({ color: 0xe0a32b })
     );
-    box3.position.set(-5, 0.5, -1);
+    box3.position.set(0, 0.5, 2);
     this.scene.add(box3);
     this.selectableObjects.push(box3);
+
+    const box4 = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 1, 2),
+      new THREE.MeshPhongMaterial({ color: 0xa3e02b })
+    );
+    box4.position.set(2, 0.5, 2);
+    this.scene.add(box4);
+    this.selectableObjects.push(box4);
 
 
     // // Create the gizmo
@@ -98,36 +116,44 @@ export default class GizmoTest extends Page {
         }
       },
       onSnapping: (position, rotationY) => {
-        let STEP_SIZE = 1;
-        let TWO_STEPS = STEP_SIZE * 2;
-        let x: number, z: number;
-        let angleInt = (16 + Math.round(rotationY / (Math.PI / 8))) & 15; // Wrap around every 16 steps (360 degrees)      
-        let angle = angleInt * (Math.PI / 8);
-        switch (angleInt & 7) {
-          case 0: // 0 degrees          
-          case 2: // 45 degrees
-          case 4: // 90 degrees
-          case 6: // 135 degrees
-            x = Math.round(position.x / STEP_SIZE) * STEP_SIZE;
-            z = Math.round(position.z / STEP_SIZE) * STEP_SIZE;
+        let x = position.x;
+        let z = position.z;
+
+        let sector = Math.round(rotationY / SECTOR_ANGLE);
+        const type = ((sector % 4) + 4) % 4;
+        let xi = Math.round(x / GRID_SNAP);
+        let zi = Math.round(z / GRID_SNAP);
+
+        let angle = sector * SECTOR_ANGLE;
+
+        switch (type) {
+          case 0: // axes
+          case 2: // diagonals
+            x = xi * GRID_SNAP;
+            z = zi * GRID_SNAP;
             break;
-          case 1: // 22.5 degrees;
-          case 5: // 112.5 degrees we want to snap to a 2:1 grid for these angles to keep the diagonal lines straight
-            x = Math.round(position.x / STEP_SIZE) * STEP_SIZE;
-            z = Math.round(position.z / TWO_STEPS) * TWO_STEPS;
-            angle = Math.atan2(1, 2);  // we want a 2:1 angle 
+
+          case 1: // 1:2
+            angle += SLOPE_1_2_DELTA;
+            x = xi * GRID_SNAP;
+            if (xi & 1) z = Math.round((z - HALF_SNAP) / GRID_SNAP) * GRID_SNAP + HALF_SNAP;
+
             break;
-          case 3: // 67.5 degrees
-          case 7: // 157.5 degrees again we want to snap to a 1:2 grid for these angles to keep the diagonal lines straight
-            x = Math.round(position.x / TWO_STEPS) * TWO_STEPS;
-            z = Math.round(position.z / STEP_SIZE) * STEP_SIZE;
-            angle = Math.atan2(2, 1);  // we want a 1:2 angle 
+
+          case 3: // 2:1
+            angle -= SLOPE_1_2_DELTA;
+            if (zi & 1)
+              x = Math.round((x - HALF_SNAP) / GRID_SNAP) * GRID_SNAP + HALF_SNAP;
+
+            z = zi * GRID_SNAP;
             break;
         }
-        console.log(`Snapping to x=${x!}, z=${z!}, angle=${angleInt}`);
-        return { x: x!, z: z!, angle };
+        console.log(`type=${type} angle=${Rad2Deg(angle).toFixed(2)}° x:${x.toFixed(1)} z:${z.toFixed(1)}`);
+
+        return { x, z, angle };
       }
     });
+
     this.gizmo.setVisible(false);
     this.#attachSelection(box);
 

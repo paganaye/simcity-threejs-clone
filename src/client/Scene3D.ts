@@ -43,7 +43,7 @@ export class Scene3D {
     readonly tempScale = new THREE.Vector3();
     pageContext?: Page;
     customGizmo?: CustomGizmo;
-    readonly transformProxy = new THREE.Object3D();
+    //readonly transformProxy = new THREE.Object3D();
     lastTransformValid = true;
 
     constructor(readonly uiProps: UIProps) { }
@@ -312,14 +312,13 @@ export class Scene3D {
     }
 
     #setupCustomGizmo(context: Page) {
-        this.transformProxy.visible = false;
-        this.scene.add(this.transformProxy);
+        //this.transformProxy.visible = false;
+        //this.scene.add(this.transformProxy);
         this.customGizmo = new CustomGizmo({
             scene: this.scene,
             camera: this.camera,
             raycaster: this.raycaster,
             domElement: context.renderer.domElement,
-            proxy: this.transformProxy,
             onDraggingChanged: (dragging) => {
                 if (context.controls) context.controls.enabled = !dragging;
             },

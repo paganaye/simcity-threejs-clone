@@ -5,8 +5,6 @@ import { CustomGizmo } from '../editor/CustomGizmo';
 
 export default class GizmoTest extends Page {
   private gizmo!: CustomGizmo;
-  private proxy?: THREE.Group;
-  private selectedObject?: THREE.Object3D;
   private readonly selectableObjects: THREE.Object3D[] = [];
   //private snapCallback?: (x: number, z: number, angleRadians: number) => { x: number; z: number; angle: number };
   private onPointerDown = (e: PointerEvent) => {
@@ -34,12 +32,6 @@ export default class GizmoTest extends Page {
     );
     ground.rotation.x = -Math.PI / 2;
     this.scene.add(ground);
-
-    // Create a proxy object manipulated by the gizmo.
-    this.proxy = new THREE.Group();
-    this.proxy.position.set(0, 0, 0);
-    this.proxy.rotation.y = 0;
-    this.scene.add(this.proxy);
 
     // Add a few selectable primitives in the scene.
     const box = new THREE.Mesh(
@@ -80,9 +72,7 @@ export default class GizmoTest extends Page {
       scene: this.scene,
       camera: this.camera,
       domElement: this.renderer.domElement,
-      proxy: this.proxy,
       selectableObjects: this.selectableObjects,
-      onSelectObject: (object) => this.#attachSelection(object),
       onDraggingChanged: (dragging) => {
         if (this.controls) {
           this.controls.enabled = !dragging;
@@ -91,7 +81,7 @@ export default class GizmoTest extends Page {
     });
 
     this.gizmo.setVisible(false);
-    this.#attachSelection(box);
+    this.gizmo.setSelection(box);
 
 
 
@@ -103,36 +93,6 @@ export default class GizmoTest extends Page {
 
   }
 
-
-
-  #attachSelection(object: THREE.Object3D): void {
-    if (!this.proxy) {
-      return;
-    }
-    if (this.selectedObject === object) {
-      return;
-    }
-
-    if (this.selectedObject) {
-      this.scene.attach(this.selectedObject);
-    }
-
-    this.scene.updateMatrixWorld(true);
-
-    const worldPosition = new THREE.Vector3();
-    const worldQuaternion = new THREE.Quaternion();
-    this.scene.attach(object);
-    object.getWorldPosition(worldPosition);
-    object.getWorldQuaternion(worldQuaternion);
-
-    const yaw = new THREE.Euler().setFromQuaternion(worldQuaternion, 'YXZ').y;
-    this.proxy.position.copy(worldPosition);
-    this.proxy.rotation.set(0, yaw, 0);
-
-    this.proxy.attach(object);
-    this.selectedObject = object;
-    this.gizmo.setVisible(true);
-  }
 
   override loop(_elapsed: number): void {
     //if (this.gizmo && this.proxy && this.snapCallback) {
@@ -154,10 +114,7 @@ export default class GizmoTest extends Page {
     this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown, true);
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove, true);
     window.removeEventListener('pointerup', this.onPointerUp, true);
-    if (this.selectedObject) {
-      this.scene.attach(this.selectedObject);
-      this.selectedObject = undefined;
-    }
+    this.gizmo?.clearSelection();
     if (this.controls) {
       this.controls.enabled = true;
     }

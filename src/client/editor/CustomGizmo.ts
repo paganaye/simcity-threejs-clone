@@ -7,7 +7,6 @@ type ICustomTransformGizmoProps = {
     camera: THREE.PerspectiveCamera;
     raycaster?: THREE.Raycaster;
     domElement: HTMLCanvasElement;
-    proxy: THREE.Object3D;
     selectableObjects?: readonly THREE.Object3D[];
     onSelectObject?: (object: THREE.Object3D) => void;
     onDraggingChanged?: (dragging: boolean) => void;
@@ -29,7 +28,8 @@ export class CustomGizmo {
     private readonly camera: THREE.PerspectiveCamera;
     private readonly raycaster: THREE.Raycaster;
     private readonly domElement: HTMLCanvasElement;
-    private readonly proxy: THREE.Object3D;
+    private readonly proxy = new THREE.Group();
+    private selectedObject?: THREE.Object3D;
     private readonly selectableObjects: readonly THREE.Object3D[];
     private readonly onSelectObject?: (object: THREE.Object3D) => void;
     private readonly onDraggingChanged?: (dragging: boolean) => void;
@@ -59,13 +59,52 @@ export class CustomGizmo {
         this.camera = props.camera;
         this.raycaster = props.raycaster ?? new THREE.Raycaster();
         this.domElement = props.domElement;
-        this.proxy = props.proxy;
         this.selectableObjects = props.selectableObjects ?? [];
         this.onSelectObject = props.onSelectObject;
         this.onDraggingChanged = props.onDraggingChanged;
         this.onSnapping = props.onSnapping;
 
+        this.proxy.visible = false;
+        this.scene.add(this.proxy);
+
         this.#build();
+    }
+
+    setSelection(object: THREE.Object3D): void {
+        if (this.selectedObject === object) {
+            this.setVisible(true);
+            return;
+        }
+
+        if (this.selectedObject) {
+            this.scene.attach(this.selectedObject);
+        }
+
+        this.scene.updateMatrixWorld(true);
+
+        const worldPosition = new THREE.Vector3();
+        const worldQuaternion = new THREE.Quaternion();
+        this.scene.attach(object);
+        object.getWorldPosition(worldPosition);
+        object.getWorldQuaternion(worldQuaternion);
+
+        const yaw = new THREE.Euler().setFromQuaternion(worldQuaternion, 'YXZ').y;
+        this.proxy.position.copy(worldPosition);
+        this.proxy.rotation.set(0, yaw, 0);
+
+        this.proxy.attach(object);
+        this.selectedObject = object;
+        this.proxy.visible = true;
+        this.setVisible(true);
+    }
+
+    clearSelection(): void {
+        if (this.selectedObject) {
+            this.scene.attach(this.selectedObject);
+            this.selectedObject = undefined;
+        }
+        this.proxy.visible = false;
+        this.setVisible(false);
     }
 
     #positionRoot() {
@@ -135,6 +174,7 @@ export class CustomGizmo {
             if (selectable) {
                 event.preventDefault();
                 event.stopPropagation();
+                this.setSelection(selectable);
                 this.onSelectObject?.(selectable);
                 return true;
             }

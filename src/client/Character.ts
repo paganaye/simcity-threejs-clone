@@ -1,12 +1,13 @@
 import * as THREE from "three";
 import { appConstants } from "../AppConstants";
-import { rotateTowards } from "../sim/utils";
+import { normalizeAngle, rotateTowards } from "../sim/utils";
 import type { CharacterPath } from "./CharacterPath";
 import { Population } from "./Population";
 
 type RGB = [number, number, number];
 type FaceName = "front" | "back" | "left" | "right" | "top" | "bottom";
-type CharacterTarget = { x: number; z: number };
+type TargetType = 'goal' | 'detour';
+type CharacterTarget = { x: number; z: number; type: TargetType };
 
 export interface CharacterDebugView {
   occupancyMesh?: THREE.InstancedMesh;
@@ -33,11 +34,13 @@ export class Character {
   private static readonly debugTargetLineY = 0.05;
   private static readonly debugTargetLineStartColor = new THREE.Color(0x4fc3f7);
   private static readonly debugTargetLineEndColor = new THREE.Color(0xffd166);
-  private static readonly targetTurnSpeed = 2.2;
+  private static readonly targetTurnSpeed = 3;
   private static readonly baseWalkCycleFrequency = 8.0;
   private static readonly referenceWalkSpeed = 1.4;
-  
-  
+  blockedBy: Character | null = null;
+
+
+
   tick(delta: number, index: number, walkAttribute: THREE.InstancedBufferAttribute | undefined, crowdMesh: THREE.InstancedMesh): void {
     const minX = 0;
     const maxX = this.population.mapWidth - 1;
@@ -47,15 +50,37 @@ export class Character {
     const quadTree = this.population.quadTree;
     this.updateHeadingToTarget(delta);
     this.isBlocked = this.isWalking && this.checkForwardBlockage();
-
-    // If blocked, accumulate time; if stuck too long, turn randomly
+    this.waitTime = this.isBlocked ? this.waitTime + delta : 0;
+    if (this.waitTime > 2 && this.blockedBy && this.blockedBy.blockedBy === this) {
+      // If mutually blocked for more than 2 seconds, we just teleport them Character.charDiameter apart
+      const midx = (this.x + this.blockedBy.x) / 2;
+      const midz = (this.z + this.blockedBy.z) / 2;
+      const angle = Math.atan2(this.blockedBy.x - this.x, this.blockedBy.z - this.z);
+      const offsetX = Math.sin(angle) * Character.charDiameter;
+      const offsetZ = Math.cos(angle) * Character.charDiameter;
+      this.x = midx - offsetX / 2;
+      this.z = midz - offsetZ / 2;
+      this.blockedBy.x = midx + offsetX / 2;
+      this.blockedBy.z = midz + offsetZ / 2;
+    }
+    // If blocked, push a perpendicular detour waypoint to navigate around the obstacle.
     if (this.isBlocked) {
-      if (Math.random() > 0.95) {
-        this.heading += (Math.random() - 0.5) * Math.PI;
+      if (this.target?.type === 'detour') {
+        this._targetQueue.shift();
       }
+      const perpAngle = this.heading + (Math.random() > 0.5 ? 1 : -1) * Math.PI / 2;
+      const detourDist = Character.charDiameter * 1.1;
+      this._targetQueue.unshift({
+        x: this.x + Math.sin(perpAngle) * detourDist,
+        z: this.z + Math.cos(perpAngle) * detourDist,
+        type: 'detour'
+      });
     }
 
-    const shouldWalk = this.isWalking && !this.isBlocked;
+    // Stand still while turning to face a detour waypoint.
+    const isTurningToDetour = this.isWalking && this.target?.type === 'detour' && this.isAngularlyMisaligned();
+
+    const shouldWalk = this.isWalking && !this.isBlocked && !isTurningToDetour;
     if (walkAttribute) {
       walkAttribute.setX(index, shouldWalk ? 1 : 0);
     }
@@ -78,23 +103,36 @@ export class Character {
   readonly walkPhase = Math.random() * Math.PI * 2;
   x = 0;
   z = 0;
-  target: CharacterTarget | null = null;
+  private readonly _targetQueue: CharacterTarget[] = [];
+
+  get target(): CharacterTarget | null {
+    return this._targetQueue[0] ?? null;
+  }
+
+  /** The current goal (non-detour) target, regardless of intermediate detours. */
+  get goalTarget(): CharacterTarget | null {
+    return this._targetQueue.find(t => t.type === 'goal') ?? null;
+  }
+
   heading = 0;
   speed = 0;
   scale = 1;
   isWalking = true;
   isBlocked = false;
+  /** Seconds spent continuously blocked. Resets to 0 when the character moves freely. */
+  waitTime = 0;
   private static readonly BASE_MODEL_HEIGHT = 1.8;
   private static readonly walkTimeUniform = { value: 0 };
 
   constructor(readonly population: Population) { }
 
-  setTarget(target: CharacterTarget): void {
-    this.target = { x: target.x, z: target.z };
+  setTarget(target: { x: number; z: number }): void {
+    this._targetQueue.length = 0;
+    this._targetQueue.push({ x: target.x, z: target.z, type: 'goal' });
   }
 
   clearTarget(): void {
-    this.target = null;
+    this._targetQueue.length = 0;
   }
 
   setWalking(walking: boolean): void {
@@ -107,14 +145,33 @@ export class Character {
     return Math.max(0.75, normalizedSpeed / strideScale);
   }
 
+  private isAngularlyMisaligned(): boolean {
+    const t = this._targetQueue[0];
+    if (!t) return false;
+    const dx = t.x - this.x;
+    const dz = t.z - this.z;
+    if (dx * dx + dz * dz < 0.0001) return false;
+    const desiredHeading = Math.atan2(dx, dz);
+    return Math.abs(normalizeAngle(desiredHeading - this.heading)) > 0.25;
+  }
+
   private updateHeadingToTarget(delta: number): void {
-    if (!this.target) {
+    const t = this._targetQueue[0];
+    if (!t) {
       return;
     }
 
-    const dx = this.target.x - this.x;
-    const dz = this.target.z - this.z;
-    if (dx * dx + dz * dz < 0.0001) {
+    const dx = t.x - this.x;
+    const dz = t.z - this.z;
+    const dist2 = dx * dx + dz * dz;
+
+    // Auto-pop detour waypoints once reached.
+    if (t.type === 'detour' && dist2 < 0.25) {
+      this._targetQueue.shift();
+      return;
+    }
+
+    if (dist2 < 0.0001) {
       return;
     }
 
@@ -148,10 +205,12 @@ export class Character {
       const cdx = other.x - detectionCenterX;
       const cdz = other.z - detectionCenterZ;
       if (Math.hypot(cdx, cdz) < Character.charDiameter) {
+        this.blockedBy = other;
         return true;
       }
     }
 
+    this.blockedBy = null;
     return false;
   }
 

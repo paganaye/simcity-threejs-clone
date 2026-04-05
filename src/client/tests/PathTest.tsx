@@ -10,7 +10,7 @@ export default class Path2 extends Page {
 
   async run() {
     this.crowd3D = new Crowd3D(this.scene);
-    this.crowd3D.init(80, 80, {
+    this.crowd3D.init(40, 40, {
       count: 300,
       childRatio: 0.18,
     });
@@ -74,14 +74,14 @@ export default class Path2 extends Page {
     }
 
     for (const character of this.crowd3D.population.characters) {
-      const target = character.target;
-      if (!target) {
+      const goal = character.goalTarget;
+      if (!goal) {
         character.setTarget(this.randomPoint());
         continue;
       }
 
-      const dx = target.x - character.x;
-      const dz = target.z - character.z;
+      const dx = goal.x - character.x;
+      const dz = goal.z - character.z;
       if (dx * dx + dz * dz < 0.05) {
         character.setTarget(this.randomPoint());
       }

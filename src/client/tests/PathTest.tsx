@@ -1,25 +1,21 @@
 import { AssetManager } from "../AssetManager";
+import type { CharacterDebugView } from "../Character";
 import { Page } from "../Page";
 import { Crowd3D } from "../Crowd3D";
-import { Character, CharacterOccupancyMesh } from "../Character";
-import { rotateTowards } from "../../sim/utils";
+import { Character } from "../Character";
 
 export default class Path2 extends Page {
   private crowd3D?: Crowd3D;
-  private readonly patrolTargets = new Map<Character, { ax: number; az: number; bx: number; bz: number; toB: boolean }>();
-  private occupancyMesh?: CharacterOccupancyMesh;
-  private lastElapsed = 0;
-  private readonly patrolTurnSpeed = 2.2;
+  private characterDebugView?: CharacterDebugView;
 
   async run() {
     this.crowd3D = new Crowd3D(this.scene);
-    this.crowd3D.init(8, 8, {
-      count: 10,
+    this.crowd3D.init(80, 80, {
+      count: 300,
       childRatio: 0.18,
-      walkingRatio: 0.7,
     });
-    this.setupPatrols();
-    // setupPatrols rewrites character positions after init(), so resync quadtree.
+    this.setupTargets();
+    // setupTargets rewrites character positions after init(), so resync quadtree.
     this.crowd3D.population.setupQuadTree(this.crowd3D.population.mapWidth, this.crowd3D.population.mapHeight);
 
     this.camera.position.set(10, 20, -5);
@@ -31,88 +27,79 @@ export default class Path2 extends Page {
     const assetManager = new AssetManager({ scene: this.scene } as any);
     await assetManager.init();
 
-    this.occupancyMesh = new CharacterOccupancyMesh(this.scene);
-    this.occupancyMesh.init(this.crowd3D.population.characters.length);
-    this.occupancyMesh.update(this.crowd3D.population.characters);
+    this.characterDebugView = Character.createDebugView(this.scene, this.crowd3D.population.characters.length);
+    Character.updateDebugView(this.characterDebugView, this.crowd3D.population.characters);
 
     // for (const { modelName, x, z } of BUILDINGS) {
     //   assetManager.addFastMesh(modelName, x, 0, z, 0);
     // }
 
   }
-  private setupPatrols(): void {
+
+  private randomPoint(): { x: number; z: number } {
     if (!this.crowd3D) {
-      return;
+      return { x: 0, z: 0 };
     }
 
     const maxX = this.crowd3D.population.mapWidth - 1;
     const maxZ = this.crowd3D.population.mapHeight - 1;
-    const randomPoint = () => ({
+    return {
       x: Math.random() * maxX,
       z: Math.random() * maxZ,
-    });
-
-    for (const character of this.crowd3D.population.characters) {
-      const a = randomPoint();
-      let b = randomPoint();
-      while ((b.x - a.x) * (b.x - a.x) + (b.z - a.z) * (b.z - a.z) < 1) {
-        b = randomPoint();
-      }
-
-      character.x = a.x;
-      character.z = a.z;
-      character.heading = Math.atan2(b.x - a.x, b.z - a.z);
-      this.patrolTargets.set(character, { ax: a.x, az: a.z, bx: b.x, bz: b.z, toB: true });
-    }
+    };
   }
 
-  private updatePatrolHeadings(delta: number): void {
+  private setupTargets(): void {
     if (!this.crowd3D) {
       return;
     }
 
     for (const character of this.crowd3D.population.characters) {
-      const patrol = this.patrolTargets.get(character);
-      if (!patrol) {
+      const start = this.randomPoint();
+      let target = this.randomPoint();
+      while ((target.x - start.x) * (target.x - start.x) + (target.z - start.z) * (target.z - start.z) < 1) {
+        target = this.randomPoint();
+      }
+
+      character.x = start.x;
+      character.z = start.z;
+      character.heading = Math.atan2(target.x - start.x, target.z - start.z);
+      character.setTarget(target);
+    }
+  }
+
+  private updateTargets(): void {
+    if (!this.crowd3D) {
+      return;
+    }
+
+    for (const character of this.crowd3D.population.characters) {
+      const target = character.target;
+      if (!target) {
+        character.setTarget(this.randomPoint());
         continue;
       }
 
-      let tx = patrol.toB ? patrol.bx : patrol.ax;
-      let tz = patrol.toB ? patrol.bz : patrol.az;
-      let dx = tx - character.x;
-      let dz = tz - character.z;
-
-      if (dx * dx + dz * dz < 0.04) {
-        patrol.toB = !patrol.toB;
-        tx = patrol.toB ? patrol.bx : patrol.ax;
-        tz = patrol.toB ? patrol.bz : patrol.az;
-        dx = tx - character.x;
-        dz = tz - character.z;
+      const dx = target.x - character.x;
+      const dz = target.z - character.z;
+      if (dx * dx + dz * dz < 0.05) {
+        character.setTarget(this.randomPoint());
       }
-
-      const desiredHeading = Math.atan2(dx, dz);
-      character.heading = rotateTowards(character.heading, desiredHeading, this.patrolTurnSpeed * delta);
     }
   }
 
   override loop(elapsed: number): void {
-    const delta = this.lastElapsed === 0 ? 0 : elapsed - this.lastElapsed;
-    this.lastElapsed = elapsed;
-    if (delta > 0) {
-      this.updatePatrolHeadings(delta);
-    }
+    this.updateTargets();
     this.crowd3D?.tick(elapsed);
     if (this.crowd3D) {
-      this.occupancyMesh?.update(this.crowd3D.population.characters);
+      Character.updateDebugView(this.characterDebugView, this.crowd3D.population.characters);
     }
   }
 
   override cleanup(): void {
-    this.occupancyMesh?.dispose();
-    this.occupancyMesh = undefined;
+    Character.disposeDebugView(this.scene, this.characterDebugView);
+    this.characterDebugView = undefined;
     this.crowd3D?.dispose();
     this.crowd3D = undefined;
-    this.patrolTargets.clear();
-    this.lastElapsed = 0;
   }
 }

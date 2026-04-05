@@ -5,7 +5,6 @@ import { Population } from "./Population";
 
 export interface CrowdOptions {
     count?: number;
-    walkingRatio?: number;
     childRatio?: number;
 }
 
@@ -18,7 +17,6 @@ export class Crowd3D {
 
     init(mapWidth: number, mapHeight: number, options: CrowdOptions = {}): void {
         const count = options.count ?? 1500;
-        const walkingRatio = options.walkingRatio ?? 0.7;
         const childRatio = options.childRatio ?? 0.18;
         const worldUnitsPerMeter = 1 / appConstants.WorldUnitInMetre;
 
@@ -44,7 +42,7 @@ export class Crowd3D {
             character.x = Math.random() * (mapWidth - 1);
             character.z = Math.random() * (mapHeight - 1);
             character.heading = Math.random() * Math.PI * 2;
-            character.isWalking = Math.random() < walkingRatio;
+            character.isWalking = true;
             const isChild = Math.random() < childRatio;
             character.scale = isChild ? appConstants.ChildHeightInMetre / appConstants.CharacterHeightInMetre : 1;
             const speed = isChild ? 1.0 + Math.random() * 0.5 : 1.2 + Math.random() * 0.6;

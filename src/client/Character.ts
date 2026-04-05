@@ -1,22 +1,41 @@
 import * as THREE from "three";
 import { appConstants } from "../AppConstants";
+import { rotateTowards } from "../sim/utils";
 import type { CharacterPath } from "./CharacterPath";
 import { Population } from "./Population";
 
 type RGB = [number, number, number];
 type FaceName = "front" | "back" | "left" | "right" | "top" | "bottom";
+type CharacterTarget = { x: number; z: number };
+
+export interface CharacterDebugView {
+  occupancyMesh?: THREE.InstancedMesh;
+  targetLineMesh?: THREE.LineSegments;
+}
 
 
 
 export class Character {
   static readonly characterRadius = 0.4;
-  static readonly detectionDiameter = Character.characterRadius * 2;
+  static readonly charDiameter = Character.characterRadius * 2;
   private static readonly yAxis = new THREE.Vector3(0, 1, 0);
   private static readonly tempPosition = new THREE.Vector3();
   private static readonly tempQuaternion = new THREE.Quaternion();
   private static readonly tempScale = new THREE.Vector3(1, 1, 1);
   private static readonly tempMatrix = new THREE.Matrix4();
-
+  private static readonly debugOccupancyY = 0.02;
+  private static readonly debugOccupancyRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+  private static readonly debugOccupancyScale = new THREE.Vector3(1, 1, 1);
+  private static readonly debugOccupancyPosition = new THREE.Vector3();
+  private static readonly debugOccupancyMatrix = new THREE.Matrix4();
+  private static readonly debugCollisionColor = new THREE.Color(0xff3333);
+  private static readonly debugFreeColor = new THREE.Color(0x2ecc71);
+  private static readonly debugTargetLineY = 0.05;
+  private static readonly debugTargetLineStartColor = new THREE.Color(0x4fc3f7);
+  private static readonly debugTargetLineEndColor = new THREE.Color(0xffd166);
+  private static readonly targetTurnSpeed = 2.2;
+  
+  
   tick(delta: number, index: number, walkAttribute: THREE.InstancedBufferAttribute | undefined, crowdMesh: THREE.InstancedMesh): void {
     const minX = 0;
     const maxX = this.population.mapWidth - 1;
@@ -24,11 +43,12 @@ export class Character {
     const maxZ = this.population.mapHeight - 1;
 
     const quadTree = this.population.quadTree;
+    this.updateHeadingToTarget(delta);
     this.isBlocked = this.isWalking && this.checkForwardBlockage();
 
     // If blocked, accumulate time; if stuck too long, turn randomly
     if (this.isBlocked) {
-      if (Math.random() > 0.99) {
+      if (Math.random() > 0.95) {
         this.heading += (Math.random() - 0.5) * Math.PI;
       }
     }
@@ -56,6 +76,7 @@ export class Character {
   readonly walkPhase = Math.random() * Math.PI * 2;
   x = 0;
   z = 0;
+  target: CharacterTarget | null = null;
   heading = 0;
   speed = 0;
   scale = 1;
@@ -66,9 +87,33 @@ export class Character {
 
   constructor(readonly population: Population) { }
 
+  setTarget(target: CharacterTarget): void {
+    this.target = { x: target.x, z: target.z };
+  }
+
+  clearTarget(): void {
+    this.target = null;
+  }
+
   setWalking(walking: boolean): void {
     this.isWalking = walking;
   }
+
+  private updateHeadingToTarget(delta: number): void {
+    if (!this.target) {
+      return;
+    }
+
+    const dx = this.target.x - this.x;
+    const dz = this.target.z - this.z;
+    if (dx * dx + dz * dz < 0.0001) {
+      return;
+    }
+
+    const desiredHeading = Math.atan2(dx, dz);
+    this.heading = rotateTowards(this.heading, desiredHeading, Character.targetTurnSpeed * delta);
+  }
+
 
   private checkForwardBlockage(): boolean {
     //const quadTree = this.population.quadTree;
@@ -94,7 +139,7 @@ export class Character {
 
       const cdx = other.x - detectionCenterX;
       const cdz = other.z - detectionCenterZ;
-      if (Math.hypot(cdx, cdz) < Character.detectionDiameter) {
+      if (Math.hypot(cdx, cdz) < Character.charDiameter) {
         return true;
       }
     }
@@ -243,6 +288,167 @@ export class Character {
     return new THREE.RingGeometry(radius * 0.9, radius, 24);
   }
 
+  static createDebugView(scene: THREE.Scene, count: number): CharacterDebugView | undefined {
+    if (count <= 0) {
+      return undefined;
+    }
+
+    const debugView: CharacterDebugView = {
+      occupancyMesh: Character.createOccupancyMesh(scene, count),
+      targetLineMesh: Character.createTargetLineMesh(scene, count),
+    };
+    return debugView;
+  }
+
+  static updateDebugView(debugView: CharacterDebugView | undefined, characters: readonly Character[]): void {
+    if (!debugView) {
+      return;
+    }
+
+    Character.updateOccupancyMesh(debugView.occupancyMesh, characters);
+    Character.updateTargetLineMesh(debugView.targetLineMesh, characters);
+  }
+
+  static disposeDebugView(scene: THREE.Scene, debugView: CharacterDebugView | undefined): void {
+    if (!debugView) {
+      return;
+    }
+
+    Character.disposeOccupancyMesh(scene, debugView.occupancyMesh);
+    Character.disposeTargetLineMesh(scene, debugView.targetLineMesh);
+  }
+
+  static createOccupancyMesh(scene: THREE.Scene, count: number): THREE.InstancedMesh | undefined {
+    if (count <= 0) {
+      return undefined;
+    }
+
+    const geometry = Character.createDebugOccupancyGeometry();
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      toneMapped: false,
+    });
+
+    const mesh = new THREE.InstancedMesh(geometry, material, count);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
+    mesh.renderOrder = 5;
+    scene.add(mesh);
+    return mesh;
+  }
+
+  static updateOccupancyMesh(mesh: THREE.InstancedMesh | undefined, characters: readonly Character[]): void {
+    if (!mesh) {
+      return;
+    }
+
+    for (let i = 0; i < characters.length; i++) {
+      const c = characters[i];
+      Character.debugOccupancyPosition.set(c.x, Character.debugOccupancyY, c.z);
+      Character.debugOccupancyMatrix.compose(
+        Character.debugOccupancyPosition,
+        Character.debugOccupancyRotation,
+        Character.debugOccupancyScale
+      );
+      mesh.setMatrixAt(i, Character.debugOccupancyMatrix);
+      mesh.setColorAt(i, c.isWalking && !c.isBlocked ? Character.debugFreeColor : Character.debugCollisionColor);
+    }
+
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) {
+      mesh.instanceColor.needsUpdate = true;
+    }
+  }
+
+  static disposeOccupancyMesh(scene: THREE.Scene, mesh: THREE.InstancedMesh | undefined): void {
+    if (!mesh) {
+      return;
+    }
+
+    scene.remove(mesh);
+    mesh.geometry.dispose();
+    const material = mesh.material;
+    if (Array.isArray(material)) {
+      material.forEach((m) => m.dispose());
+    } else {
+      material.dispose();
+    }
+  }
+
+  static createTargetLineMesh(scene: THREE.Scene, count: number): THREE.LineSegments | undefined {
+    if (count <= 0) {
+      return undefined;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(count * 2 * 3), 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(count * 2 * 3), 3));
+
+    const material = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+      toneMapped: false,
+    });
+
+    const lines = new THREE.LineSegments(geometry, material);
+    lines.renderOrder = 6;
+    scene.add(lines);
+    return lines;
+  }
+
+  static updateTargetLineMesh(lines: THREE.LineSegments | undefined, characters: readonly Character[]): void {
+    if (!lines) {
+      return;
+    }
+
+    const position = lines.geometry.getAttribute("position") as THREE.BufferAttribute | undefined;
+    const color = lines.geometry.getAttribute("color") as THREE.BufferAttribute | undefined;
+    if (!position || !color) {
+      return;
+    }
+
+    const lineCount = Math.min(characters.length, Math.floor(position.count / 2));
+    for (let i = 0; i < lineCount; i++) {
+      const c = characters[i];
+      const lineStartIndex = i * 2;
+      let tx = c.x;
+      let tz = c.z;
+      if (c.target) {
+        tx = c.target.x;
+        tz = c.target.z;
+      }
+
+      position.setXYZ(lineStartIndex, c.x, Character.debugTargetLineY, c.z);
+      position.setXYZ(lineStartIndex + 1, tx, Character.debugTargetLineY, tz);
+
+      color.setXYZ(lineStartIndex, Character.debugTargetLineStartColor.r, Character.debugTargetLineStartColor.g, Character.debugTargetLineStartColor.b);
+      color.setXYZ(lineStartIndex + 1, Character.debugTargetLineEndColor.r, Character.debugTargetLineEndColor.g, Character.debugTargetLineEndColor.b);
+    }
+
+    position.needsUpdate = true;
+    color.needsUpdate = true;
+  }
+
+  static disposeTargetLineMesh(scene: THREE.Scene, lines: THREE.LineSegments | undefined): void {
+    if (!lines) {
+      return;
+    }
+
+    scene.remove(lines);
+    lines.geometry.dispose();
+    const material = lines.material;
+    if (Array.isArray(material)) {
+      material.forEach((m) => m.dispose());
+    } else {
+      material.dispose();
+    }
+  }
+
   private static setupWalkAnimationShader(material: THREE.MeshPhongMaterial): void {
     material.onBeforeCompile = (shader) => {
       shader.uniforms.uTime = Character.walkTimeUniform;
@@ -340,76 +546,5 @@ diffuseColor.rgb *= vInstanceTint;
     };
 
     material.needsUpdate = true;
-  }
-}
-
-export class CharacterOccupancyMesh {
-  private mesh?: THREE.InstancedMesh;
-  private readonly y = 0.02;
-  private readonly tempMatrix = new THREE.Matrix4();
-  private readonly tempPosition = new THREE.Vector3();
-  private readonly tempScale = new THREE.Vector3(1, 1, 1);
-  private readonly tempRotation = new THREE.Quaternion();
-  private readonly collisionColor = new THREE.Color(0xff3333);
-  private readonly freeColor = new THREE.Color(0x2ecc71);
-
-  constructor(private readonly scene: THREE.Scene) {
-    this.tempRotation.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
-  }
-
-  init(count: number): void {
-    if (this.mesh || count <= 0) {
-      return;
-    }
-
-    const geometry = Character.createDebugOccupancyGeometry();
-    const material = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.7,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-      toneMapped: false,
-    });
-
-    this.mesh = new THREE.InstancedMesh(geometry, material, count);
-    this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
-    this.mesh.renderOrder = 5;
-    this.scene.add(this.mesh);
-  }
-
-  update(characters: readonly Character[]): void {
-    if (!this.mesh) {
-      return;
-    }
-
-    for (let i = 0; i < characters.length; i++) {
-      const c = characters[i];
-      this.tempPosition.set(c.x, this.y, c.z);
-      this.tempMatrix.compose(this.tempPosition, this.tempRotation, this.tempScale);
-      this.mesh.setMatrixAt(i, this.tempMatrix);
-      this.mesh.setColorAt(i, c.isWalking && !c.isBlocked ? this.freeColor : this.collisionColor);
-    }
-
-    this.mesh.instanceMatrix.needsUpdate = true;
-    if (this.mesh.instanceColor) {
-      this.mesh.instanceColor.needsUpdate = true;
-    }
-  }
-
-  dispose(): void {
-    if (!this.mesh) {
-      return;
-    }
-
-    this.scene.remove(this.mesh);
-    this.mesh.geometry.dispose();
-    const material = this.mesh.material;
-    if (Array.isArray(material)) {
-      material.forEach((m) => m.dispose());
-    } else {
-      material.dispose();
-    }
-    this.mesh = undefined;
   }
 }

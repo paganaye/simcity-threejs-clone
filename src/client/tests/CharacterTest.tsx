@@ -8,8 +8,7 @@ export default class CharacterTest extends Page {
     this.crowd3D = new Crowd3D(this.scene);
     this.crowd3D.init(8, 8, {
       count: 120,
-      childRatio: 0.18,
-      walkingRatio: 0.7,
+      childRatio: 0.18
     });
   }
 

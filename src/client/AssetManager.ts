@@ -12,6 +12,9 @@ export interface IAssetMeta {
   receiveShadow?: boolean;
   rotation?: number;
   updateMaterials?: boolean;
+  entryPoint?: { x: number, z: number, width: number, angle: number };
+  exitPoint?: { x: number, z: number, width: number, angle: number };
+  perimeter?: { x: number, z: number }[];
 }
 
 //const ZERO_VECTOR = new THREE.Vector3(0, 0, 0);
@@ -23,7 +26,7 @@ const HIDE_MATRIX = new THREE.Matrix4().compose(
   HIDE_SCALE
 );
 
-const modelsMetaData = {
+export const modelsMetaData = {
   "firstprim": {
     "type": "zone",
     "filename": "firstprim.glb",
@@ -662,3 +665,4 @@ export function mergeMeshesWithGroups(object: THREE.Object3D, _ignored?: boolean
   const merged = BufferGeometryUtils.mergeGeometries(geometries, true);
   return { geometry: merged, materials };
 }
+

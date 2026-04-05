@@ -92,14 +92,37 @@
   margin-left: 8px;
 }
 
-#info-panel {
+#selected-object-panel {
   position: fixed;
-  top: 64px;
-  right: 0px;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 144px));
   padding: 0;
-  padding-bottom: 16px;
-  width: 300px;
-  background-color: #00000048;
+  overflow: hidden;
+  background-color: rgba(10, 14, 22, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+.selected-object-panel-title {
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d8e2ff;
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.selected-object-panel-content {
+  max-height: 28vh;
+  padding: 10px 14px 14px;
+  overflow: auto;
+  color: white;
 }
 
 .info-heading {

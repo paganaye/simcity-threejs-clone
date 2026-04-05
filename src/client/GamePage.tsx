@@ -2,6 +2,8 @@ import { render } from 'solid-js/web';
 import { Accessor, createSignal, Setter, Show } from "solid-js";
 import { Scene3D } from "./Scene3D";
 import type { SimObject3D } from "./SimObject3D";
+import type { GizmoSelectedInstance } from './editor/CustomGizmo';
+import { SelectedObjectPanel } from './SelectedObjectPanel';
 import "./GameUI.css";
 import { Page } from './Page';
 import { Crowd3D } from './Crowd3D';
@@ -15,6 +17,8 @@ export interface UIProps {
     setActiveTool: Setter<ActiveTool>;
     selectedObject: Accessor<SimObject3D | null>;
     setSelectedObject: Setter<SimObject3D | null>;
+    selectedInstance: Accessor<GizmoSelectedInstance | undefined>;
+    setSelectedInstance: Setter<GizmoSelectedInstance | undefined>;
     setSimMoney: Setter<number>;
     setPopulation: Setter<number>;
     setSimTime: Setter<number>;
@@ -29,6 +33,7 @@ function GameUIComponent(props: {
     const [isPaused, setIsPaused] = createSignal(false);
     const [activeTool, setActiveTool] = createSignal<ActiveTool>('select');
     const [selectedObject, setSelectedObject] = createSignal<SimObject3D | null>(null);
+    const [selectedInstance, setSelectedInstance] = createSignal<GizmoSelectedInstance | undefined>(undefined);
     const [simMoney, setSimMoney] = createSignal(0);
     const [population, setPopulation] = createSignal(0);
     const [simTime, setSimTime] = createSignal(0);
@@ -43,6 +48,8 @@ function GameUIComponent(props: {
         setActiveTool,
         selectedObject,
         setSelectedObject,
+        selectedInstance,
+        setSelectedInstance,
         setSimMoney,
         setPopulation,
         setSimTime,
@@ -96,9 +103,7 @@ function GameUIComponent(props: {
                 <ToolButton tool="power-line" icon="power-line-color" />
                 <UIButton icon={isPaused() ? "play-color" : "pause-color"} onclick={() => setIsPaused(!isPaused())} selected={false} />
             </div>
-            <div id="info-panel" class="container" style={`display:${selectedObject() ? 'block' : 'none'}`}>
-                <div>{(selectedObject() as any)?.toHTML?.() || 'Info Panel Content'}</div>
-            </div>
+            <SelectedObjectPanel selectedObject={selectedObject} selectedInstance={selectedInstance} />
             <div id="instructions">
                 INTERACT - Left Mouse<br />
                 PAN - Right Mouse<br />

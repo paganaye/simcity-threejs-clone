@@ -10,8 +10,8 @@ export var appConstants = {
     MeshInstancesMin: 8,
     MeshInstancesGrowth: 1.6,
     // City scale chosen for this project.
-    BuildingsScale: 20,
-    BuildingsMaxLength: 20,
+    BuildingsScale: 30,
+    BuildingsMaxLength: 30,
     BuildingsFootprintMarginMetre: 1,
     // Asset pipeline normalization base for imported GLB dimensions.
     ModelNormalizationBase: 30,

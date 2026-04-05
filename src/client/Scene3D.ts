@@ -174,6 +174,16 @@ export class Scene3D {
         }
     }
 
+    #setSelectedObject(selectedObject: SimObject3D | null) {
+        const previousSelected = this.uiProps.selectedObject();
+        if (previousSelected === selectedObject) return;
+
+        previousSelected?.setSelected(false);
+        this.focusedObject = selectedObject;
+        this.uiProps.setSelectedObject(selectedObject);
+        selectedObject?.setSelected(true);
+    }
+
     updateFocusedObject() {
         const newObject = this.#raycast();
         if (newObject !== this.focusedObject) {
@@ -252,7 +262,10 @@ export class Scene3D {
 
             // If nothing selected, deselect current
             this.selectedInstance = selected;
+            this.uiProps.setSelectedInstance(selected);
             this.lastTransformValid = true;
+            let newSelectedObject: SimObject3D | null = selected ? null : this.#raycast();
+            this.#setSelectedObject(newSelectedObject);
             this.customGizmo?.syncSelectionFromSelectedInstance();
         });
 
@@ -325,5 +338,5 @@ export class Scene3D {
             },
         });
     }
-    
+
 }

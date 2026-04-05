@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { appConstants } from "../AppConstants";
-import { normalizeAngle, rotateTowards } from "../sim/utils";
+import { rotateTowards } from "../sim/utils";
 import type { CharacterPath } from "./CharacterPath";
 import { Population } from "./Population";
 
@@ -39,6 +39,13 @@ export class Character {
   private static readonly referenceWalkSpeed = 1.4;
   blockedBy: Character | null = null;
 
+  path: CharacterPath | undefined;
+  readonly walkPhase = Math.random() * Math.PI * 2;
+  x = 0;
+  z = 0;
+  private realTarget: CharacterTarget | null = null;
+  private detourTarget: CharacterTarget | null = null;
+
 
 
   tick(delta: number, index: number, walkAttribute: THREE.InstancedBufferAttribute | undefined, crowdMesh: THREE.InstancedMesh): void {
@@ -65,22 +72,20 @@ export class Character {
     }
     // If blocked, push a perpendicular detour waypoint to navigate around the obstacle.
     if (this.isBlocked) {
-      if (this.target?.type === 'detour') {
-        this._targetQueue.shift();
-      }
+
       const perpAngle = this.heading + (Math.random() > 0.5 ? 1 : -1) * Math.PI / 2;
       const detourDist = Character.charDiameter * 1.1;
-      this._targetQueue.unshift({
+      this.detourTarget = {
         x: this.x + Math.sin(perpAngle) * detourDist,
         z: this.z + Math.cos(perpAngle) * detourDist,
         type: 'detour'
-      });
+      };
     }
 
     // Stand still while turning to face a detour waypoint.
-    const isTurningToDetour = this.isWalking && this.target?.type === 'detour' && this.isAngularlyMisaligned();
+    // const isTurningToDetour = this.isWalking && this.target?.type === 'detour' && this.isAngularlyMisaligned();
 
-    const shouldWalk = this.isWalking && !this.isBlocked && !isTurningToDetour;
+    const shouldWalk = this.isWalking && !this.isBlocked; // && !isTurningToDetour;
     if (walkAttribute) {
       walkAttribute.setX(index, shouldWalk ? 1 : 0);
     }
@@ -99,20 +104,12 @@ export class Character {
     crowdMesh.setMatrixAt(index, Character.tempMatrix);
   }
 
-  path: CharacterPath | undefined;
-  readonly walkPhase = Math.random() * Math.PI * 2;
-  x = 0;
-  z = 0;
-  private readonly _targetQueue: CharacterTarget[] = [];
 
   get target(): CharacterTarget | null {
-    return this._targetQueue[0] ?? null;
+    return this.detourTarget ?? this.realTarget ?? null;
   }
 
-  /** The current goal (non-detour) target, regardless of intermediate detours. */
-  get goalTarget(): CharacterTarget | null {
-    return this._targetQueue.find(t => t.type === 'goal') ?? null;
-  }
+
 
   heading = 0;
   speed = 0;
@@ -127,12 +124,13 @@ export class Character {
   constructor(readonly population: Population) { }
 
   setTarget(target: { x: number; z: number }): void {
-    this._targetQueue.length = 0;
-    this._targetQueue.push({ x: target.x, z: target.z, type: 'goal' });
+    this.detourTarget = null;
+    this.realTarget = { x: target.x, z: target.z, type: 'goal' };
   }
 
   clearTarget(): void {
-    this._targetQueue.length = 0;
+    this.detourTarget = null;
+    this.realTarget = null;
   }
 
   setWalking(walking: boolean): void {
@@ -145,18 +143,9 @@ export class Character {
     return Math.max(0.75, normalizedSpeed / strideScale);
   }
 
-  private isAngularlyMisaligned(): boolean {
-    const t = this._targetQueue[0];
-    if (!t) return false;
-    const dx = t.x - this.x;
-    const dz = t.z - this.z;
-    if (dx * dx + dz * dz < 0.0001) return false;
-    const desiredHeading = Math.atan2(dx, dz);
-    return Math.abs(normalizeAngle(desiredHeading - this.heading)) > 0.25;
-  }
 
   private updateHeadingToTarget(delta: number): void {
-    const t = this._targetQueue[0];
+    const t = this.target;
     if (!t) {
       return;
     }
@@ -167,7 +156,7 @@ export class Character {
 
     // Auto-pop detour waypoints once reached.
     if (t.type === 'detour' && dist2 < 0.25) {
-      this._targetQueue.shift();
+      this.detourTarget = null;
       return;
     }
 
@@ -460,7 +449,7 @@ export class Character {
     const material = new THREE.LineBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.35,
       depthWrite: false,
       toneMapped: false,
     });

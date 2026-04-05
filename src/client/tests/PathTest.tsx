@@ -7,10 +7,11 @@ import { Character } from "../Character";
 export default class Path2 extends Page {
   private crowd3D?: Crowd3D;
   private characterDebugView?: CharacterDebugView;
+  private readonly orbitAngularSpeed = 0.015;
 
   async run() {
     this.crowd3D = new Crowd3D(this.scene);
-    this.crowd3D.init(40, 40, {
+    this.crowd3D.init(80, 80, {
       count: 300,
       childRatio: 0.18,
     });
@@ -36,16 +37,27 @@ export default class Path2 extends Page {
 
   }
 
-  private randomPoint(): { x: number; z: number } {
+  private getOrbitCenter(): { x: number; z: number } {
+    return {
+      x: (this.crowd3D!.population.mapWidth - 1) * 0.5,
+      z: (this.crowd3D!.population.mapHeight - 1) * 0.5,
+    };
+  }
+
+  private getOrbitPoint(elapsed: number): { x: number; z: number } {
     if (!this.crowd3D) {
       return { x: 0, z: 0 };
     }
 
-    const maxX = this.crowd3D.population.mapWidth - 1;
-    const maxZ = this.crowd3D.population.mapHeight - 1;
+    const center = this.getOrbitCenter();
+    const mapRadius = Math.min(center.x, center.z) - 2;
+
+
+
+    const angle = (elapsed * this.orbitAngularSpeed) || 0;
     return {
-      x: Math.random() * maxX,
-      z: Math.random() * maxZ,
+      x: center.x + Math.sin(angle) * mapRadius + Math.random() * 2 - 1,
+      z: center.z + Math.cos(angle) * mapRadius + Math.random() * 2 - 1,
     };
   }
 
@@ -54,42 +66,33 @@ export default class Path2 extends Page {
       return;
     }
 
-    for (const character of this.crowd3D.population.characters) {
-      const start = this.randomPoint();
-      let target = this.randomPoint();
-      while ((target.x - start.x) * (target.x - start.x) + (target.z - start.z) * (target.z - start.z) < 1) {
-        target = this.randomPoint();
-      }
+    const characters = this.crowd3D.population.characters;
+    const total = characters.length;
 
-      character.x = start.x;
-      character.z = start.z;
-      character.heading = Math.atan2(target.x - start.x, target.z - start.z);
+    for (let i = 0; i < total; i++) {
+      const character = characters[i];
+      const target = this.getOrbitPoint(0);
+      character.heading = Math.atan2(target.x, target.z);
       character.setTarget(target);
     }
   }
 
-  private updateTargets(): void {
+  private updateTargets(elapsed: number): void {
     if (!this.crowd3D) {
       return;
     }
 
-    for (const character of this.crowd3D.population.characters) {
-      const goal = character.goalTarget;
-      if (!goal) {
-        character.setTarget(this.randomPoint());
-        continue;
-      }
+    const characters = this.crowd3D.population.characters;
+    const total = characters.length;
 
-      const dx = goal.x - character.x;
-      const dz = goal.z - character.z;
-      if (dx * dx + dz * dz < 0.05) {
-        character.setTarget(this.randomPoint());
-      }
+    for (let i = 0; i < total; i++) {
+      const character = characters[i];
+      character.setTarget(this.getOrbitPoint(elapsed));
     }
   }
 
   override loop(elapsed: number): void {
-    this.updateTargets();
+    this.updateTargets(elapsed);
     this.crowd3D?.tick(elapsed);
     if (this.crowd3D) {
       Character.updateDebugView(this.characterDebugView, this.crowd3D.population.characters);

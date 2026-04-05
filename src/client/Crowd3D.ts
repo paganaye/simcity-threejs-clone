@@ -28,6 +28,7 @@ export class Crowd3D {
 
         const walkWeights = new Float32Array(count);
         const walkPhases = new Float32Array(count);
+        const walkCadences = new Float32Array(count);
         const tempPos = new THREE.Vector3();
         const tempQuat = new THREE.Quaternion();
         const tempScale = new THREE.Vector3();
@@ -53,11 +54,12 @@ export class Crowd3D {
             tempScale.set(character.scale, character.scale, character.scale);
             tempMatrix.compose(tempPos, tempQuat, tempScale);
             this.crowdMesh.setMatrixAt(i, tempMatrix);
-            character.writeInstanceAnimationData(i, walkWeights, walkPhases);
+            character.writeInstanceAnimationData(i, walkWeights, walkPhases, walkCadences);
         }
 
         geometry.setAttribute("aWalk", new THREE.InstancedBufferAttribute(walkWeights, 1));
         geometry.setAttribute("aPhase", new THREE.InstancedBufferAttribute(walkPhases, 1));
+        geometry.setAttribute("aCadence", new THREE.InstancedBufferAttribute(walkCadences, 1));
         this.crowdMesh.instanceMatrix.needsUpdate = true;
 
         this.population.setupQuadTree(mapWidth, mapHeight);

@@ -34,6 +34,8 @@ export class Character {
   private static readonly debugTargetLineStartColor = new THREE.Color(0x4fc3f7);
   private static readonly debugTargetLineEndColor = new THREE.Color(0xffd166);
   private static readonly targetTurnSpeed = 2.2;
+  private static readonly baseWalkCycleFrequency = 8.0;
+  private static readonly referenceWalkSpeed = 1.4;
   
   
   tick(delta: number, index: number, walkAttribute: THREE.InstancedBufferAttribute | undefined, crowdMesh: THREE.InstancedMesh): void {
@@ -97,6 +99,12 @@ export class Character {
 
   setWalking(walking: boolean): void {
     this.isWalking = walking;
+  }
+
+  get walkCadence(): number {
+    const normalizedSpeed = this.speed / Character.referenceWalkSpeed;
+    const strideScale = Math.max(this.scale, 0.001);
+    return Math.max(0.75, normalizedSpeed / strideScale);
   }
 
   private updateHeadingToTarget(delta: number): void {
@@ -166,10 +174,13 @@ export class Character {
     }
   }
 
-  writeInstanceAnimationData(index: number, walkData: Float32Array, phaseData?: Float32Array): void {
+  writeInstanceAnimationData(index: number, walkData: Float32Array, phaseData?: Float32Array, cadenceData?: Float32Array): void {
     walkData[index] = this.isWalking ? 1 : 0;
     if (phaseData) {
       phaseData[index] = this.walkPhase;
+    }
+    if (cadenceData) {
+      cadenceData[index] = this.walkCadence;
     }
   }
 
@@ -458,9 +469,10 @@ attribute float aPart;
 attribute vec3 aPivot;
 attribute float aWalk;
 attribute float aPhase;
-    attribute float aColorGroup;
+attribute float aCadence;
+attribute float aColorGroup;
 uniform float uTime;
-    varying vec3 vInstanceTint;
+varying vec3 vInstanceTint;
 ` + shader.vertexShader;
 
       shader.vertexShader = shader.vertexShader.replace(
@@ -512,7 +524,7 @@ if (aColorGroup < 1.5) {
 vInstanceTint = instanceTint;
 
 if (aWalk > 0.5 && aColorGroup > 3.5) {
-  float gait = sin(uTime * 8.0 + aPhase);
+  float gait = sin(uTime * ${Character.baseWalkCycleFrequency.toFixed(1)} * aCadence + aPhase);
   float angle = 0.0;
   float isLeft = step(aPivot.x, 0.0);
   float sideSign = mix(1.0, -1.0, isLeft);

@@ -15,6 +15,7 @@ export default class MazeTest extends Page {
   private walkerLastElapsed = 0;
   private walkerWalkData?: Float32Array;
   private walkerPhaseData?: Float32Array;
+  private walkerCadenceData?: Float32Array;
   private walkerWalkAttr?: THREE.InstancedBufferAttribute;
   private readonly walkerCount = 4;
   private readonly population = new Population();
@@ -119,6 +120,7 @@ export default class MazeTest extends Page {
       this.walkerMesh = undefined;
       this.walkerWalkData = undefined;
       this.walkerPhaseData = undefined;
+      this.walkerCadenceData = undefined;
       this.walkerWalkAttr = undefined;
     }
   }
@@ -286,13 +288,15 @@ export default class MazeTest extends Page {
 
     this.walkerWalkData = new Float32Array(this.walkerCount);
     this.walkerPhaseData = new Float32Array(this.walkerCount);
+    this.walkerCadenceData = new Float32Array(this.walkerCount);
     for (let i = 0; i < this.walkerCount; i++) {
-      this.walkers[i].writeInstanceAnimationData(i, this.walkerWalkData, this.walkerPhaseData);
+      this.walkers[i].writeInstanceAnimationData(i, this.walkerWalkData, this.walkerPhaseData, this.walkerCadenceData);
     }
     this.walkerWalkAttr = new THREE.InstancedBufferAttribute(this.walkerWalkData, 1);
 
     geometry.setAttribute("aWalk", this.walkerWalkAttr);
     geometry.setAttribute("aPhase", new THREE.InstancedBufferAttribute(this.walkerPhaseData, 1));
+    geometry.setAttribute("aCadence", new THREE.InstancedBufferAttribute(this.walkerCadenceData, 1));
   }
 
   private setWalkerWalking(index: number, isWalking: boolean): void {

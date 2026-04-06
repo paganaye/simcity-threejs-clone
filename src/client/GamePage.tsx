@@ -1,7 +1,6 @@
 import { render } from 'solid-js/web';
 import { Accessor, createSignal, Setter, Show } from "solid-js";
 import { Scene3D } from "./Scene3D";
-import type { SimObject3D } from "./SimObject3D";
 import type { GizmoSelectedInstance } from './editor/CustomGizmo';
 import { SelectedObjectPanel } from './SelectedObjectPanel';
 import "./GameUI.css";
@@ -15,8 +14,6 @@ export interface UIProps {
     setIsPaused: Setter<boolean>;
     activeTool: Accessor<ActiveTool>;
     setActiveTool: Setter<ActiveTool>;
-    selectedObject: Accessor<SimObject3D | null>;
-    setSelectedObject: Setter<SimObject3D | null>;
     selectedInstance: Accessor<GizmoSelectedInstance | undefined>;
     setSelectedInstance: Setter<GizmoSelectedInstance | undefined>;
     setSimMoney: Setter<number>;
@@ -32,7 +29,6 @@ function GameUIComponent(props: {
     const [isLoading, setIsLoading] = createSignal(true);
     const [isPaused, setIsPaused] = createSignal(false);
     const [activeTool, setActiveTool] = createSignal<ActiveTool>('select');
-    const [selectedObject, setSelectedObject] = createSignal<SimObject3D | null>(null);
     const [selectedInstance, setSelectedInstance] = createSignal<GizmoSelectedInstance | undefined>(undefined);
     const [simMoney, setSimMoney] = createSignal(0);
     const [population, setPopulation] = createSignal(0);
@@ -46,8 +42,6 @@ function GameUIComponent(props: {
         setIsPaused,
         activeTool,
         setActiveTool,
-        selectedObject,
-        setSelectedObject,
         selectedInstance,
         setSelectedInstance,
         setSimMoney,
@@ -103,7 +97,7 @@ function GameUIComponent(props: {
                 <ToolButton tool="power-line" icon="power-line-color" />
                 <UIButton icon={isPaused() ? "play-color" : "pause-color"} onclick={() => setIsPaused(!isPaused())} selected={false} />
             </div>
-            <SelectedObjectPanel selectedObject={selectedObject} selectedInstance={selectedInstance} />
+            <SelectedObjectPanel selectedInstance={selectedInstance} />
             <div id="instructions">
                 INTERACT - Left Mouse<br />
                 PAN - Right Mouse<br />

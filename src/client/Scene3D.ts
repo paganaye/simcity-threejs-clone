@@ -27,7 +27,6 @@ export class Scene3D {
     camera!: THREE.PerspectiveCamera;
     container!: HTMLElement;
     renderDom?: HTMLCanvasElement;
-    selectionHalo?: THREE.Mesh;
     selectedInstance?: GizmoSelectedInstance;
     readonly tempMatrix = new THREE.Matrix4();
     readonly tempPosition = new THREE.Vector3();
@@ -74,7 +73,6 @@ export class Scene3D {
 
         //this.scene.clear();
         this.#setupLights();
-        this.#setupSelectionHalo();
         this.#setupSelectionInput();
         this.#setupCustomGizmo(context);
 
@@ -153,30 +151,11 @@ export class Scene3D {
 
     drawFrame(_elapsedTime: number) {
         let now = performance.now();
-        this.#updateSelectionHalo();
         //if (this.inputManager.isLeftMouseDown) {
         //this.useTool();
         //}
         this.cars3D.drawFrame(now)
         this.worldMap3D.drawFrame(now)
-    }
-
-
-    #setupSelectionHalo() {
-        const halo = new THREE.Mesh(
-            new THREE.RingGeometry(0.8, 1.0, 48),
-            new THREE.MeshBasicMaterial({
-                color: 0xffe066,
-                transparent: true,
-                opacity: 0.95,
-                side: THREE.DoubleSide,
-                depthWrite: false,
-            })
-        );
-        halo.rotation.x = -Math.PI / 2;
-        halo.visible = false;
-        this.selectionHalo = halo;
-        this.scene.add(halo);
     }
 
     #setupSelectionInput() {
@@ -221,7 +200,6 @@ export class Scene3D {
             this.selectedInstance = selected;
             this.uiProps.setSelectedInstance(selected);
             this.lastTransformValid = true;
-            this.#updateSelectionHalo();
             this.customGizmo?.syncSelectionFromSelectedInstance();
         });
 
@@ -240,31 +218,7 @@ export class Scene3D {
         });
     }
 
-    #updateSelectionHalo() {
-        if (!this.selectionHalo) return;
-        if (!this.selectedInstance) {
-            this.selectionHalo.visible = false;
-            return;
-        }
 
-        const { mesh, instanceId, selectableType } = this.selectedInstance;
-        // if (selectableType === 'building') {
-        //     // Buildings already have a custom transform ring; avoid duplicate circles.
-        //     this.selectionHalo.visible = false;
-        //     return;
-        // }
-        mesh.getMatrixAt(instanceId, this.tempMatrix);
-        this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
-
-        let radius = 1.0;
-        radius = Math.max(0.5, this.tempScale.x * 0.8);
-
-        this.selectionHalo.position.set(this.tempPosition.x, 0.08, this.tempPosition.z);
-        this.selectionHalo.scale.set(radius, radius, 1);
-        const haloMat = this.selectionHalo.material as THREE.MeshBasicMaterial;
-        haloMat.color.setHex(this.lastTransformValid ? 0xffe066 : 0xff2d2d);
-        this.selectionHalo.visible = true;
-    }
 
     #setupCustomGizmo(context: Page) {
         this.scene.add(this.transformProxy);
@@ -288,7 +242,6 @@ export class Scene3D {
             onSelectObject: () => {
                 // Re-sync proxy pose with active selected instance.
                 this.customGizmo?.syncSelectionFromSelectedInstance();
-                this.#updateSelectionHalo();
             },
             onDraggingChanged: (dragging) => {
                 if (context.controls) context.controls.enabled = !dragging;

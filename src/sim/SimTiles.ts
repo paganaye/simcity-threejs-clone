@@ -1,13 +1,13 @@
-// import { ModelName } from "../client/AssetManager";
+// import { ModelId } from "../common/ModelIds";
 // import { IPoint2D } from "./IPoint";
 // import { random } from "./Rng";
 // import { Sim } from "./Sim";
 // import { TileContent, SimBuilding, SimGrass, SimRoad } from "./TileContent";
 
 // export interface ITile {
-//     floor: ModelName;
+//     floor: ModelId;
 //     orientation: number;
-//     building?: ModelName | null;
+//     building?: ModelId | null;
 //     buildingOrientation?: number;
 // }
 

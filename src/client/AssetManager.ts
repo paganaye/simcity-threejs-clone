@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { appConstants } from '../AppConstants';
+import { CAR_MODEL_IDS } from '../common/ModelIds';
 import { Scene3D } from './Scene3D';
 
 export interface IAssetMeta {
@@ -246,7 +247,7 @@ export const modelsMetaData = {
   }
 } satisfies Record<string, IAssetMeta>;
 
-export const cars: ModelName[] = ["car-ambulance-pickup", "car-baywatch", "car-hippie-van", "car-passenger-race", "car-passenger", "car-police", "car-taxi", "car-tow-truck", "car-truck-armored-truck", "car-truck-dump", "car-veteran", "truck"];
+export const cars: ModelName[] = [...CAR_MODEL_IDS as any];
 export const commercialBuildings: ModelName[] = ["commercial-A1", "commercial-A2", "commercial-A3", "commercial-B1", "commercial-B2", "commercial-B3", "commercial-C1", "commercial-C2", "commercial-C3"];
 export const otherTiles: ModelName[] = ["grass", "power-line", "under-construction"]
 export const industrialBuildings: ModelName[] = ["industrial-A1", "industrial-B1", "industrial-C1", "power-plant"];

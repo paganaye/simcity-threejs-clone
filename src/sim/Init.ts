@@ -2,8 +2,9 @@ import { Sim } from "./Sim";
 import { appConstants } from "../AppConstants";
 import { ICarChangedWithId } from "./SimCars";
 import { ICharacterChanged, IHouseholdChanged } from "./SimCharacter";
+import type { ICityDelta, ISimulationDelta } from "../common/SimulationDelta";
 
-export function init(): ICityChanges {
+export function init(): ISimulationDelta {
     let simCity = new Sim()
     let size = appConstants.defaultCitySize;
 
@@ -29,11 +30,7 @@ export interface ICityChanges {
     characterChanged?: ICharacterChanged[];
     householdChanged?: IHouseholdChanged[];
 }
-export interface ICityChanged {
-    name: string;
-    width: number;
-    height: number;
-    clear?: boolean
-}
+
+export type ICityChanged = ICityDelta;
 
 

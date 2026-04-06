@@ -1,4 +1,4 @@
-// import { commercialBuildings, industrialBuildings, ModelName, residentialBuildings } from "../client/AssetManager";
+// import { ModelId } from "../common/ModelIds";
 // import { ITileChange, SimTile } from "./SimTiles";
 // import { random } from "./Rng";
 // import { DEG_90, DEG_180, DEG_270, DEG_0 } from "./utils";

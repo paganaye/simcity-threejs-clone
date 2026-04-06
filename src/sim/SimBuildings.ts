@@ -1,4 +1,4 @@
-import { ModelName } from "../client/AssetManager";
+import { ModelId } from "../common/ModelIds";
 import { Sim } from "./Sim";
 
 export class SimBuildings {
@@ -35,7 +35,7 @@ export class SimBuildings {
 }
 
 export class SimBuilding {
-    constructor(readonly city: Sim, readonly id: number, readonly model: ModelName) { }
+    constructor(readonly city: Sim, readonly id: number, readonly model: ModelId) { }
 
     getBuildingChange() {
         return this.city.simBuildings.buildingChanged.get(this);
@@ -68,7 +68,7 @@ export class SimBuilding {
 
 export interface IBuildingInfo {
     id: number,
-    model: ModelName,
+    model: ModelId,
     path: IBuildingPath[],
     motion: 'forward' | 'loop';
     startTime?: number;
@@ -76,7 +76,7 @@ export interface IBuildingInfo {
 
 
 export type IBuildingChanged = {
-    model?: ModelName,
+    model?: ModelId,
     path?: Partial<IBuildingPath>[],
     motion?: IBuildingInfo['motion']
     startTime?: number;

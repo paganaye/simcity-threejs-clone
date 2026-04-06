@@ -1,4 +1,4 @@
-import { cars, ModelName } from "../client/AssetManager";
+import { CAR_MODEL_IDS, ModelId } from "../common/ModelIds";
 import { appConstants } from "../AppConstants";
 import { Sim } from "./Sim";
 import { random } from "./Rng"
@@ -12,7 +12,7 @@ export class SimCars {
     feedRandom(carCount: number) {
         let newCars = [];
         for (let i = 0; i < carCount; i++) {
-            let car = new SimCar(this.simCity, i, random(cars))
+            let car = new SimCar(this.simCity, i, random(CAR_MODEL_IDS as any))
             newCars.push(car);
             car.setCarChange(
                 {
@@ -58,7 +58,7 @@ export class SimCars {
 }
 
 export class SimCar {
-    constructor(readonly city: Sim, readonly id: number, readonly model: ModelName) { }
+    constructor(readonly city: Sim, readonly id: number, readonly model: ModelId) { }
 
     getCarChange() {
         return this.city.simCars.carChanged.get(this);
@@ -91,7 +91,7 @@ export class SimCar {
 
 export interface ICarInfo {
     id: number,
-    model: ModelName,
+    model: ModelId,
     path: ICarPath[],
     motion: 'forward' | 'loop';
     startTime?: number;
@@ -99,7 +99,7 @@ export interface ICarInfo {
 
 
 export type ICarChanged = {
-    model?: ModelName,
+    model?: ModelId,
     path?: Partial<ICarPath>[],
     motion?: ICarInfo['motion']
     startTime?: number;

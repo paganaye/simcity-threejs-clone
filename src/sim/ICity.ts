@@ -1,4 +1,4 @@
-import { ModelName } from "../client/AssetManager.js";
+import { ModelId } from "../common/ModelIds";
 
 export interface ICity {
     width: number;
@@ -10,8 +10,8 @@ export interface ICity {
 export interface ITile {
     x: number,
     y: number;
-    terrain: ModelName,
+    terrain: ModelId,
     terrainRotation?: number;
-    building?: ModelName,
+    building?: ModelId,
     buildingRotation?: number;
 }

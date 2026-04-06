@@ -1,4 +1,3 @@
-import { Scene3D } from "../client/Scene3D";
 import { workerCommands, WorkerCommand, IWorkerResponse, IWorkerRequest } from "./SimWorker";
 
 export class SimBridge {
@@ -6,7 +5,7 @@ export class SimBridge {
     pendingRequests: Record<number, { command: WorkerCommand, resolve: (value: any) => void, reject: (reason: any) => void }> = {};
     callNo: number = 0;
 
-    constructor(readonly game3D: Scene3D) {
+    constructor() {
         this.worker = new Worker(new URL("../sim/SimWorker.ts", import.meta.url), { type: "module" });
 
         this.worker.onmessage = (event) => {

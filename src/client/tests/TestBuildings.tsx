@@ -19,8 +19,8 @@ const TILE = appConstants.BuildingsScale; // cell spacing in metres
 // Colors per zone type
 const FOOTPRINT_COLORS: Record<string, number> = {
     residential: 0x4caf50, // green
-    commercial:  0x2196f3, // blue
-    industrial:  0xff9800, // orange
+    commercial: 0x2196f3, // blue
+    industrial: 0xff9800, // orange
 };
 
 interface BuildingEntry {
@@ -93,7 +93,7 @@ function createAccessHandle(
     centerZ: number,
     point: AccessPoint,
     color: number,
-) : AccessHandle {
+): AccessHandle {
     const root = new THREE.Group();
     scene.add(root);
 
@@ -267,7 +267,7 @@ export default class TestBuildings extends Page {
             const perimeterLiteral = JSON.stringify(footprint.polygon);
             exportLines.push(`${modelAccessor(entry.modelName)}.perimeter = ${perimeterLiteral};`);
 
-            const modelMeta = modelsMetaData[entry.modelName] as IAssetMeta;
+            const modelMeta = modelsMetaData[entry.modelName as keyof typeof modelsMetaData] as IAssetMeta;
             if (modelMeta?.entryPoint) {
                 accessHandles.push(createAccessHandle(this.scene, entry.modelName, "entryPoint", cx, cz, modelMeta.entryPoint, 0x44dd66));
             }
@@ -316,7 +316,7 @@ export default class TestBuildings extends Page {
         };
 
         const emitAccessLine = (handle: AccessHandle) => {
-            const modelMeta = modelsMetaData[handle.modelName] as IAssetMeta;
+            const modelMeta = (modelsMetaData as any)[handle.modelName as keyof typeof modelsMetaData] as IAssetMeta;
             modelMeta[handle.key] = {
                 x: handle.point.x,
                 z: handle.point.z,

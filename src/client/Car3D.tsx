@@ -18,7 +18,7 @@ export class Car3D implements IPoint2D {
 
 
   constructor(readonly scene: Scene3D, readonly carInfo: ICarInfo) {
-    this.carMesh.set(scene.assetManager, carInfo.model, 0, 0, 0, 0);
+    this.carMesh.set(scene.assetManager, (carInfo as any).model, 0, 0, 0, 0);
     this.currentCarState = CarState.createInitialState(this);
     this.currentCarState.initialize(this, performance.now());
   }

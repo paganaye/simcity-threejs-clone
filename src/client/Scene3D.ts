@@ -17,7 +17,7 @@ export class Scene3D {
     cars3D!: Cars3D;
     //cameraManager!: CameraManager;
     //inputManager!: InputManager;
-    sim = new SimBridge(this).createCaller();
+    sim = new SimBridge().createCaller();
     focusedObject: SimObject3D | null = null;
     renderer!: THREE.WebGLRenderer;
     scene!: THREE.Scene;

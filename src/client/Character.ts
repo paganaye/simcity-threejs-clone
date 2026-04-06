@@ -1,24 +1,31 @@
 import * as THREE from "three";
 import { appConstants } from "../AppConstants";
-import { rotateTowards } from "../sim/utils";
-import type { CharacterPath } from "./CharacterPath";
+//import type { CharacterPath } from "./CharacterPath";
 import { Population } from "./Population";
+import { rotateTowards } from "../sim/utils";
 
 type RGB = [number, number, number];
 type FaceName = "front" | "back" | "left" | "right" | "top" | "bottom";
 type TargetType = 'goal' | 'detour';
 type CharacterTarget = { x: number; z: number; type: TargetType };
+export type CharacterSelectionInfo = { label: string; value: string };
+type DirectionMoveResult =
+  | { type: 'blocked'; other: Character }
+  | { type: 'move'; x: number; z: number };
 
 export interface CharacterDebugView {
   occupancyMesh?: THREE.InstancedMesh;
   targetLineMesh?: THREE.LineSegments;
 }
+const DEBUGMODE = true;
 
-
+const CHARACTER_TURN_SPEED = Math.PI * 1.5; // Radians per second
+const PAUSE_AFTER_STOP = 0.75; // seconds
 
 export class Character {
   static readonly characterRadius = 0.4;
   static readonly charDiameter = Character.characterRadius * 2;
+  private static readonly minBlockingForwardDot = 0.2;
   private static readonly yAxis = new THREE.Vector3(0, 1, 0);
   private static readonly tempPosition = new THREE.Vector3();
   private static readonly tempQuaternion = new THREE.Quaternion();
@@ -34,80 +41,67 @@ export class Character {
   private static readonly debugTargetLineY = 0.05;
   private static readonly debugTargetLineStartColor = new THREE.Color(0x4fc3f7);
   private static readonly debugTargetLineEndColor = new THREE.Color(0xffd166);
-  private static readonly targetTurnSpeed = 3;
+  private static readonly targetArrivalRadius = 0.25;
+  //private static readonly targetSnapRadius = 0.01;
   private static readonly baseWalkCycleFrequency = 8.0;
   private static readonly referenceWalkSpeed = 1.4;
-  blockedBy: Character | null = null;
+  otherBlocking: Character | null = null;
 
-  path: CharacterPath | undefined;
+  //path: CharacterPath | undefined;
   readonly walkPhase = Math.random() * Math.PI * 2;
   x = 0;
   z = 0;
   private realTarget: CharacterTarget | null = null;
 
+  advance(delta: number): void {
+    const wasBlocked = this.isBlocked;
+    const heading = this.calcTargetAngle(delta);
+    if (wasBlocked) {
+      this.waitDuration += delta;
+      if (this.waitDuration < PAUSE_AFTER_STOP) {
+        return;
+      }
+    }
+    if (heading == null) {
+      this.isBlocked = true;
+      this.waitDuration = 0;
+      return;
+    }
 
+    const tickAdvance = this.speed * delta;
+    const movementResult = this.findCharInDirection(heading, tickAdvance);
+
+    if (movementResult.type === 'blocked') {
+      this.isBlocked = true;
+      this.otherBlocking = movementResult.other;
+      if (!wasBlocked) {
+        this.waitDuration = delta;
+      }
+      return;
+    } else {
+      this.waitDuration = 0;
+      this.isBlocked = false;
+      this.otherBlocking = null;
+    }
+    this.heading = rotateTowards(this.heading, heading, CHARACTER_TURN_SPEED * delta);
+
+    this.x = movementResult.x;
+    this.z = movementResult.z;
+
+  }
 
   tick(delta: number, index: number, walkAttribute: THREE.InstancedBufferAttribute | undefined, crowdMesh: THREE.InstancedMesh): void {
-    const minX = 0;
-    const maxX = this.population.mapWidth - 1;
-    const minZ = 0;
-    const maxZ = this.population.mapHeight - 1;
-
+    if (DEBUGMODE) {
+      if (delta > 0.04) delta = 0.04;
+    }
     const quadTree = this.population.quadTree;
-    this.updateHeadingToTarget(delta);
-    this.isBlocked = this.isWalking && this.checkForwardBlockage();
-    this.waitTime = this.isBlocked ? this.waitTime + delta : 0;
-    // if (this.waitTime > 2 && this.blockedBy && this.blockedBy.blockedBy === this) {
-    //   // If mutually blocked for more than 2 seconds, we just teleport them Character.charDiameter apart
-    //   const midx = (this.x + this.blockedBy.x) / 2;
-    //   const midz = (this.z + this.blockedBy.z) / 2;
-    //   const angle = Math.atan2(this.blockedBy.x - this.x, this.blockedBy.z - this.z);
-    //   const offsetX = Math.sin(angle) * Character.charDiameter;
-    //   const offsetZ = Math.cos(angle) * Character.charDiameter;
-    //   this.x = midx - offsetX / 2;
-    //   this.z = midz - offsetZ / 2;
-    //   this.blockedBy.x = midx + offsetX / 2;
-    //   this.blockedBy.z = midz + offsetZ / 2;
-    // }
-    // If blocked, make a small lateral step to navigate around the obstacle.
-    let isWalking: 'normal' | 'lateral' | false = this.isBlocked ? false : 'normal';
-    if (!isWalking) {
-      if (Math.random() < 0.0001) this.detourToTheRight = !this.detourToTheRight; // Occasionally switch detour direction to add some variability to the paths
-      const perpHeading = this.heading + (this.detourToTheRight ? 1 : -1) * Math.PI / 2;
-      const lateralStep = 0.015; // Small step size perpendicular to heading
-      const nextX = this.x + Math.sin(perpHeading) * lateralStep;
-      const nextZ = this.z + Math.cos(perpHeading) * lateralStep;
-
-      // Check if the lateral path is clear
-      let isLateralPathClear = true;
-      for (const other of this.population.characters) {
-        if (other === this) continue;
-        const dx = other.x - nextX;
-        const dz = other.z - nextZ;
-        if (Math.hypot(dx, dz) < Character.charDiameter) {
-          isLateralPathClear = false;
-          break;
-        }
-      }
-
-      if (isLateralPathClear) {
-        this.x = nextX;
-        this.z = nextZ;
-        isWalking = 'lateral';
-      }
-    }
-
-    // Stand still while turning to face a detour waypoint.
-    // const isTurningToDetour = this.isWalking && this.target?.type === 'detour' && this.isAngularlyMisaligned();
-
-    if (walkAttribute) {
-      walkAttribute.setX(index, isWalking == 'lateral' ? 2 : (isWalking ? 1 : 0));
-    }
-
-    if (isWalking) {
+    this.advance(delta);
+    if (this.isBlocked) {
+      if (walkAttribute) walkAttribute.setX(index, 0);
+    } else {
+      if (walkAttribute) walkAttribute.setX(index, 1);
       const oldX = this.x;
       const oldZ = this.z;
-      this.move(delta, minX, maxX, minZ, maxZ);
       quadTree?.move(this, oldX, oldZ);
     }
 
@@ -123,16 +117,25 @@ export class Character {
     return this.realTarget ?? null;
   }
 
+  isAtTarget(): boolean {
+    const t = this.target;
+    if (!t) {
+      return true;
+    }
+    const dx = t.x - this.x;
+    const dz = t.z - this.z;
+    return Math.hypot(dx, dz) < Character.targetArrivalRadius;
+  }
+
 
 
   heading = 0;
   speed = 0;
   scale = 1;
-  isWalking = true;
   isBlocked = false;
   detourToTheRight = Math.random() > 0.5;
   /** Seconds spent continuously blocked. Resets to 0 when the character moves freely. */
-  waitTime = 0;
+  waitDuration = 0;
   private static readonly BASE_MODEL_HEIGHT = 1.8;
   private static readonly walkTimeUniform = { value: 0 };
 
@@ -146,8 +149,25 @@ export class Character {
     this.realTarget = null;
   }
 
-  setWalking(walking: boolean): void {
-    this.isWalking = walking;
+  getSelectionInfo(): CharacterSelectionInfo[] {
+    const target = this.target;
+    const targetValue = target
+      ? `${target.x.toFixed(2)}, ${target.z.toFixed(2)} (${target.type})`
+      : "none";
+    const blocker = this.otherBlocking
+      ? `${this.otherBlocking.x.toFixed(2)}, ${this.otherBlocking.z.toFixed(2)}`
+      : "none";
+
+    return [
+      { label: "X", value: this.x.toFixed(2) },
+      { label: "Z", value: this.z.toFixed(2) },
+      { label: "Speed", value: this.speed.toFixed(2) },
+      { label: "Heading", value: `${(this.heading * 180 / Math.PI).toFixed(1)} deg` },
+      { label: "Blocked", value: this.isBlocked ? "yes" : "no" },
+      { label: "Wait Time", value: `${this.waitDuration.toFixed(2)} s` },
+      { label: "Target", value: targetValue },
+      { label: "Blocking At", value: blocker },
+    ];
   }
 
   get walkCadence(): number {
@@ -157,84 +177,49 @@ export class Character {
   }
 
 
-  private updateHeadingToTarget(delta: number): void {
+  private calcTargetAngle(_delta: number): number | null {
     const t = this.target;
     if (!t) {
-      return;
+      return null;
     }
     const dx = t.x - this.x;
     const dz = t.z - this.z;
-    const dist2 = Math.hypot(dx, dz);
+    const distanceToTarget = Math.hypot(dx, dz);
 
-    if (dist2 < 0.01) {
-      return;
+    // Don't keep pushing if we already reached the goal neighborhood.
+    if (distanceToTarget < Character.targetArrivalRadius) {
+      return null;
     }
     const desiredHeading = Math.atan2(dx, dz);
-    this.heading = rotateTowards(this.heading, desiredHeading, Character.targetTurnSpeed * delta);
+    return desiredHeading;
   }
 
+  findCharInDirection(heading: number, tickAdvance: number): DirectionMoveResult {
+    const nextX = this.x + Math.sin(heading) * tickAdvance;
+    const nextZ = this.z + Math.cos(heading) * tickAdvance;
+    const moveDirX = Math.sin(heading);
+    const moveDirZ = Math.cos(heading);
 
-  private checkForwardBlockage(): boolean {
-    //const quadTree = this.population.quadTree;
-    const fx = Math.sin(this.heading) * Character.characterRadius;
-    const fz = Math.cos(this.heading) * Character.characterRadius;
-
-    const detectionCenterX = this.x + fx;
-    const detectionCenterZ = this.z + fz;
-
-    //   const nearby = quadTree
-    //     ? quadTree.queryRectangle({
-    //       x: detectionCenterX - detectionRadius,
-    //       z: detectionCenterZ - detectionRadius,
-    //       width: detectionRadius * 2,
-    //       height: detectionRadius * 2,
-    //     })
-    //     : this.population.characters;
-    const nearby = this.population.characters;
-
-    for (const other of nearby) {
+    // Return blocker only if it is in front of movement direction.
+    for (const other of this.population.characters) {
       if (other === this) continue;
-
-
-      const cdx = other.x - detectionCenterX;
-      const cdz = other.z - detectionCenterZ;
-      if (Math.hypot(cdx, cdz) < Character.charDiameter) {
-        this.blockedBy = other;
-        return true;
+      const cdx = other.x - nextX;
+      const cdz = other.z - nextZ;
+      const distance = Math.hypot(cdx, cdz);
+      if (distance >= Character.charDiameter) continue;
+      const forwardDot = distance < 1e-6
+        ? 0 /* Avoid division by zero and let those distance themselves anyway */
+        : (cdx * moveDirX + cdz * moveDirZ) / distance;
+      if (forwardDot >= Character.minBlockingForwardDot) {
+        return { type: 'blocked', other };
       }
     }
 
-    this.blockedBy = null;
-    return false;
-  }
-
-
-
-  move(delta: number, _minX: number, _maxX: number, _minZ: number, _maxZ: number): void {
-    if (!this.isWalking) {
-      return;
-    }
-
-    let stepSize = this.speed * delta;
-
-    // If we have a target, limit movement to not overshoot it.
-    if (this.target) {
-      let distToTarget = Math.hypot(this.target.x - this.x, this.target.z - this.z);
-      if (stepSize > distToTarget) {
-        stepSize = distToTarget;
-      }
-    }
-
-    if (stepSize < 0.01) return;
-
-    this.x += Math.sin(this.heading) * stepSize;
-    this.z += Math.cos(this.heading) * stepSize;
-
-
+    return { type: 'move', x: nextX, z: nextZ };
   }
 
   writeInstanceAnimationData(index: number, walkData: Float32Array, phaseData?: Float32Array, cadenceData?: Float32Array): void {
-    walkData[index] = this.isWalking ? 1 : 0;
+    walkData[index] = this.isBlocked ? 0 : 1;
     if (phaseData) {
       phaseData[index] = this.walkPhase;
     }
@@ -424,7 +409,7 @@ export class Character {
         Character.debugOccupancyScale
       );
       mesh.setMatrixAt(i, Character.debugOccupancyMatrix);
-      mesh.setColorAt(i, c.isWalking && !c.isBlocked ? Character.debugFreeColor : Character.debugCollisionColor);
+      mesh.setColorAt(i, c.isBlocked ? Character.debugCollisionColor : Character.debugFreeColor);
     }
 
     mesh.instanceMatrix.needsUpdate = true;

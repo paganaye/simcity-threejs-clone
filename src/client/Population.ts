@@ -55,6 +55,9 @@ export class Population {
         const material = Character.createMaterial();
         this.crowdMesh = new THREE.InstancedMesh(geometry, material, count);
         this.crowdMesh.userData.selectableType = "character";
+        this.crowdMesh.userData.characterResolver = (instanceId: number): Character | undefined => {
+            return this._characters[instanceId];
+        };
         this.scene.add(this.crowdMesh);
 
         const walkWeights = new Float32Array(count);
@@ -74,11 +77,11 @@ export class Population {
             character.x = Math.random() * (mapWidth - 1);
             character.z = Math.random() * (mapHeight - 1);
             character.heading = Math.random() * Math.PI * 2;
-            character.isWalking = true;
+            //character.isWalking = true;
             const isChild = Math.random() < childRatio;
             character.scale = isChild ? appConstants.ChildHeightInMetre / appConstants.CharacterHeightInMetre : 1;
             const speed = isChild ? 1.0 + Math.random() * 0.5 : 1.2 + Math.random() * 0.6;
-            character.speed = character.isWalking ? speed * worldUnitsPerMeter : 0;
+            character.speed = character.isBlocked ? 0 : speed * worldUnitsPerMeter;
 
             tempPos.set(character.x, 0, character.z);
             tempQuat.setFromAxisAngle(yAxis, character.heading);
@@ -106,7 +109,8 @@ export class Population {
         if (delta <= 0) return;
 
         for (let i = 0; i < this._characters.length; i++) {
-            this._characters[i].tick(delta, i, walkAttribute, this.crowdMesh);
+            const character = this._characters[i];
+            character.tick(delta, i, walkAttribute, this.crowdMesh);
         }
 
         if (walkAttribute) walkAttribute.needsUpdate = true;

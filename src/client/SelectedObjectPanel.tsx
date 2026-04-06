@@ -1,13 +1,26 @@
 import { Accessor, Show } from "solid-js";
 import type * as THREE from "three";
 import type { ISelectedInstance } from "./editor/CustomGizmo";
+import type { Character, CharacterSelectionInfo } from "./Character";
 
 export function SelectedObjectPanel(props: {
     selectedInstance: Accessor<ISelectedInstance | undefined>;
     selectedCustomObject: Accessor<THREE.Object3D | undefined>;
 }) {
+    type CharacterResolver = (instanceId: number) => Character | undefined;
     const customObject = () => props.selectedCustomObject();
     const instance = () => props.selectedInstance();
+    const selectedCharacter = (): Character | undefined => {
+        const selected = instance();
+        if (!selected || selected.selectableType !== "character") {
+            return undefined;
+        }
+        const resolver = selected.mesh.userData?.characterResolver as CharacterResolver | undefined;
+        return resolver?.(selected.instanceId);
+    };
+    const characterInfo = (): CharacterSelectionInfo[] => {
+        return selectedCharacter()?.getSelectionInfo() ?? [];
+    };
 
     return (
         <Show when={customObject() || instance()}>
@@ -30,6 +43,15 @@ export function SelectedObjectPanel(props: {
                                 <span class="info-label">InstanceId </span>
                                 <span class="info-value">{instance()?.instanceId}</span>
                             </div>
+                            <Show when={characterInfo().length > 0}>
+                                <div class="info-heading">Character</div>
+                                {characterInfo().map((entry) => (
+                                    <div>
+                                        <span class="info-label">{entry.label} </span>
+                                        <span class="info-value">{entry.value}</span>
+                                    </div>
+                                ))}
+                            </Show>
                         </div>
                     }
                 >

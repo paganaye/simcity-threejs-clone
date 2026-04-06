@@ -64,11 +64,6 @@ export class QuadTree<T extends IPoint2D> {
         const xHighMid = node.midX + width2;
         const zHighMid = node.midY + height2;
 
-        // Keep child placement consistent with routing in insert/find/query:
-        // northWest: x < midX, z < midY
-        // northEast: x < midX, z >= midY
-        // southWest: x >= midX, z < midY
-        // southEast: x >= midX, z >= midY
         node.northWest = { midX: xLowMid, midY: zLowMid, width: width2, height: height2, parent: node };
         node.northEast = { midX: xLowMid, midY: zHighMid, width: width2, height: height2, parent: node };
         node.southWest = { midX: xHighMid, midY: zLowMid, width: width2, height: height2, parent: node };

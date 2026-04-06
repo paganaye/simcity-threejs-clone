@@ -1,11 +1,12 @@
 import * as THREE from "three";
-import { Accessor, createSignal, Setter } from "solid-js";
+import { Accessor, Setter } from "solid-js";
 
 import { EditorSelection, simpleGeometries, geometryParameters } from "./editorSelection";
 
 import "./ThreeEditor.css";
 import { Page } from "../Page";
 import { setupEditorUI } from "./editorUI";
+import { Signal } from "../Signal";
 
 
 
@@ -21,8 +22,13 @@ export default class ThreeEditor extends Page {
 
     constructor() {
         super();
-        [this.editorSelection, this._setEditorSelection] = createSignal<EditorSelection>(EditorSelection.createEmpty(this.scene));
-        [this.selectedPrimitiveType, this.setSelectedPrimitiveType] = createSignal<keyof typeof simpleGeometries>('Box');
+        const editorSelection = new Signal<EditorSelection>(EditorSelection.createEmpty(this.scene));
+        this.editorSelection = editorSelection.get;
+        this._setEditorSelection = editorSelection.set;
+
+        const selectedPrimitiveType = new Signal<keyof typeof simpleGeometries>('Box');
+        this.selectedPrimitiveType = selectedPrimitiveType.get;
+        this.setSelectedPrimitiveType = selectedPrimitiveType.set;
 
     }
 

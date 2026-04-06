@@ -4,7 +4,7 @@ type GizmoAxis = 'x' | 'z' | 'xz' | 'yaw';
 
 export type GizmoSelectableType = 'building' | 'character';
 
-export type GizmoSelectedInstance = {
+export type ISelectedInstance = {
     mesh: THREE.InstancedMesh;
     instanceId: number;
     selectableType: GizmoSelectableType;
@@ -16,7 +16,7 @@ type ICustomTransformGizmoProps = {
     raycaster?: THREE.Raycaster;
     domElement: HTMLCanvasElement;
     isSelectable: (object: THREE.Object3D) => boolean;
-    getSelectedInstance?: () => GizmoSelectedInstance | undefined;
+    getSelectedInstance?: () => ISelectedInstance | undefined;
     getInstanceYaw?: (mesh: THREE.InstancedMesh, instanceId: number) => number;
     onTryUpdateSelectedInstanceTransform?: (mesh: THREE.InstancedMesh, instanceId: number, x: number, z: number, yaw: number) => boolean;
     onTransformValidityChanged?: (valid: boolean) => void;
@@ -29,6 +29,8 @@ const SLOPE_1_2 = Math.atan2(1, 2); // 26.565051177077986
 const SLOPE_1_2_DELTA = SLOPE_1_2 - Math.PI / 8;
 const GRID_SNAP = 1;
 const SECTOR_ANGLE = Math.PI / 8; // 16 secteurs
+const GIZMO_MIN_SCALE = 0.5;
+const GIZMO_SCALE_DISTANCE_FACTOR = 0.04;
 
 function Rad2Deg(rad: number): number {
     return rad * 180 / Math.PI;
@@ -43,7 +45,7 @@ export class CustomGizmo {
     private readonly proxy = new THREE.Group();
     private selectedObject?: THREE.Object3D;
     private readonly isSelectable: (object: THREE.Object3D) => boolean;
-    private readonly getSelectedInstance?: () => GizmoSelectedInstance | undefined;
+    private readonly getSelectedInstance?: () => ISelectedInstance | undefined;
     private readonly getInstanceYaw?: (mesh: THREE.InstancedMesh, instanceId: number) => number;
     private readonly onTryUpdateSelectedInstanceTransform?: (mesh: THREE.InstancedMesh, instanceId: number, x: number, z: number, yaw: number) => boolean;
     private readonly onTransformValidityChanged?: (valid: boolean) => void;
@@ -74,6 +76,7 @@ export class CustomGizmo {
     private readonly tempQuaternion = new THREE.Quaternion();
     private readonly tempScale = new THREE.Vector3();
     private readonly tempEuler = new THREE.Euler();
+    private readonly cameraToGizmo = new THREE.Vector3();
 
     constructor(props: ICustomTransformGizmoProps) {
         this.scene = props.scene;
@@ -166,6 +169,20 @@ export class CustomGizmo {
         //this.gizmo.syncPoseFromProxy(this.proxy.position, this.proxy.rotation.y);
         this.root.position.set(this.proxy.position.x, 0.06, this.proxy.position.z);
         this.root.rotation.set(0, this.proxy.rotation.y, 0);
+        this.#updateScale();
+    }
+
+    #updateScale() {
+        if (!this.root.visible) return;
+
+        this.cameraToGizmo.subVectors(this.camera.position, this.root.position);
+        const distance = this.cameraToGizmo.length();
+        const scale = Math.max(GIZMO_MIN_SCALE, distance * GIZMO_SCALE_DISTANCE_FACTOR);
+        this.root.scale.setScalar(scale);
+    }
+
+    update() {
+        this.#updateScale();
     }
 
     setVisible(visible: boolean) {

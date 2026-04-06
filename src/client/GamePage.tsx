@@ -1,132 +1,25 @@
 import { render } from 'solid-js/web';
-import { Accessor, createSignal, Setter, Show } from "solid-js";
 import { Scene3D } from "./Scene3D";
-import type { GizmoSelectedInstance } from './editor/CustomGizmo';
-import { SelectedObjectPanel } from './SelectedObjectPanel';
 import "./GameUI.css";
 import { Page } from './Page';
-import { Crowd3D } from './Crowd3D';
+import { Population } from './Population';
+import { GameUIComponent, UIProps } from './GameUIComponent';
 export type ActiveTool = "select" | "bulldoze" | "residential" | "commercial" | "industrial" | "road" | "power-plant" | "power-line";
-export interface UIProps {
-    gameWindow: HTMLElement;
-    setIsLoading: Setter<boolean>;
-    isPaused: Accessor<boolean>;
-    setIsPaused: Setter<boolean>;
-    activeTool: Accessor<ActiveTool>;
-    setActiveTool: Setter<ActiveTool>;
-    selectedInstance: Accessor<GizmoSelectedInstance | undefined>;
-    setSelectedInstance: Setter<GizmoSelectedInstance | undefined>;
-    setSimMoney: Setter<number>;
-    setPopulation: Setter<number>;
-    setSimTime: Setter<number>;
-    setCityName: Setter<string>;
-}
-
-function GameUIComponent(props: {
-    page: Page,
-    onUILoaded: (uiProps: UIProps) => void
-}) {
-    const [isLoading, setIsLoading] = createSignal(true);
-    const [isPaused, setIsPaused] = createSignal(false);
-    const [activeTool, setActiveTool] = createSignal<ActiveTool>('select');
-    const [selectedInstance, setSelectedInstance] = createSignal<GizmoSelectedInstance | undefined>(undefined);
-    const [simMoney, setSimMoney] = createSignal(0);
-    const [population, setPopulation] = createSignal(0);
-    const [simTime, setSimTime] = createSignal(0);
-    const [cityName, setCityName] = createSignal('My City');
-
-    props.onUILoaded({
-        gameWindow: props.page.appContainer,
-        setIsLoading,
-        isPaused,
-        setIsPaused,
-        activeTool,
-        setActiveTool,
-        selectedInstance,
-        setSelectedInstance,
-        setSimMoney,
-        setPopulation,
-        setSimTime,
-        setCityName,
-    });
-
-
-
-    function UIButton(propsBtn: { icon: string, selected: boolean, onclick: (() => void) }) {
-        return <button class={"ui-button" + (propsBtn.selected ? " selected" : "")}
-            onclick={_ => propsBtn.onclick()} >
-            <img class="toolbar-icon" src={`./icons/${propsBtn.icon}.png`} alt={propsBtn.icon} />
-        </button >;
-    }
-    function ToolButton(toolProps: { tool: ActiveTool, icon: string }) {
-        return <UIButton
-            icon={toolProps.icon}
-            selected={activeTool() === toolProps.tool}
-            onclick={() => {
-                setActiveTool(toolProps.tool);
-            }} />;
-    }
-    return (
-        <div class="ui-root">
-            <Show when={isLoading()}>
-                <div id="loading" class="text-overlay"><div>LOADING...</div></div>
-            </Show>
-            <Show when={isPaused()}>
-                <div id="paused-text" class="text-overlay"><div>PAUSED</div></div>
-            </Show>
-            <div id="title-bar">
-                <div class="title-bar-left-items title-bar-items">${simMoney()}</div>
-                <div class="title-bar-center-items title-bar-items">
-                    <span id="city-name">{cityName()}</span>
-                    <span>&nbsp;-&nbsp;</span>
-                    <span id="sim-time">{simTime()}</span>
-                </div>
-                <div class="title-bar-right-items title-bar-items">
-                    <img id="population-icon" src="./icons/person.png" alt="population" />
-                    <span id="population-counter">{population()}</span>
-                </div>
-            </div>
-            <div id="ui-toolbar" class="container">
-                <ToolButton tool="select" icon="select-color" />
-                <ToolButton tool="bulldoze" icon="bulldozer-color" />
-                <ToolButton tool="residential" icon="house-color" />
-                <ToolButton tool="commercial" icon="store-color" />
-                <ToolButton tool="industrial" icon="factory-color" />
-                <ToolButton tool="road" icon="road-color" />
-                <ToolButton tool="power-plant" icon="power-color" />
-                <ToolButton tool="power-line" icon="power-line-color" />
-                <UIButton icon={isPaused() ? "play-color" : "pause-color"} onclick={() => setIsPaused(!isPaused())} selected={false} />
-            </div>
-            <SelectedObjectPanel selectedInstance={selectedInstance} />
-            <div id="instructions">
-                INTERACT - Left Mouse<br />
-                PAN - Right Mouse<br />
-                ZOOM - Scroll<br />
-                ROTATE - Middle Mouse<br />
-            </div>
-            <div id="version">v0.3.0</div>
-        </div>
-
-    );
-}
 
 export default class GamePage extends Page {
     scene3DInstance: Scene3D | undefined;
-    private crowd3D?: Crowd3D;
+    private population3D?: Population;
 
     async run() {
 
-
         const handleUILoaded = async (uiProps: UIProps): Promise<void> => {
-
-
             this.scene3DInstance = new Scene3D(uiProps);
             await this.scene3DInstance.init(this);
-            this.crowd3D = new Crowd3D(this.scene);
-            this.crowd3D.init(this.scene3DInstance.worldMap3D.width, this.scene3DInstance.worldMap3D.height);
+            this.population3D = new Population(this.scene);
+            this.population3D.init(this.scene3DInstance.worldMap3D.width, this.scene3DInstance.worldMap3D.height);
 
             console.log("GameUI: Scene3D initialized after UI loaded.");
-            uiProps.setIsLoading(false);
+            uiProps.isLoading.set(false);
         };
 
 
@@ -137,13 +30,13 @@ export default class GamePage extends Page {
     override loop(elapsed: number): void {
         this.scene3DInstance?.drawFrame(elapsed);
         if (this.scene3DInstance) {
-            this.crowd3D?.tick(elapsed);
+            this.population3D?.tick(elapsed);
         }
     }
 
     override cleanup(): void {
-        this.crowd3D?.dispose();
-        this.crowd3D = undefined;
+        this.population3D?.dispose();
+        this.population3D = undefined;
     }
 
 

@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import { render } from "solid-js/web";
-import { createSignal, createEffect, Accessor, Setter, JSX } from "solid-js";
+import { createEffect, JSX } from "solid-js";
 import { GUI } from 'lil-gui';
 
 import { EditorSelection, ActiveTool, simpleGeometries } from "./editorSelection";
+import { Signal } from "../Signal";
 
 import "./ThreeEditor.css";
 import ThreeEditor from "./ThreeEditor";
@@ -107,14 +108,20 @@ export function setupEditorUI(page: ThreeEditor): void {
         );
     }
 
-    function ToolButton(toolProps: { tool: ActiveTool, content: string, size?: number, onclick?: (() => void), activeToolSignal: Accessor<ActiveTool>, setActiveTool: Setter<ActiveTool> }): JSX.Element {
+    function ToolButton(toolProps: {
+        tool: ActiveTool,
+        content: string,
+        size?: number,
+        onclick?: (() => void),
+        activeTool: Signal<ActiveTool>,
+    }): JSX.Element {
         return (
             <UIButton
                 content={toolProps.content}
-                selected={toolProps.activeToolSignal() === toolProps.tool}
+                selected={toolProps.activeTool.get() === toolProps.tool}
                 size={toolProps.size}
                 onclick={() => {
-                    toolProps.setActiveTool(toolProps.tool);
+                    toolProps.activeTool.set(toolProps.tool);
                     if (toolProps.onclick) {
                         toolProps.onclick();
                     }
@@ -126,7 +133,7 @@ export function setupEditorUI(page: ThreeEditor): void {
     function GameUIComponent(props: {
         page: ThreeEditor
     }) {
-        const [activeTool, setActiveTool] = createSignal<ActiveTool>('select');
+        const activeTool = new Signal<ActiveTool>('select');
 
         let selectedObjectFolder: GUI | null = null;
 
@@ -186,9 +193,9 @@ export function setupEditorUI(page: ThreeEditor): void {
                             <option value={key}>{key}</option>
                         ))}
                     </select>
-                    <ToolButton tool="select" content="Select" size={16} activeToolSignal={activeTool} setActiveTool={() => setActiveTool} />
-                    <ToolButton tool="residential" content="Add" size={16} activeToolSignal={activeTool} setActiveTool={() => setActiveTool} onclick={() => props.page.addPrimitive(props.page.selectedPrimitiveType())} />
-                    <ToolButton tool="bulldoze" content="Delete" size={16} activeToolSignal={activeTool} setActiveTool={() => setActiveTool} onclick={() => props.page.deleteSelectedObjects()} />
+                    <ToolButton tool="select" content="Select" size={16} activeTool={activeTool} />
+                    <ToolButton tool="residential" content="Add" size={16} activeTool={activeTool} onclick={() => props.page.addPrimitive(props.page.selectedPrimitiveType())} />
+                    <ToolButton tool="bulldoze" content="Delete" size={16} activeTool={activeTool} onclick={() => props.page.deleteSelectedObjects()} />
                 </div>
                 <div id="instructions">
                     SELECT - Left Click (click repeatedly on selected to cycle, Shift+Click to add, Ctrl/Cmd+Click to toggle)<br />

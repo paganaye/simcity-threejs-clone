@@ -1,8 +1,8 @@
 import { Accessor, Show } from "solid-js";
-import type { GizmoSelectedInstance } from "./editor/CustomGizmo";
+import type { ISelectedInstance } from "./editor/CustomGizmo";
 
 export function SelectedObjectPanel(props: {
-    selectedInstance: Accessor<GizmoSelectedInstance | undefined>;
+    selectedInstance: Accessor<ISelectedInstance | undefined>;
 }) {
     return (
         <Show when={props.selectedInstance()}>

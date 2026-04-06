@@ -8,7 +8,7 @@ import { ICityChanged } from '../sim/Init';
 import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
-import { CustomGizmo, type GizmoSelectedInstance } from './editor/CustomGizmo';
+import { CustomGizmo, type ISelectedInstance } from './editor/CustomGizmo';
 
 export class Scene3D {
     assetManager: AssetManager = new AssetManager(this)
@@ -27,7 +27,7 @@ export class Scene3D {
     camera!: THREE.PerspectiveCamera;
     container!: HTMLElement;
     renderDom?: HTMLCanvasElement;
-    selectedInstance?: GizmoSelectedInstance;
+    selectedInstance?: ISelectedInstance;
     readonly tempMatrix = new THREE.Matrix4();
     readonly tempPosition = new THREE.Vector3();
     readonly tempQuaternion = new THREE.Quaternion();
@@ -35,7 +35,14 @@ export class Scene3D {
     pageContext?: Page;
     customGizmo?: CustomGizmo;
     readonly transformProxy = new THREE.Object3D();
+    selectionHalo?: THREE.Group;
+    readonly selectionHaloLayers: THREE.LineSegments<THREE.EdgesGeometry, THREE.LineBasicMaterial>[] = [];
     lastTransformValid = true;
+    readonly tempWorldMatrix = new THREE.Matrix4();
+    readonly tempBox = new THREE.Box3();
+    readonly tempSize = new THREE.Vector3();
+    readonly tempCenter = new THREE.Vector3();
+    readonly tempCenterWorld = new THREE.Vector3();
 
     constructor(readonly uiProps: UIProps) { }
 
@@ -73,6 +80,7 @@ export class Scene3D {
 
         //this.scene.clear();
         this.#setupLights();
+        this.#setupSelectionHalo();
         this.#setupSelectionInput();
         this.#setupCustomGizmo(context);
 
@@ -80,7 +88,7 @@ export class Scene3D {
 
 
         await pendingAssetManager;
-        uiProps.setIsLoading(false);
+        uiProps.isLoading.set(false);
 
         let changes = await this.sim.init();
         if (changes.cityChanged) {
@@ -97,7 +105,7 @@ export class Scene3D {
     }
 
     onCityChanged(cityChanged: ICityChanged) {
-        this.uiProps.setCityName(cityChanged.name);
+        this.uiProps.cityName.set(cityChanged.name);
         if (cityChanged.clear) this.worldMap3D.clearCity();
         this.worldMap3D.setSize(cityChanged.width, cityChanged.height);
 
@@ -156,6 +164,85 @@ export class Scene3D {
         //}
         this.cars3D.drawFrame(now)
         this.worldMap3D.drawFrame(now)
+        this.customGizmo?.update();
+        this.#updateSelectionHalo();
+    }
+
+    #setupSelectionHalo() {
+        const haloGeometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1));
+        const halo = new THREE.Group();
+
+        const opacities = [0.95, 0.6, 0.35];
+        this.selectionHaloLayers.length = 0;
+        for (const opacity of opacities) {
+            const haloMaterial = new THREE.LineBasicMaterial({
+                color: 0xff9f1c,
+                transparent: true,
+                opacity,
+                depthTest: false,
+            });
+            const layer = new THREE.LineSegments(haloGeometry, haloMaterial);
+            layer.renderOrder = 1000;
+            this.selectionHaloLayers.push(layer);
+            halo.add(layer);
+        }
+
+        this.selectionHalo = halo;
+        this.selectionHalo.visible = false;
+        this.scene.add(this.selectionHalo);
+    }
+
+    #updateSelectionHalo() {
+        if (!this.selectionHalo) return;
+
+        const selected = this.selectedInstance;
+        if (!selected) {
+            this.selectionHalo.visible = false;
+            return;
+        }
+
+        const geometry = selected.mesh.geometry;
+        if (!geometry.boundingBox) {
+            geometry.computeBoundingBox();
+        }
+
+        if (!geometry.boundingBox) {
+            this.selectionHalo.visible = false;
+            return;
+        }
+
+        selected.mesh.getMatrixAt(selected.instanceId, this.tempMatrix);
+        this.tempWorldMatrix.multiplyMatrices(selected.mesh.matrixWorld, this.tempMatrix);
+        this.tempWorldMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
+
+        this.tempBox.copy(geometry.boundingBox);
+        this.tempBox.getSize(this.tempSize);
+        this.tempBox.getCenter(this.tempCenter);
+
+        const sx = Math.abs(this.tempScale.x);
+        const sy = Math.abs(this.tempScale.y);
+        const sz = Math.abs(this.tempScale.z);
+        const inflate = 1.05;
+
+        this.tempCenterWorld.copy(this.tempCenter);
+        this.tempCenterWorld.multiply(this.tempScale);
+        this.tempCenterWorld.applyQuaternion(this.tempQuaternion);
+        this.tempCenterWorld.add(this.tempPosition);
+
+        this.selectionHalo.position.copy(this.tempCenterWorld);
+        this.selectionHalo.quaternion.copy(this.tempQuaternion);
+
+        const baseX = Math.max(this.tempSize.x * sx * inflate, 0.1);
+        const baseY = Math.max(this.tempSize.y * sy * inflate, 0.1);
+        const baseZ = Math.max(this.tempSize.z * sz * inflate, 0.1);
+        const layerMultipliers = [1, 1.025, 1.05];
+
+        this.selectionHaloLayers.forEach((layer, index) => {
+            const m = layerMultipliers[index] ?? 1;
+            layer.scale.set(baseX * m, baseY * m, baseZ * m);
+        });
+
+        this.selectionHalo.visible = true;
     }
 
     #setupSelectionInput() {
@@ -177,7 +264,7 @@ export class Scene3D {
             this.raycaster.setFromCamera(mouse, this.camera);
             const hits = this.raycaster.intersectObjects(this.scene.children, true);
 
-            let selected: GizmoSelectedInstance | undefined;
+            let selected: ISelectedInstance | undefined;
             for (const hit of hits) {
                 // Skip the proxy itself
                 if (hit.object === this.transformProxy) continue;
@@ -198,9 +285,10 @@ export class Scene3D {
 
             // If nothing selected, deselect current
             this.selectedInstance = selected;
-            this.uiProps.setSelectedInstance(selected);
+            this.uiProps.selectedInstance.set(selected);
             this.lastTransformValid = true;
             this.customGizmo?.syncSelectionFromSelectedInstance();
+            this.#updateSelectionHalo();
         });
 
         this.renderDom?.addEventListener('pointermove', (event) => {

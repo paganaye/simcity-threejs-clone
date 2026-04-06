@@ -45,6 +45,7 @@ export class GameScene3D {
     readonly tempSize = new THREE.Vector3();
     readonly tempCenter = new THREE.Vector3();
     readonly tempCenterWorld = new THREE.Vector3();
+    suppressLeftPanUntilPointerUp = false;
 
     constructor(readonly uiProps: UIProps) { }
 
@@ -233,6 +234,8 @@ export class GameScene3D {
     #setupSelectionInput() {
         this.renderDom?.addEventListener('pointerdown', (event) => {
             if (!this.renderDom) return;
+            if (event.button !== 0) return;
+
             const rect = this.renderDom.getBoundingClientRect();
             const mouse = new THREE.Vector2(
                 ((event.clientX - rect.left) / rect.width) * 2 - 1,
@@ -241,6 +244,10 @@ export class GameScene3D {
             if (!mouse) return;
 
             if (this.customGizmo?.onPointerDown(event)) {
+                this.suppressLeftPanUntilPointerUp = true;
+                if (this.pageContext?.controls) {
+                    this.pageContext.controls.enabled = false;
+                }
                 event.stopPropagation();
                 event.preventDefault();
                 return;
@@ -269,12 +276,31 @@ export class GameScene3D {
                 } else break;
             }
 
-            // If nothing selected, deselect current
+            if (!selected) {
+                // Empty click deselects current selection; pan is still handled by OrbitControls.
+                this.selectedInstance = undefined;
+                this.uiProps.selectedInstance.set(undefined);
+                this.uiProps.selectedCustomObject.set(undefined);
+                this.lastTransformValid = true;
+                this.customGizmo?.syncSelectionFromSelectedInstance();
+                this.#updateSelectionHalo();
+                return;
+            }
+
             this.selectedInstance = selected;
             this.uiProps.selectedInstance.set(selected);
+            this.uiProps.selectedCustomObject.set(undefined);
             this.lastTransformValid = true;
             this.customGizmo?.syncSelectionFromSelectedInstance();
             this.#updateSelectionHalo();
+
+            // Left click that selected something should not also pan the camera.
+            this.suppressLeftPanUntilPointerUp = true;
+            if (this.pageContext?.controls) {
+                this.pageContext.controls.enabled = false;
+            }
+            event.stopPropagation();
+            event.preventDefault();
         });
 
         this.renderDom?.addEventListener('pointermove', (event) => {
@@ -285,10 +311,22 @@ export class GameScene3D {
 
         this.renderDom?.addEventListener('pointerup', () => {
             this.customGizmo?.onPointerUp();
+            if (this.suppressLeftPanUntilPointerUp) {
+                this.suppressLeftPanUntilPointerUp = false;
+                if (this.pageContext?.controls) {
+                    this.pageContext.controls.enabled = true;
+                }
+            }
         });
 
         this.renderDom?.addEventListener('pointercancel', () => {
             this.customGizmo?.onPointerUp();
+            if (this.suppressLeftPanUntilPointerUp) {
+                this.suppressLeftPanUntilPointerUp = false;
+                if (this.pageContext?.controls) {
+                    this.pageContext.controls.enabled = true;
+                }
+            }
         });
     }
 
@@ -313,11 +351,13 @@ export class GameScene3D {
             },
             onSelectObject: (obj) => {
                 if (obj === this.transformProxy) {
+                    this.uiProps.selectedCustomObject.set(undefined);
                     // Re-sync proxy pose with active selected instance.
                     this.customGizmo?.syncSelectionFromSelectedInstance();
                     return;
                 }
 
+                this.uiProps.selectedCustomObject.set(obj);
                 this.onCustomGizmoObjectSelected?.(obj);
             },
             onDraggingChanged: (dragging) => {

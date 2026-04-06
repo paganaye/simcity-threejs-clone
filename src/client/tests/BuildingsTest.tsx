@@ -42,6 +42,8 @@ function createAccessHandle(
     color: number,
 ): AccessHandle {
     const root = new THREE.Group();
+    root.userData.selectableType = "access-point";
+    root.userData.handleKey = key;
     scene.add(root);
 
     const pickMesh = new THREE.Mesh(
@@ -55,6 +57,8 @@ function createAccessHandle(
         }),
     );
     pickMesh.renderOrder = 1001;
+    pickMesh.userData.selectableType = "access-point";
+    pickMesh.userData.handleKey = key;
     root.add(pickMesh);
 
     const handle: AccessHandle = {

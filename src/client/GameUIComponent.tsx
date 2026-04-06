@@ -1,4 +1,5 @@
 import { JSX, Show } from 'solid-js';
+import type * as THREE from 'three';
 import type { ISelectedInstance } from './editor/CustomGizmo';
 import { ActiveTool } from './GamePage';
 import { Page } from './Page';
@@ -11,6 +12,7 @@ export interface UIProps {
     isPaused: Signal<boolean>;
     activeTool: Signal<ActiveTool>;
     selectedInstance: Signal<ISelectedInstance | undefined>;
+    selectedCustomObject: Signal<THREE.Object3D | undefined>;
     selectionFilter?: (selected: ISelectedInstance) => boolean;
     simMoney: Signal<number>;
     population: Signal<number>;
@@ -27,6 +29,7 @@ export function GameUIComponent(props: {
     const isPaused = new Signal(false);
     const activeTool = new Signal<ActiveTool>('select');
     const selectedInstance = new Signal<ISelectedInstance | undefined>(undefined);
+    const selectedCustomObject = new Signal<THREE.Object3D | undefined>(undefined);
     const simMoney = new Signal(0);
     const population = new Signal(0);
     const simTime = new Signal(0);
@@ -38,6 +41,7 @@ export function GameUIComponent(props: {
         isPaused,
         activeTool,
         selectedInstance,
+        selectedCustomObject,
         selectionFilter: () => true,
         simMoney,
         population,
@@ -74,7 +78,7 @@ export function GameUIComponent(props: {
                     <UIButton icon={isPaused.get() ? "play-color" : "pause-color"} onclick={() => isPaused.set(!isPaused.get())} selected={false} />
                 </div>
             </Show>
-            <SelectedObjectPanel selectedInstance={selectedInstance.get} />
+            <SelectedObjectPanel selectedInstance={selectedInstance.get} selectedCustomObject={selectedCustomObject.get} />
             <div id="instructions">
                 INTERACT - Left Mouse<br />
                 PAN - Right Mouse<br />

@@ -91,6 +91,38 @@ export abstract class Page {
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
+        this.controls.zoomSpeed = 2.5;
+        this.controls.mouseButtons = {
+            LEFT: THREE.MOUSE.PAN,
+            MIDDLE: THREE.MOUSE.ROTATE,
+            RIGHT: undefined,
+        };
+
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        const hitPoint = new THREE.Vector3();
+        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+        this.renderer.domElement.addEventListener('pointerdown', (event) => {
+            if (event.button !== 1 || !this.controls) return;
+
+            const rect = this.renderer.domElement.getBoundingClientRect();
+            pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(pointer, this.camera);
+
+            // Prefer the exact 3D point under cursor (including Y).
+            const sceneHits = raycaster.intersectObjects(this.scene.children, true);
+            if (sceneHits.length > 0) {
+                hitPoint.copy(sceneHits[0].point);
+            } else if (!raycaster.ray.intersectPlane(groundPlane, hitPoint)) {
+                return;
+            }
+
+            this.controls.target.copy(hitPoint);
+            this.controls.update();
+        });
     }
 
     protected addStats() {

@@ -8,7 +8,7 @@ import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
 import { CustomGizmo, type ISelectedInstance } from './editor/CustomGizmo';
-import { UIProps } from './GameUIComponent';
+import { IFloorSize, UIProps } from './GameUIComponent';
 
 export class GameScene3D {
     assetManager: AssetManager = new AssetManager(this)
@@ -50,8 +50,11 @@ export class GameScene3D {
     leftPointerDownConsumedByGizmo = false;
     leftPointerDownX = 0;
     leftPointerDownY = 0;
+    size: IFloorSize;
 
-    constructor(readonly uiProps: UIProps) { }
+    constructor(readonly uiProps: UIProps) {
+        this.size = uiProps.mapSize;
+    }
 
     async init(context: Page) {
         this.pageContext = context;
@@ -76,7 +79,7 @@ export class GameScene3D {
         this.#setupSelectionHalo();
         this.#setupSelectionInput();
         this.#setupCustomGizmo(context);
-
+        this.#setupGround();
         await pendingAssetManager;
         uiProps.isLoading.set(false);
 
@@ -90,14 +93,10 @@ export class GameScene3D {
 
     }
 
-    onMapResized() {
-        this.#setupGround();
-    }
-
     onCityChanged(cityChanged: ICityChanged) {
         this.uiProps.cityName.set(cityChanged.name);
         if (cityChanged.clear) this.worldMap3D.clearCity();
-        this.worldMap3D.setSize(cityChanged.width, cityChanged.height);
+        //this.worldMap3D.setSize(cityChanged.width, cityChanged.height);
 
         const centerX = cityChanged.width / 2 - 0.5;
         const centerZ = cityChanged.height / 2 - 0.5;
@@ -111,7 +110,7 @@ export class GameScene3D {
 
     #setupGround() {
         if (this.grid) this.scene.remove(this.grid)
-        let { width, height } = this.worldMap3D
+        let size = this.worldMap3D.size
         const groundMaterial = new THREE.MeshStandardMaterial({
             color: 0x4f9d3a,
             roughness: 0.95,
@@ -119,11 +118,11 @@ export class GameScene3D {
         });
 
         const grid = new THREE.Mesh(
-            new THREE.PlaneGeometry(width, height),
+            new THREE.PlaneGeometry(size.x, size.z),
             groundMaterial
         );
         grid.rotation.x = -Math.PI / 2;
-        grid.position.set(width / 2 - 0.5, -0.05, height / 2 - 0.5);
+        grid.position.set(size.x / 2 - 0.5, -0.05, size.z / 2 - 0.5);
         grid.receiveShadow = true;
         this.grid = grid;
         this.scene.add(grid);

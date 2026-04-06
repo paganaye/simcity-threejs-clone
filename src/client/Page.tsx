@@ -1,18 +1,9 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GUI } from 'lil-gui';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { App } from './App';
 import { CameraRotateGizmo } from './CameraRotateGizmo';
-
-const MIDDLE_PAN_SMOOTHING = 20;
-const MIDDLE_PAN_EPSILON_SQ = 0.0001;
-
-enum MouseInteraction {
-    None,
-    Panning,
-    RotatingCamera,
-}
+import { SimpleCameraControls } from './SimpleCameraControls';
 
 export abstract class Page {
     app!: App<any>;
@@ -25,17 +16,12 @@ export abstract class Page {
     renderer!: THREE.WebGLRenderer;
     camera!: THREE.PerspectiveCamera;
 
-    controls?: OrbitControls;
+    controls?: SimpleCameraControls;
     cameraRotateGizmo?: CameraRotateGizmo;
     gui?: GUI;
     statsFPS?: Stats;
     statsMS?: any;
     statsMB?: any;
-    isMiddlePointerDown = false;
-    readonly middlePanTargetGoal = new THREE.Vector3();
-    readonly middlePanCameraGoal = new THREE.Vector3();
-    middlePanAnimating = false;
-    mouseInteractionState: MouseInteraction = MouseInteraction.None;
 
     readonly options = {
         addGUI: true
@@ -104,9 +90,7 @@ export abstract class Page {
     }
 
     protected createMouseControls() {
-        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
+        this.controls = new SimpleCameraControls(this.camera, this.renderer.domElement, this.scene);
         this.controls.zoomSpeed = 2.5;
         this.controls.mouseButtons = {
             LEFT: THREE.MOUSE.PAN,
@@ -115,108 +99,12 @@ export abstract class Page {
         };
 
         this.cameraRotateGizmo = new CameraRotateGizmo(this.scene);
-
-        const raycaster = new THREE.Raycaster();
-        const pointer = new THREE.Vector2();
-        const hitPoint = new THREE.Vector3();
-        const panDelta = new THREE.Vector3();
-        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-
-        const stopMiddleInteraction = () => {
-            this.isMiddlePointerDown = false;
-            this.mouseInteractionState = MouseInteraction.None;
+        this.controls.onRotateAnchorChanged = (position) => {
+            this.cameraRotateGizmo?.setTarget(position);
+        };
+        this.controls.onRotateAnchorEnded = () => {
             this.cameraRotateGizmo?.hide();
         };
-
-        this.renderer.domElement.addEventListener('pointerdown', (event) => {
-            if (event.button !== 1 || !this.controls) return;
-            this.isMiddlePointerDown = true;
-            this.mouseInteractionState = MouseInteraction.Panning;
-
-            const rect = this.renderer.domElement.getBoundingClientRect();
-            pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-            raycaster.setFromCamera(pointer, this.camera);
-
-            // Prefer the exact 3D point under cursor (including Y).
-            const sceneHits = raycaster.intersectObjects(this.scene.children, true);
-            if (sceneHits.length > 0) {
-                hitPoint.copy(sceneHits[0].point);
-            } else if (!raycaster.ray.intersectPlane(groundPlane, hitPoint)) {
-                return;
-            }
-
-            // Move camera and target by the same X/Z delta to keep view direction unchanged.
-            panDelta.set(
-                hitPoint.x - this.controls.target.x,
-                0,
-                hitPoint.z - this.controls.target.z
-            );
-            this.middlePanTargetGoal.copy(this.controls.target).add(panDelta);
-            this.middlePanCameraGoal.copy(this.camera.position).add(panDelta);
-            this.middlePanAnimating = true;
-
-            this.cameraRotateGizmo?.setTarget(this.middlePanTargetGoal);
-        });
-
-        this.renderer.domElement.addEventListener('pointerup', (event) => {
-            if (event.button !== 1) return;
-            stopMiddleInteraction();
-        });
-
-        this.renderer.domElement.addEventListener('pointercancel', () => {
-            stopMiddleInteraction();
-        });
-
-        this.renderer.domElement.addEventListener('pointermove', (event) => {
-            if (!this.isMiddlePointerDown) return;
-            if ((event.buttons & 4) === 0) {
-                stopMiddleInteraction();
-                return;
-            }
-
-            if (this.mouseInteractionState === MouseInteraction.Panning) {
-                const movedEnough = Math.abs(event.movementX) + Math.abs(event.movementY) > 1;
-                if (movedEnough) {
-                    this.mouseInteractionState = MouseInteraction.RotatingCamera;
-                    this.middlePanAnimating = false;
-                }
-            }
-        });
-
-        this.renderer.domElement.addEventListener('wheel', () => {
-            if (!this.isMiddlePointerDown) {
-                this.mouseInteractionState = MouseInteraction.None;
-            }
-        });
-
-        this.renderer.domElement.addEventListener('pointerleave', () => {
-            if (!this.isMiddlePointerDown) return;
-            stopMiddleInteraction();
-        });
-
-        window.addEventListener('pointerup', () => {
-            if (!this.isMiddlePointerDown) return;
-            stopMiddleInteraction();
-        });
-    }
-
-    #updateMiddlePan(deltaSeconds: number) {
-        if (!this.controls || !this.middlePanAnimating) return;
-        if (this.mouseInteractionState !== MouseInteraction.Panning) return;
-
-        const alpha = 1 - Math.exp(-MIDDLE_PAN_SMOOTHING * deltaSeconds);
-        this.controls.target.lerp(this.middlePanTargetGoal, alpha);
-        this.camera.position.lerp(this.middlePanCameraGoal, alpha);
-
-        const targetDone = this.controls.target.distanceToSquared(this.middlePanTargetGoal) <= MIDDLE_PAN_EPSILON_SQ;
-        const cameraDone = this.camera.position.distanceToSquared(this.middlePanCameraGoal) <= MIDDLE_PAN_EPSILON_SQ;
-        if (targetDone && cameraDone) {
-            this.controls.target.copy(this.middlePanTargetGoal);
-            this.camera.position.copy(this.middlePanCameraGoal);
-            this.middlePanAnimating = false;
-        }
     }
 
     protected addStats() {
@@ -293,9 +181,7 @@ export abstract class Page {
             const deltaSeconds = clock.getDelta();
             const elapsedTime = clock.elapsedTime;
             this.loop(elapsedTime);
-            this.#updateMiddlePan(deltaSeconds);
             this.cameraRotateGizmo?.update(deltaSeconds, this.camera);
-            this.controls?.update();
             this.renderer.render(this.scene, this.camera);
             this.statsFPS?.end();
             this.statsMS?.end();
@@ -307,7 +193,9 @@ export abstract class Page {
 
 
     cleanup() {
+        this.controls?.dispose();
         this.cameraRotateGizmo?.dispose();
+        this.controls = undefined;
         this.cameraRotateGizmo = undefined;
     }
 

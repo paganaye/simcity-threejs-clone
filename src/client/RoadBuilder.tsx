@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { IOrientation2D } from "../sim/IPoint";
+import { IFloorPos } from "./GameUIComponent";
 
 
 type ShoulderType = 'parallelParking' | 'perpendicularParking' | 'emergencyLane' | 'line' | 'gap' | 'none';
@@ -334,7 +335,7 @@ export class RoadBuilder implements IOrientation2D {
         }
         this.textureProgressV = startV + curveLength * RoadBuilder.LINE_REPEAT_PER_UNIT;
 
-        const getCurvePoint = (t: number, offsetRadius: number): { x: number, z: number } => {
+        const getCurvePoint = (t: number, offsetRadius: number): IFloorPos => {
             const currentTangentAngle = initialRoadAngle + t * turnAngle;
             const geometryRayAngle = currentTangentAngle + geomAngleOffset;
             const cosRay = Math.cos(geometryRayAngle);

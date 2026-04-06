@@ -20,7 +20,7 @@ export default class GamePart extends Page {
         };
 
 
-        render(() => <GameUIComponent page={this} onUILoaded={handleUILoaded} />, this.appContainer);
+        render(() => <GameUIComponent page={this} mapSize={{ x: 40, z: 40 }} onUILoaded={handleUILoaded} />, this.appContainer);
 
     }
 

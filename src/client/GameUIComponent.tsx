@@ -6,7 +6,14 @@ import { Page } from './Page';
 import { SelectedObjectPanel } from './SelectedObjectPanel';
 import { Signal } from './Signal';
 
+export interface IFloorPos {
+    x: number;
+    z: number;
+}
+export type IFloorSize = IFloorPos;
+
 export interface UIProps {
+    mapSize: { x: number; z: number };
     gameWindow: HTMLElement;
     isLoading: Signal<boolean>;
     isPaused: Signal<boolean>;
@@ -24,6 +31,7 @@ export function GameUIComponent(props: {
     page: Page;
     onUILoaded: (uiProps: UIProps) => void;
     toolbar?: JSX.Element;
+    mapSize: IFloorSize;
 }) {
     const isLoading = new Signal(true);
     const isPaused = new Signal(false);
@@ -36,6 +44,7 @@ export function GameUIComponent(props: {
     const cityName = new Signal('My City');
 
     props.onUILoaded({
+        mapSize: props.mapSize,
         gameWindow: props.page.appContainer,
         isLoading,
         isPaused,
@@ -48,9 +57,6 @@ export function GameUIComponent(props: {
         simTime,
         cityName,
     });
-
-
-
 
     return (
         <div class="ui-root">
@@ -80,10 +86,10 @@ export function GameUIComponent(props: {
             </Show>
             <SelectedObjectPanel selectedInstance={selectedInstance.get} selectedCustomObject={selectedCustomObject.get} />
             <div id="instructions">
-                INTERACT - Left Mouse<br />
-                PAN - Right Mouse<br />
-                ZOOM - Scroll<br />
-                ROTATE - Middle Mouse<br />
+                Lorem, ipsum dolor<br />
+                sit amet consectetur adipisicing elit.<br />
+                Quia neque quam, dignissimos<br />
+                ea esse necessitatibus.
             </div>
             <div id="version">v0.3.0</div>
         </div>

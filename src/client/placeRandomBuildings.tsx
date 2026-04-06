@@ -10,7 +10,7 @@ import { WorldMap3D, PlacedFootprint } from './WorldMap3D';
 // }
 
 export function placeRandomBuildings(map: WorldMap3D, targetCount: number) {
-    if (map.width <= 0 || map.height <= 0) return;
+    if (map.size.x <= 0 || map.size.z <= 0) return;
 
     //const totalCells = map.width / appConstants.BuildingsScale * map.height / appConstants.BuildingsScale;
     //const targetCount = Math.max(20, Math.floor(totalCells * 0.06));
@@ -26,8 +26,8 @@ export function placeRandomBuildings(map: WorldMap3D, targetCount: number) {
 
     while (placed.length < targetCount && attempts < maxAttempts) {
         attempts++;
-        const x = (Math.random() * map.width) | 0;
-        const z = (Math.random() * map.height) | 0;
+        const x = (Math.random() * map.size.x) | 0;
+        const z = (Math.random() * map.size.z) | 0;
         const model = map.buildingModels[(Math.random() * map.buildingModels.length) | 0];
         const orientationIndex = (Math.random() * directionCount) | 0;
         const orientation = orientationIndex * angleStep;
@@ -35,7 +35,7 @@ export function placeRandomBuildings(map: WorldMap3D, targetCount: number) {
         const modelFootprint = map.scene.assetManager.getModelFootprint(model);
         const candidate = map.buildPlacementFootprint(x, z, orientation, modelFootprint);
         if (!candidate) continue;
-        if (!polygonInsideBounds(candidate.polygon, 0, 0, map.width, map.height)) continue;
+        if (!polygonInsideBounds(candidate.polygon, 0, 0, map.size.x, map.size.z)) continue;
 
         const bx = Math.floor(candidate.center.x / cellSize);
         const bz = Math.floor(candidate.center.z / cellSize);

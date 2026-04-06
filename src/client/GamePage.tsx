@@ -20,7 +20,7 @@ export default class GamePage extends Page {
             this.scene3DInstance = new GameScene3D(uiProps);
             await this.scene3DInstance.init(this);
             this.population3D = new Population(this.scene);
-            this.population3D.init(this.scene3DInstance.worldMap3D.width, this.scene3DInstance.worldMap3D.height);
+            this.population3D.init(this.scene3DInstance.worldMap3D.size.x, this.scene3DInstance.worldMap3D.size.z);
             placeRandomBuildings(this.scene3DInstance!.worldMap3D, 100);
 
             console.log("GameUI: Scene3D initialized after UI loaded.");
@@ -37,6 +37,7 @@ export default class GamePage extends Page {
 
 
         render(() => <GameUIComponent
+            mapSize={{ x: 8, z: 8 }}
             toolbar={<>
                 <ToolButton tool="select" icon="select-color" />
                 <ToolButton tool="bulldoze" icon="bulldozer-color" />

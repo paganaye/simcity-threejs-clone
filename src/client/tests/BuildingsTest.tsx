@@ -76,22 +76,24 @@ function createAccessHandle(
 export default class TestBuildings extends Page {
     scene3DInstance: GameScene3D | undefined;
 
-    private currentBuilding?: {
-        modelName: ModelName;
-        mesh: IFastMesh;
-        selected: ISelectedInstance;
-    };
+
     private accessHandles: AccessHandle[] = [];
     private activeAccessHandle?: AccessHandle;
-    private readonly guiState = {
-        building: residentialBuildings[0] as ModelName,
-    };
 
     private readonly tempMatrix = new THREE.Matrix4();
     private readonly tempPosition = new THREE.Vector3();
     private readonly tempQuaternion = new THREE.Quaternion();
     private readonly tempScale = new THREE.Vector3();
     private readonly tempWorldPosition = new THREE.Vector3();
+    private readonly guiState = {
+        building: residentialBuildings[0] as ModelName,
+    };
+
+    private currentBuilding?: {
+        modelName: ModelName;
+        mesh: IFastMesh;
+        selected: ISelectedInstance;
+    };
 
     #clearAccessHandles() {
         for (const handle of this.accessHandles) {
@@ -158,7 +160,7 @@ export default class TestBuildings extends Page {
             this.currentBuilding = undefined;
         }
 
-        const fastMesh = this.scene3DInstance.assetManager.addFastMesh(modelName, 0, 0, 0, 0);
+        const fastMesh = this.scene3DInstance.assetManager.addFastMesh(modelName, 10, 0, 10, 0);
         const selected: ISelectedInstance = {
             mesh: fastMesh.parent.instancedMesh,
             instanceId: fastMesh.index,
@@ -225,7 +227,7 @@ export default class TestBuildings extends Page {
             uiProps.isLoading.set(false);
         };
 
-        render(() => <GameUIComponent page={this} onUILoaded={handleUILoaded} />, this.appContainer);
+        render(() => <GameUIComponent mapSize={{ x: 20, z: 20 }} page={this} onUILoaded={handleUILoaded} />, this.appContainer);
     }
 
     override loop(elapsed: number): void {

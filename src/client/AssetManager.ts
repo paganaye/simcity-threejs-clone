@@ -4,6 +4,7 @@ import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUti
 import { appConstants } from '../AppConstants';
 import { CAR_MODEL_IDS } from '../common/ModelIds';
 import { GameScene3D } from './GameScene3D';
+import { IFloorPos } from './GameUIComponent';
 
 export interface IAssetMeta {
   type: 'zone' | 'road' | 'vehicle' | 'power' | "terrain",
@@ -15,7 +16,7 @@ export interface IAssetMeta {
   updateMaterials?: boolean;
   entryPoint?: { x: number, z: number, width: number, angle: number };
   exitPoint?: { x: number, z: number, width: number, angle: number };
-  perimeter?: { x: number, z: number }[];
+  perimeter?: IFloorPos[];
 }
 
 //const ZERO_VECTOR = new THREE.Vector3(0, 0, 0);

@@ -1,10 +1,9 @@
 import * as THREE from "three";
 import { render } from "solid-js/web";
-import { createEffect, JSX } from "solid-js";
+import { createEffect } from "solid-js";
 import { GUI } from 'lil-gui';
 
-import { EditorSelection, ActiveTool, simpleGeometries } from "./editorSelection";
-import { Signal } from "../Signal";
+import { EditorSelection, simpleGeometries } from "./editorSelection";
 
 import "./ThreeEditor.css";
 import ThreeEditor from "./ThreeEditor";
@@ -96,47 +95,13 @@ export function setupEditorUI(page: ThreeEditor): void {
     }
 
 
-    function UIButton(btnProps: { content: string, selected: boolean, size?: number, onclick: (() => void) }): JSX.Element {
-        return (
-            <button
-                class={"ui-button" + (btnProps.selected ? " selected" : "")}
-                onclick={() => btnProps.onclick()}
-                style={`font-size:${btnProps.size}px`}
-            >
-                {btnProps.content}
-            </button>
-        );
-    }
-
-
-
     function GameUIComponent(props: {
         page: ThreeEditor
     }) {
 
         let selectedObjectFolder: GUI | null = null;
 
-        function ToolButton(toolProps: {
-            tool: ActiveTool,
-            content: string,
-            size?: number,
-            onclick?: (() => void),
-            activeTool: Signal<ActiveTool>,
-        }): JSX.Element {
-            return (
-                <UIButton
-                    content={toolProps.content}
-                    selected={toolProps.activeTool.get() === toolProps.tool}
-                    size={toolProps.size}
-                    onclick={() => {
-                        toolProps.activeTool.set(toolProps.tool);
-                        if (toolProps.onclick) {
-                            toolProps.onclick();
-                        }
-                    }}
-                />
-            );
-        }
+
 
         createEffect(() => {
             let page = props.page;

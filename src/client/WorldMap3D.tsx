@@ -15,6 +15,7 @@ import {
     polygonInsideBounds,
     rotateAndTranslatePolygon,
 } from '../utils/geometry';
+import { IFloorSize } from './GameUIComponent';
 
 export type PlacedFootprint = {
     center: Vec2;
@@ -44,22 +45,16 @@ export class WorldMap3D {
     private readonly tempScale = new THREE.Vector3(1, 1, 1);
 
     root = new THREE.Group();
-    width = 0;
-    height = 0;
-
+    size: IFloorSize;
     constructor(readonly scene: GameScene3D) {
+        this.size = scene.size;
     }
 
     init() {
         // Runtime content is created after world size is known.
     }
 
-    setSize(width: number, height: number) {
-        if (width !== this.width || height !== this.height) {
-            this.width = width;
-            this.height = height;
-        }
-    }
+
 
     clearCity() {
         for (const mesh of this.buildings) {
@@ -124,7 +119,7 @@ export class WorldMap3D {
         const modelFootprint = this.scene.assetManager.getModelFootprint(modelName);
         const moved = this.buildPlacementFootprint(x, z, yaw, modelFootprint);
         if (!moved) return false;
-        if (!polygonInsideBounds(moved.polygon, 0, 0, this.width, this.height)) return false;
+        if (!polygonInsideBounds(moved.polygon, 0, 0, this.size.x, this.size.z)) return false;
 
         // Overlap checks disabled for interactive transform.
 
@@ -144,7 +139,7 @@ export class WorldMap3D {
         return true;
     }
 
-    private instanceKey(mesh: THREE.InstancedMesh, instanceId: number): string {
+    instanceKey(mesh: THREE.InstancedMesh, instanceId: number): string {
         return `${mesh.id}:${instanceId}`;
     }
 

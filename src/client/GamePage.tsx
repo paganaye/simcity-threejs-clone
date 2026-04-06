@@ -3,8 +3,6 @@ import { GameScene3D } from "./GameScene3D";
 import { Page } from './Page';
 import { Population } from './Population';
 import { GameUIComponent, UIButton, UIProps } from './GameUIComponent';
-import { loop } from 'three/tsl';
-import { number } from 'zod';
 import { Signal } from './Signal';
 import { placeRandomBuildings } from './placeRandomBuildings';
 export type ActiveTool = "select" | "bulldoze" | "residential" | "commercial" | "industrial" | "road" | "power-plant" | "power-line";

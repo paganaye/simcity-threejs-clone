@@ -72,7 +72,7 @@ export class WorldMap3D {
     drawFrame(_now: number) {
     }
 
-    private buildPlacementFootprint(
+    buildPlacementFootprint(
         x: number,
         z: number,
         orientation: number,

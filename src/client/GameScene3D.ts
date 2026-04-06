@@ -38,6 +38,8 @@ export class GameScene3D {
     selectionHalo?: THREE.Group;
     readonly selectionHaloLayers: THREE.LineSegments<THREE.EdgesGeometry, THREE.LineBasicMaterial>[] = [];
     lastTransformValid = true;
+    isCustomGizmoSelectableObject?: (obj: THREE.Object3D) => boolean;
+    onCustomGizmoObjectSelected?: (obj: THREE.Object3D) => void;
     readonly tempWorldMatrix = new THREE.Matrix4();
     readonly tempBox = new THREE.Box3();
     readonly tempSize = new THREE.Vector3();
@@ -59,11 +61,11 @@ export class GameScene3D {
         let pendingAssetManager = this.assetManager.init()
         this.worldMap3D = new WorldMap3D(this);
         this.cars3D = new Cars3D(this)
-        
+
         this.renderer = new THREE.WebGLRenderer({
             antialias: true
         });
-   
+
         this.raycaster = new THREE.Raycaster();
         this.#setupLights();
         this.#setupSelectionHalo();
@@ -262,8 +264,9 @@ export class GameScene3D {
                     instanceId: hit.instanceId,
                     selectableType,
                 };
-
-                break;
+                if (this.uiProps.selectionFilter && !this.uiProps.selectionFilter(selected)) {
+                    selected = undefined;
+                } else break;
             }
 
             // If nothing selected, deselect current
@@ -305,12 +308,17 @@ export class GameScene3D {
                 this.lastTransformValid = valid;
             },
             isSelectable: (obj) => {
-                // Only the proxy is directly selectable by the gizmo
-                return obj === this.transformProxy;
+                // Proxy is selectable by default, plus optional custom objects.
+                return obj === this.transformProxy || this.isCustomGizmoSelectableObject?.(obj) === true;
             },
-            onSelectObject: () => {
-                // Re-sync proxy pose with active selected instance.
-                this.customGizmo?.syncSelectionFromSelectedInstance();
+            onSelectObject: (obj) => {
+                if (obj === this.transformProxy) {
+                    // Re-sync proxy pose with active selected instance.
+                    this.customGizmo?.syncSelectionFromSelectedInstance();
+                    return;
+                }
+
+                this.onCustomGizmoObjectSelected?.(obj);
             },
             onDraggingChanged: (dragging) => {
                 if (context.controls) context.controls.enabled = !dragging;

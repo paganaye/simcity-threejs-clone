@@ -11,6 +11,7 @@ export interface UIProps {
     isPaused: Signal<boolean>;
     activeTool: Signal<ActiveTool>;
     selectedInstance: Signal<ISelectedInstance | undefined>;
+    selectionFilter?: (selected: ISelectedInstance) => boolean;
     simMoney: Signal<number>;
     population: Signal<number>;
     simTime: Signal<number>;
@@ -37,6 +38,7 @@ export function GameUIComponent(props: {
         isPaused,
         activeTool,
         selectedInstance,
+        selectionFilter: () => true,
         simMoney,
         population,
         simTime,

@@ -227,8 +227,10 @@ export class CustomGizmo {
         this.root.position.set(position.x, 0.06, position.z);
         this.root.rotation.set(0, rotationY, 0);
 
-        // Call snapping callback first
-        let snapped = (this.onSnapping ?? this.defaultSnapping)(position, rotationY);
+        const controlsSelectedInstance = !this.selectedObject;
+
+        // Call snapping callback only when controlling the selected building instance.
+        let snapped = controlsSelectedInstance ? (this.onSnapping ?? this.defaultSnapping)(position, rotationY) : undefined;
 
         // Apply the transform to the proxy
         if (snapped) {
@@ -237,7 +239,7 @@ export class CustomGizmo {
         }
 
         const selected = this.getSelectedInstance?.();
-        if (selected && selected.selectableType === 'building' && this.onTryUpdateSelectedInstanceTransform) {
+        if (controlsSelectedInstance && selected && selected.selectableType === 'building' && this.onTryUpdateSelectedInstanceTransform) {
             const ok = this.onTryUpdateSelectedInstanceTransform(
                 selected.mesh,
                 selected.instanceId,
@@ -319,7 +321,23 @@ export class CustomGizmo {
         }
 
         const hits = this.raycaster.intersectObjects(selectableObjects, false);
-        return hits[0]?.object;
+        const hitObject = hits[0]?.object;
+        if (!hitObject) return undefined;
+        return this.#resolveSelectableTarget(hitObject);
+    }
+
+    #resolveSelectableTarget(object: THREE.Object3D): THREE.Object3D {
+        let target = object;
+        let parent = target.parent;
+
+        // Prefer selecting the highest selectable ancestor so child pick meshes
+        // do not get detached from their handle root when the gizmo takes control.
+        while (parent && this.isSelectable(parent)) {
+            target = parent;
+            parent = target.parent;
+        }
+
+        return target;
     }
 
     onPointerMove(event: PointerEvent): boolean {

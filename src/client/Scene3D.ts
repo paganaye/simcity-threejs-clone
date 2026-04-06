@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { AssetManager } from "./AssetManager"
-import { SimObject3D } from "./SimObject3D";
 import { WorldMap3D } from './WorldMap3D';
 import type { UIProps } from './GamePage';
 import { SimBridge } from '../sim/SimBridge';
@@ -18,7 +17,6 @@ export class Scene3D {
     //cameraManager!: CameraManager;
     //inputManager!: InputManager;
     sim = new SimBridge().createCaller();
-    focusedObject: SimObject3D | null = null;
     renderer!: THREE.WebGLRenderer;
     scene!: THREE.Scene;
     raycaster!: THREE.Raycaster;
@@ -155,9 +153,7 @@ export class Scene3D {
 
     drawFrame(_elapsedTime: number) {
         let now = performance.now();
-        this.updateFocusedObject();
         this.#updateSelectionHalo();
-
         //if (this.inputManager.isLeftMouseDown) {
         //this.useTool();
         //}
@@ -165,45 +161,6 @@ export class Scene3D {
         this.worldMap3D.drawFrame(now)
     }
 
-    updateSelectedObject() {
-        let selected = this.uiProps.selectedObject();
-        if (this.focusedObject != selected) {
-            selected?.setSelected(false);
-            this.uiProps.setSelectedObject(this.focusedObject);
-            this.focusedObject?.setSelected(true);
-        }
-    }
-
-    #setSelectedObject(selectedObject: SimObject3D | null) {
-        const previousSelected = this.uiProps.selectedObject();
-        if (previousSelected === selectedObject) return;
-
-        previousSelected?.setSelected(false);
-        this.focusedObject = selectedObject;
-        this.uiProps.setSelectedObject(selectedObject);
-        selectedObject?.setSelected(true);
-    }
-
-    updateFocusedObject() {
-        const newObject = this.#raycast();
-        if (newObject !== this.focusedObject) {
-            //     this.focusedObject?.setFocused(false);
-            //     this.focusedObject = newObject;
-            //     this.focusedObject?.setFocused(true);
-        }
-    }
-
-
-    #raycast(): SimObject3D | null {
-        let intersections = this.raycaster.intersectObjects(this.worldMap3D.root.children, true);
-        if (intersections.length > 0) {
-            // The SimObject attached to the mesh is stored in the user data
-            const selectedObject = intersections[0].object.userData as SimObject3D | null;
-            return selectedObject;
-        } else {
-            return null;
-        }
-    }
 
     #setupSelectionHalo() {
         const halo = new THREE.Mesh(
@@ -264,8 +221,7 @@ export class Scene3D {
             this.selectedInstance = selected;
             this.uiProps.setSelectedInstance(selected);
             this.lastTransformValid = true;
-            let newSelectedObject: SimObject3D | null = selected ? null : this.#raycast();
-            this.#setSelectedObject(newSelectedObject);
+            this.#updateSelectionHalo();
             this.customGizmo?.syncSelectionFromSelectedInstance();
         });
 
@@ -292,11 +248,11 @@ export class Scene3D {
         }
 
         const { mesh, instanceId, selectableType } = this.selectedInstance;
-        if (selectableType === 'building') {
-            // Buildings already have a custom transform ring; avoid duplicate circles.
-            this.selectionHalo.visible = false;
-            return;
-        }
+        // if (selectableType === 'building') {
+        //     // Buildings already have a custom transform ring; avoid duplicate circles.
+        //     this.selectionHalo.visible = false;
+        //     return;
+        // }
         mesh.getMatrixAt(instanceId, this.tempMatrix);
         this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
 
@@ -332,6 +288,7 @@ export class Scene3D {
             onSelectObject: () => {
                 // Re-sync proxy pose with active selected instance.
                 this.customGizmo?.syncSelectionFromSelectedInstance();
+                this.#updateSelectionHalo();
             },
             onDraggingChanged: (dragging) => {
                 if (context.controls) context.controls.enabled = !dragging;

@@ -4,18 +4,24 @@ import { appConstants } from "../../AppConstants";
 import {
     IFastMesh,
     type IAssetMeta,
+    type IModelFootprint,
     ModelName,
     modelsMetaData,
-    residentialBuildings,
 } from "../AssetManager";
+import { initAssetManagerData } from "../AssetManagerData";
 import type { ISelectedInstance } from "../editor/CustomGizmo";
 import { GameScene3D } from "../GameScene3D";
 import { GameUIComponent, UIProps } from "../GameUIComponent";
 import { Page } from "../Page";
 
 const TILE = appConstants.BuildingsScale;
+const BUILDING_MODELS = Object.entries(modelsMetaData)
+    .filter(([, meta]) => meta.type === "zone")
+    .map(([modelName]) => modelName as ModelName);
 
 type AccessPoint = { x: number; z: number; width: number; angle: number };
+type CompactAccessPoint = readonly [x: number, z: number, width: number, angle: number];
+type CompactPerimeter = readonly (readonly [x: number, z: number])[];
 
 type AccessHandle = {
     key: "entryPoint" | "exitPoint";
@@ -25,6 +31,23 @@ type AccessHandle = {
     root: THREE.Group;
     pickMesh: THREE.Mesh;
 };
+
+function compactNumber(value: number): number {
+    return Number(value.toFixed(4));
+}
+
+function toCompactAccessPoint(point: AccessPoint): CompactAccessPoint {
+    return [
+        compactNumber(point.x),
+        compactNumber(point.z),
+        compactNumber(point.width),
+        compactNumber(point.angle),
+    ];
+}
+
+function toCompactPerimeter(footprint: IModelFootprint | undefined): CompactPerimeter | undefined {
+    return footprint?.polygon.map(({ x, z }) => [compactNumber(x), compactNumber(z)]);
+}
 
 function updateAccessHandleVisual(handle: AccessHandle) {
     const px = handle.centerX + handle.point.x;
@@ -86,7 +109,7 @@ export default class TestBuildings extends Page {
     private readonly tempScale = new THREE.Vector3();
     private readonly tempWorldPosition = new THREE.Vector3();
     private readonly guiState = {
-        building: residentialBuildings[0] as ModelName,
+        building: BUILDING_MODELS[0] as ModelName,
     };
 
     private currentBuilding?: {
@@ -193,13 +216,54 @@ export default class TestBuildings extends Page {
     #setupGui(uiProps: UIProps) {
         const selectionFolder = this.gui?.addFolder("Selection");
         selectionFolder
-            ?.add(this.guiState, "building", residentialBuildings)
+            ?.add(this.guiState, "building", BUILDING_MODELS)
             .name("Building")
             .onChange((modelName: ModelName) => {
                 this.#setBuilding(modelName, uiProps);
             });
+        selectionFolder
+            ?.add({ generateData: () => void this.#generateData() }, "generateData")
+            .name("Generate Data");
         selectionFolder?.open();
 
+    }
+
+    async #generateData() {
+        if (!this.scene3DInstance) return;
+
+        if (this.currentBuilding) {
+            this.#syncAccessHandlesWithBuilding();
+        }
+
+        const lines = ["const ASSET_MANAGER_DATA: Record<string, CompactAssetMeta> = {"];
+
+        for (const modelName of BUILDING_MODELS) {
+            const meta = modelsMetaData[modelName as keyof typeof modelsMetaData] as IAssetMeta;
+            const footprint = this.scene3DInstance.assetManager.getModelFootprint(modelName);
+            const perimeter = toCompactPerimeter(footprint);
+            const entry = meta.entryPoint ? toCompactAccessPoint(meta.entryPoint) : undefined;
+            const exit = meta.exitPoint ? toCompactAccessPoint(meta.exitPoint) : undefined;
+
+            const parts = [
+                perimeter ? `p:${JSON.stringify(perimeter)}` : "",
+                entry ? `i:${JSON.stringify(entry)}` : "",
+                exit ? `o:${JSON.stringify(exit)}` : "",
+            ].filter(Boolean);
+
+            if (parts.length === 0) continue;
+            lines.push(`  ${JSON.stringify(modelName)}: {${parts.join(",")}},`);
+        }
+
+        lines.push("};");
+        const fragment = lines.join("\n");
+
+        try {
+            await navigator.clipboard.writeText(fragment);
+            console.info(fragment);
+        } catch (_error) {
+            console.info(fragment);
+            window.prompt("Generated asset data", fragment);
+        }
     }
 
     async run() {
@@ -218,6 +282,7 @@ export default class TestBuildings extends Page {
                 this.#selectAccessHandle(handle);
             };
             await this.scene3DInstance.init(this);
+            initAssetManagerData();
 
             this.camera.position.set(0, TILE * 3.2, TILE * 3.8);
             this.camera.lookAt(0, 0, 0);

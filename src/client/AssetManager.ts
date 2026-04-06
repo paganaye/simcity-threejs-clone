@@ -29,17 +29,6 @@ const HIDE_MATRIX = new THREE.Matrix4().compose(
 );
 
 export const modelsMetaData = {
-  "firstprim": {
-    "type": "zone",
-    "filename": "firstprim.glb",
-    "scale": 15,
-    "updateMaterials": false
-  },
-  "under-construction": {
-    "type": "zone",
-    "filename": "construction-small.glb",
-    "scale": 3
-  },
   "residential-A1": {
     "type": "zone",
     "filename": "building-house-block-big.glb"
@@ -245,7 +234,18 @@ export const modelsMetaData = {
     "type": "vehicle",
     "filename": "armored-truck.glb",
     "rotation": 90
-  }
+  },
+  "firstprim": {
+    "type": "zone",
+    "filename": "firstprim.glb",
+    "scale": 15,
+    "updateMaterials": false
+  },
+  "under-construction": {
+    "type": "zone",
+    "filename": "construction-small.glb",
+    "scale": 3
+  },
 } satisfies Record<string, IAssetMeta>;
 
 export const cars: ModelName[] = [...CAR_MODEL_IDS as any];

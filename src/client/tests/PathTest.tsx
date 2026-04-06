@@ -3,18 +3,29 @@ import type { CharacterDebugView } from "../Character";
 import { Page } from "../Page";
 import { Crowd3D } from "../Crowd3D";
 import { Character } from "../Character";
+import { appConstants } from "../../AppConstants";
 
 export default class Path2 extends Page {
   private crowd3D?: Crowd3D;
   private characterDebugView?: CharacterDebugView;
-  private readonly orbitAngularSpeed = 0.015;
+  private readonly orbitAngularSpeed = 0.15;
 
   async run() {
     this.crowd3D = new Crowd3D(this.scene);
-    this.crowd3D.init(80, 80, {
-      count: 300,
-      childRatio: 0.18,
+    this.crowd3D.init(10, 10, {
+      count: 10,
+      childRatio: 1,
     });
+
+    // Force exactly one adult for easy visual reference.
+    const characters = this.crowd3D.population.characters as Character[];
+    if (characters.length > 0) {
+      const worldUnitsPerMeter = 1 / appConstants.WorldUnitInMetre;
+      const adult = characters[0];
+      adult.scale = 1;
+      adult.speed = (1.2 + Math.random() * 0.6) * worldUnitsPerMeter;
+    }
+
     this.setupTargets();
     // setupTargets rewrites character positions after init(), so resync quadtree.
     this.crowd3D.population.setupQuadTree(this.crowd3D.population.mapWidth, this.crowd3D.population.mapHeight);
@@ -56,8 +67,8 @@ export default class Path2 extends Page {
 
     const angle = (elapsed * this.orbitAngularSpeed) || 0;
     return {
-      x: center.x + Math.sin(angle) * mapRadius + Math.random() * 2 - 1,
-      z: center.z + Math.cos(angle) * mapRadius + Math.random() * 2 - 1,
+      x: center.x + Math.sin(angle) * mapRadius,
+      z: center.z + Math.cos(angle) * mapRadius,
     };
   }
 

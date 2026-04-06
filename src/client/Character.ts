@@ -72,12 +72,13 @@ export class Character {
     }
     // If blocked, push a perpendicular detour waypoint to navigate around the obstacle.
     if (this.isBlocked) {
-
-      const perpAngle = this.heading + (Math.random() > 0.5 ? 1 : -1) * Math.PI / 2;
+      if (Math.random() < 0.0001) this.detourToTheRight = !this.detourToTheRight; // Occasionally switch detour direction to add some variability to the paths
+      this.heading += (this.detourToTheRight ? 1 : -1) * Math.PI / 2 / 100;
+      //const perpAngle = this.heading + (this.detourToTheRight ? 1 : -1) * Math.PI / 2;
       const detourDist = Character.charDiameter * 1.1;
       this.detourTarget = {
-        x: this.x + Math.sin(perpAngle) * detourDist,
-        z: this.z + Math.cos(perpAngle) * detourDist,
+        x: this.x + Math.sin(this.heading) * detourDist,
+        z: this.z + Math.cos(this.heading) * detourDist,
         type: 'detour'
       };
     }
@@ -116,6 +117,7 @@ export class Character {
   scale = 1;
   isWalking = true;
   isBlocked = false;
+  detourToTheRight = Math.random() > 0.5;
   /** Seconds spent continuously blocked. Resets to 0 when the character moves freely. */
   waitTime = 0;
   private static readonly BASE_MODEL_HEIGHT = 1.8;

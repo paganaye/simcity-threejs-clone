@@ -3,7 +3,7 @@ import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { appConstants } from '../AppConstants';
 import { CAR_MODEL_IDS } from '../common/ModelIds';
-import { Scene3D } from './Scene3D';
+import { GameScene3D } from './GameScene3D';
 
 export interface IAssetMeta {
   type: 'zone' | 'road' | 'vehicle' | 'power' | "terrain",
@@ -318,7 +318,7 @@ export class AssetManager {
   modelCount!: number;
   loadedModelCount!: number;
 
-  constructor(readonly scene: Scene3D) {
+  constructor(readonly scene: GameScene3D) {
   }
 
   async init() {

@@ -1,4 +1,4 @@
-import { Show } from 'solid-js';
+import { JSX, Show } from 'solid-js';
 import type { ISelectedInstance } from './editor/CustomGizmo';
 import { ActiveTool } from './GamePage';
 import { Page } from './Page';
@@ -20,6 +20,7 @@ export interface UIProps {
 export function GameUIComponent(props: {
     page: Page;
     onUILoaded: (uiProps: UIProps) => void;
+    toolbar?: JSX.Element;
 }) {
     const isLoading = new Signal(true);
     const isPaused = new Signal(false);
@@ -44,18 +45,7 @@ export function GameUIComponent(props: {
 
 
 
-    function UIButton(propsBtn: { icon: string; selected: boolean; onclick: (() => void); }) {
-        return <button class={"ui-button" + (propsBtn.selected ? " selected" : "")}
-            onclick={_ => propsBtn.onclick()}>
-            <img class="toolbar-icon" src={`./icons/${propsBtn.icon}.png`} alt={propsBtn.icon} />
-        </button>;
-    }
-    function ToolButton(toolProps: { tool: ActiveTool; icon: string; }) {
-        return <UIButton
-            icon={toolProps.icon}
-            selected={activeTool.get() === toolProps.tool}
-            onclick={() => activeTool.set(toolProps.tool)} />;
-    }
+
     return (
         <div class="ui-root">
             <Show when={isLoading.get()}>
@@ -76,17 +66,12 @@ export function GameUIComponent(props: {
                     <span id="population-counter">{population.get()}</span>
                 </div>
             </div>
-            <div id="ui-toolbar" class="container">
-                <ToolButton tool="select" icon="select-color" />
-                <ToolButton tool="bulldoze" icon="bulldozer-color" />
-                <ToolButton tool="residential" icon="house-color" />
-                <ToolButton tool="commercial" icon="store-color" />
-                <ToolButton tool="industrial" icon="factory-color" />
-                <ToolButton tool="road" icon="road-color" />
-                <ToolButton tool="power-plant" icon="power-color" />
-                <ToolButton tool="power-line" icon="power-line-color" />
-                <UIButton icon={isPaused.get() ? "play-color" : "pause-color"} onclick={() => isPaused.set(!isPaused.get())} selected={false} />
-            </div>
+            <Show when={props.toolbar}>
+                <div id="ui-toolbar" class="container">
+                    {props.toolbar}
+                    <UIButton icon={isPaused.get() ? "play-color" : "pause-color"} onclick={() => isPaused.set(!isPaused.get())} selected={false} />
+                </div>
+            </Show>
             <SelectedObjectPanel selectedInstance={selectedInstance.get} />
             <div id="instructions">
                 INTERACT - Left Mouse<br />
@@ -99,3 +84,11 @@ export function GameUIComponent(props: {
 
     );
 }
+
+export function UIButton(propsBtn: { icon: string; selected: boolean; onclick: (() => void); }) {
+    return <button class={"ui-button" + (propsBtn.selected ? " selected" : "")}
+        onclick={_ => propsBtn.onclick()}>
+        <img class="toolbar-icon" src={`./icons/${propsBtn.icon}.png`} alt={propsBtn.icon} />
+    </button>;
+}
+

@@ -1,6 +1,6 @@
 import { IFastMesh, ModelName } from './AssetManager';
 import { JSXElement } from 'solid-js';
-import { Scene3D } from './Scene3D';
+import { GameScene3D } from './GameScene3D';
 //import { MeshSignal } from './MeshSignal.jsx';
 
 
@@ -12,14 +12,14 @@ export class Tile3D {
 
   }
 
-  setFloor(scene: Scene3D, floor: ModelName | undefined, orientation: number | undefined) {
+  setFloor(scene: GameScene3D, floor: ModelName | undefined, orientation: number | undefined) {
     this._floor = this.#setAsset(scene, this._floor, floor, orientation);
   }
-  setContent(scene: Scene3D, building: ModelName | undefined, buildingOrientation: number | undefined) {
+  setContent(scene: GameScene3D, building: ModelName | undefined, buildingOrientation: number | undefined) {
     this._building = this.#setAsset(scene, this._building, building, buildingOrientation);
   }
 
-  #setAsset(scene: Scene3D, mesh: IFastMesh | undefined, model: ModelName | undefined, rotation: number | undefined): IFastMesh | undefined {
+  #setAsset(scene: GameScene3D, mesh: IFastMesh | undefined, model: ModelName | undefined, rotation: number | undefined): IFastMesh | undefined {
     if (mesh?.parent.modelName != model) {
       if (mesh) scene.assetManager.removeFastMesh(mesh);
       if (model) mesh = scene.assetManager.addFastMesh(model, this.x, 0.0, this.z, rotation ?? 0)

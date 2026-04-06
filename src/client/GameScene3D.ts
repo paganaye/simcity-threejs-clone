@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { AssetManager } from "./AssetManager"
 import { WorldMap3D } from './WorldMap3D';
-import type { UIProps } from './GamePage';
 import { SimBridge } from '../sim/SimBridge';
 import { Cars3D } from './Cars3D';
 import { ICityChanged } from '../sim/Init';
@@ -9,8 +8,9 @@ import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
 import { CustomGizmo, type ISelectedInstance } from './editor/CustomGizmo';
+import { UIProps } from './GameUIComponent';
 
-export class Scene3D {
+export class GameScene3D {
     assetManager: AssetManager = new AssetManager(this)
     worldMap3D!: WorldMap3D;
     cars3D!: Cars3D;
@@ -56,36 +56,19 @@ export class Scene3D {
         this.renderDom = context.renderer.domElement;
 
         let uiProps = this.uiProps;
-
         let pendingAssetManager = this.assetManager.init()
         this.worldMap3D = new WorldMap3D(this);
         this.cars3D = new Cars3D(this)
-        //this.cameraManager = new CameraManager(uiProps.gameWindow);
-
+        
         this.renderer = new THREE.WebGLRenderer({
             antialias: true
         });
-        //this.scene = new THREE.Scene();
-
-
-        //this.inputManager = new InputManager(uiProps.gameWindow);
-
-        // this.renderer.setSize(uiProps.gameWindow.clientWidth, uiProps.gameWindow.clientHeight);
-        // this.renderer.setClearColor(0x000000, 0);
-        // this.renderer.shadowMap.enabled = true;
-        // this.renderer.shadowMap.type = THREE.PCFShadowMap;
-
+   
         this.raycaster = new THREE.Raycaster();
-
-
-        //this.scene.clear();
         this.#setupLights();
         this.#setupSelectionHalo();
         this.#setupSelectionInput();
         this.#setupCustomGizmo(context);
-
-        this.worldMap3D.init();
-
 
         await pendingAssetManager;
         uiProps.isLoading.set(false);
@@ -162,8 +145,8 @@ export class Scene3D {
         //if (this.inputManager.isLeftMouseDown) {
         //this.useTool();
         //}
-        this.cars3D.drawFrame(now)
-        this.worldMap3D.drawFrame(now)
+        this.cars3D?.drawFrame(now)
+        this.worldMap3D?.drawFrame(now)
         this.customGizmo?.update();
         this.#updateSelectionHalo();
     }
@@ -306,8 +289,6 @@ export class Scene3D {
         });
     }
 
-
-
     #setupCustomGizmo(context: Page) {
         this.scene.add(this.transformProxy);
         this.customGizmo = new CustomGizmo({
@@ -338,3 +319,5 @@ export class Scene3D {
     }
 
 }
+
+

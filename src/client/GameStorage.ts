@@ -1,4 +1,4 @@
-import { Scene3D } from "./Scene3D";
+import { GameScene3D } from "./GameScene3D";
 
 
 
@@ -7,7 +7,7 @@ export interface IStoreGameData<TGameData> {
     saveGameData(target: TGameData): void;
 }
 export class GameStorage {
-    constructor(readonly scene: Scene3D) {
+    constructor(readonly scene: GameScene3D) {
         // if we stick to one game we might be able to do incremental saves
     }
 

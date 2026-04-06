@@ -1,9 +1,10 @@
 /* @refresh reload */
 import { App } from "./client/App";
+import "./client/GameUI.css";
 
 
 const pages = {
-    "Buildings": "client/tests/TestBuildings",
+    "Buildings": "client/tests/BuildingsTest",
     "Character Test": "client/tests/CharacterTest",
     "Game": "client/GamePage",
     "Gizmo": "client/tests/GizmoTest",
@@ -15,6 +16,7 @@ const pages = {
     "Simple Test": "client/tests/SimpleTest",
     "Stencil Buffer": "client/tests/StencilBufferTest",
     "Three Editor": "client/editor/ThreeEditor",
+    "GamePart": "client/tests/GamePart",
 
 };
 

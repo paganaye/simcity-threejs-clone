@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Scene3D } from './Scene3D';
+import { GameScene3D } from './GameScene3D';
 import { Car3D } from './Car3D';
 import { ICarChangedWithId, ICarInfo, ICarPath } from '../sim/SimCars';
 import { cars } from './AssetManager';
@@ -8,7 +8,7 @@ import { random } from '../sim/Rng';
 export class Cars3D extends THREE.Group {
     #cars: Car3D[] = [];
 
-    constructor(readonly scene: Scene3D) {
+    constructor(readonly scene: GameScene3D) {
         super();
     }
 

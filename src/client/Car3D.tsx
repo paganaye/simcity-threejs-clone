@@ -1,4 +1,4 @@
-import { Scene3D } from './Scene3D.js';
+import { GameScene3D } from './GameScene3D.js';
 import { ReactiveMesh } from './ReactiveMesh';
 import { IPoint2D } from '../sim/IPoint.js';
 import { ICarInfo } from '../sim/SimCars';
@@ -17,17 +17,17 @@ export class Car3D implements IPoint2D {
   currentCarState: CarState;
 
 
-  constructor(readonly scene: Scene3D, readonly carInfo: ICarInfo) {
+  constructor(readonly scene: GameScene3D, readonly carInfo: ICarInfo) {
     this.carMesh.set(scene.assetManager, (carInfo as any).model, 0, 0, 0, 0);
     this.currentCarState = CarState.createInitialState(this);
     this.currentCarState.initialize(this, performance.now());
   }
 
-  private updateCarVisuals(scene: Scene3D): void {
+  private updateCarVisuals(scene: GameScene3D): void {
     this.carMesh.move(scene.assetManager, this.x, 0, this.z, -this.rotation);
   }
 
-  drawFrame(scene: Scene3D, now: number) {
+  drawFrame(scene: GameScene3D, now: number) {
     this.currentCarState.onDrawFrame(this, now);
     this.updateCarVisuals(scene);
   }

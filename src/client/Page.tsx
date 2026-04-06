@@ -8,6 +8,12 @@ import { CameraRotateGizmo } from './CameraRotateGizmo';
 const MIDDLE_PAN_SMOOTHING = 20;
 const MIDDLE_PAN_EPSILON_SQ = 0.0001;
 
+enum MouseInteraction {
+    None,
+    Panning,
+    RotatingCamera,
+}
+
 export abstract class Page {
     app!: App<any>;
     pageName!: any;
@@ -29,6 +35,7 @@ export abstract class Page {
     readonly middlePanTargetGoal = new THREE.Vector3();
     readonly middlePanCameraGoal = new THREE.Vector3();
     middlePanAnimating = false;
+    mouseInteractionState: MouseInteraction = MouseInteraction.None;
 
     readonly options = {
         addGUI: true
@@ -115,9 +122,16 @@ export abstract class Page {
         const panDelta = new THREE.Vector3();
         const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
+        const stopMiddleInteraction = () => {
+            this.isMiddlePointerDown = false;
+            this.mouseInteractionState = MouseInteraction.None;
+            this.cameraRotateGizmo?.hide();
+        };
+
         this.renderer.domElement.addEventListener('pointerdown', (event) => {
             if (event.button !== 1 || !this.controls) return;
             this.isMiddlePointerDown = true;
+            this.mouseInteractionState = MouseInteraction.Panning;
 
             const rect = this.renderer.domElement.getBoundingClientRect();
             pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -133,8 +147,12 @@ export abstract class Page {
                 return;
             }
 
-            // Move camera and target by the same delta to keep view direction unchanged.
-            panDelta.copy(hitPoint).sub(this.controls.target);
+            // Move camera and target by the same X/Z delta to keep view direction unchanged.
+            panDelta.set(
+                hitPoint.x - this.controls.target.x,
+                0,
+                hitPoint.z - this.controls.target.z
+            );
             this.middlePanTargetGoal.copy(this.controls.target).add(panDelta);
             this.middlePanCameraGoal.copy(this.camera.position).add(panDelta);
             this.middlePanAnimating = true;
@@ -144,18 +162,49 @@ export abstract class Page {
 
         this.renderer.domElement.addEventListener('pointerup', (event) => {
             if (event.button !== 1) return;
-            this.isMiddlePointerDown = false;
-            this.cameraRotateGizmo?.hide();
+            stopMiddleInteraction();
         });
 
         this.renderer.domElement.addEventListener('pointercancel', () => {
-            this.isMiddlePointerDown = false;
-            this.cameraRotateGizmo?.hide();
+            stopMiddleInteraction();
+        });
+
+        this.renderer.domElement.addEventListener('pointermove', (event) => {
+            if (!this.isMiddlePointerDown) return;
+            if ((event.buttons & 4) === 0) {
+                stopMiddleInteraction();
+                return;
+            }
+
+            if (this.mouseInteractionState === MouseInteraction.Panning) {
+                const movedEnough = Math.abs(event.movementX) + Math.abs(event.movementY) > 1;
+                if (movedEnough) {
+                    this.mouseInteractionState = MouseInteraction.RotatingCamera;
+                    this.middlePanAnimating = false;
+                }
+            }
+        });
+
+        this.renderer.domElement.addEventListener('wheel', () => {
+            if (!this.isMiddlePointerDown) {
+                this.mouseInteractionState = MouseInteraction.None;
+            }
+        });
+
+        this.renderer.domElement.addEventListener('pointerleave', () => {
+            if (!this.isMiddlePointerDown) return;
+            stopMiddleInteraction();
+        });
+
+        window.addEventListener('pointerup', () => {
+            if (!this.isMiddlePointerDown) return;
+            stopMiddleInteraction();
         });
     }
 
     #updateMiddlePan(deltaSeconds: number) {
         if (!this.controls || !this.middlePanAnimating) return;
+        if (this.mouseInteractionState !== MouseInteraction.Panning) return;
 
         const alpha = 1 - Math.exp(-MIDDLE_PAN_SMOOTHING * deltaSeconds);
         this.controls.target.lerp(this.middlePanTargetGoal, alpha);

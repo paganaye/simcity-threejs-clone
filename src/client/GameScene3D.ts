@@ -45,7 +45,11 @@ export class GameScene3D {
     readonly tempSize = new THREE.Vector3();
     readonly tempCenter = new THREE.Vector3();
     readonly tempCenterWorld = new THREE.Vector3();
-    suppressLeftPanUntilPointerUp = false;
+    isLeftPointerDown = false;
+    leftPointerDownMoved = false;
+    leftPointerDownConsumedByGizmo = false;
+    leftPointerDownX = 0;
+    leftPointerDownY = 0;
 
     constructor(readonly uiProps: UIProps) { }
 
@@ -236,97 +240,92 @@ export class GameScene3D {
             if (!this.renderDom) return;
             if (event.button !== 0) return;
 
-            const rect = this.renderDom.getBoundingClientRect();
-            const mouse = new THREE.Vector2(
-                ((event.clientX - rect.left) / rect.width) * 2 - 1,
-                -((event.clientY - rect.top) / rect.height) * 2 + 1
-            );
-            if (!mouse) return;
+            this.isLeftPointerDown = true;
+            this.leftPointerDownMoved = false;
+            this.leftPointerDownConsumedByGizmo = false;
+            this.leftPointerDownX = event.clientX;
+            this.leftPointerDownY = event.clientY;
 
             if (this.customGizmo?.onPointerDown(event)) {
-                this.suppressLeftPanUntilPointerUp = true;
-                if (this.pageContext?.controls) {
-                    this.pageContext.controls.enabled = false;
-                }
+                this.leftPointerDownConsumedByGizmo = true;
                 event.stopPropagation();
                 event.preventDefault();
                 return;
             }
-
-            this.raycaster.setFromCamera(mouse, this.camera);
-            const hits = this.raycaster.intersectObjects(this.scene.children, true);
-
-            let selected: ISelectedInstance | undefined;
-            for (const hit of hits) {
-                // Skip the proxy itself
-                if (hit.object === this.transformProxy) continue;
-
-                const obj = hit.object as THREE.InstancedMesh;
-                const selectableType = obj.userData?.selectableType as ('building' | 'character' | undefined);
-                if (!selectableType) continue;
-                if (hit.instanceId == null) continue;
-
-                selected = {
-                    mesh: obj,
-                    instanceId: hit.instanceId,
-                    selectableType,
-                };
-                if (this.uiProps.selectionFilter && !this.uiProps.selectionFilter(selected)) {
-                    selected = undefined;
-                } else break;
-            }
-
-            if (!selected) {
-                // Empty click deselects current selection; pan is still handled by OrbitControls.
-                this.selectedInstance = undefined;
-                this.uiProps.selectedInstance.set(undefined);
-                this.uiProps.selectedCustomObject.set(undefined);
-                this.lastTransformValid = true;
-                this.customGizmo?.syncSelectionFromSelectedInstance();
-                this.#updateSelectionHalo();
-                return;
-            }
-
-            this.selectedInstance = selected;
-            this.uiProps.selectedInstance.set(selected);
-            this.uiProps.selectedCustomObject.set(undefined);
-            this.lastTransformValid = true;
-            this.customGizmo?.syncSelectionFromSelectedInstance();
-            this.#updateSelectionHalo();
-
-            // Left click that selected something should not also pan the camera.
-            this.suppressLeftPanUntilPointerUp = true;
-            if (this.pageContext?.controls) {
-                this.pageContext.controls.enabled = false;
-            }
-            event.stopPropagation();
-            event.preventDefault();
         });
 
         this.renderDom?.addEventListener('pointermove', (event) => {
+            if (this.isLeftPointerDown) {
+                const dx = event.clientX - this.leftPointerDownX;
+                const dy = event.clientY - this.leftPointerDownY;
+                if ((dx * dx + dy * dy) > 9) {
+                    this.leftPointerDownMoved = true;
+                }
+            }
+
             if (this.customGizmo?.onPointerMove(event)) {
                 //this.#onTransformChanged();
             }
         });
 
-        this.renderDom?.addEventListener('pointerup', () => {
+        this.renderDom?.addEventListener('pointerup', (event) => {
             this.customGizmo?.onPointerUp();
-            if (this.suppressLeftPanUntilPointerUp) {
-                this.suppressLeftPanUntilPointerUp = false;
-                if (this.pageContext?.controls) {
-                    this.pageContext.controls.enabled = true;
+
+            if (event.button === 0) {
+                const shouldHandleAsClick = this.isLeftPointerDown
+                    && !this.leftPointerDownMoved
+                    && !this.leftPointerDownConsumedByGizmo;
+
+                if (shouldHandleAsClick) {
+                    if (!this.renderDom) return;
+                    const rect = this.renderDom.getBoundingClientRect();
+                    const mouse = new THREE.Vector2(
+                        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                        -((event.clientY - rect.top) / rect.height) * 2 + 1
+                    );
+
+                    this.raycaster.setFromCamera(mouse, this.camera);
+                    const hits = this.raycaster.intersectObjects(this.scene.children, true);
+
+                    let selected: ISelectedInstance | undefined;
+                    for (const hit of hits) {
+                        // Skip the proxy itself
+                        if (hit.object === this.transformProxy) continue;
+
+                        const obj = hit.object as THREE.InstancedMesh;
+                        const selectableType = obj.userData?.selectableType as ('building' | 'character' | undefined);
+                        if (!selectableType) continue;
+                        if (hit.instanceId == null) continue;
+
+                        selected = {
+                            mesh: obj,
+                            instanceId: hit.instanceId,
+                            selectableType,
+                        };
+                        if (this.uiProps.selectionFilter && !this.uiProps.selectionFilter(selected)) {
+                            selected = undefined;
+                        } else break;
+                    }
+
+                    this.selectedInstance = selected;
+                    this.uiProps.selectedInstance.set(selected);
+                    this.uiProps.selectedCustomObject.set(undefined);
+                    this.lastTransformValid = true;
+                    this.customGizmo?.syncSelectionFromSelectedInstance();
+                    this.#updateSelectionHalo();
                 }
+
+                this.isLeftPointerDown = false;
+                this.leftPointerDownMoved = false;
+                this.leftPointerDownConsumedByGizmo = false;
             }
         });
 
         this.renderDom?.addEventListener('pointercancel', () => {
             this.customGizmo?.onPointerUp();
-            if (this.suppressLeftPanUntilPointerUp) {
-                this.suppressLeftPanUntilPointerUp = false;
-                if (this.pageContext?.controls) {
-                    this.pageContext.controls.enabled = true;
-                }
-            }
+            this.isLeftPointerDown = false;
+            this.leftPointerDownMoved = false;
+            this.leftPointerDownConsumedByGizmo = false;
         });
     }
 

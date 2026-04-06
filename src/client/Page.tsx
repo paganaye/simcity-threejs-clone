@@ -3,6 +3,10 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GUI } from 'lil-gui';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { App } from './App';
+import { CameraRotateGizmo } from './CameraRotateGizmo';
+
+const MIDDLE_PAN_SMOOTHING = 20;
+const MIDDLE_PAN_EPSILON_SQ = 0.0001;
 
 export abstract class Page {
     app!: App<any>;
@@ -16,10 +20,15 @@ export abstract class Page {
     camera!: THREE.PerspectiveCamera;
 
     controls?: OrbitControls;
+    cameraRotateGizmo?: CameraRotateGizmo;
     gui?: GUI;
     statsFPS?: Stats;
     statsMS?: any;
     statsMB?: any;
+    isMiddlePointerDown = false;
+    readonly middlePanTargetGoal = new THREE.Vector3();
+    readonly middlePanCameraGoal = new THREE.Vector3();
+    middlePanAnimating = false;
 
     readonly options = {
         addGUI: true
@@ -98,13 +107,17 @@ export abstract class Page {
             RIGHT: undefined,
         };
 
+        this.cameraRotateGizmo = new CameraRotateGizmo(this.scene);
+
         const raycaster = new THREE.Raycaster();
         const pointer = new THREE.Vector2();
         const hitPoint = new THREE.Vector3();
+        const panDelta = new THREE.Vector3();
         const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
         this.renderer.domElement.addEventListener('pointerdown', (event) => {
             if (event.button !== 1 || !this.controls) return;
+            this.isMiddlePointerDown = true;
 
             const rect = this.renderer.domElement.getBoundingClientRect();
             pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -120,9 +133,41 @@ export abstract class Page {
                 return;
             }
 
-            this.controls.target.copy(hitPoint);
-            this.controls.update();
+            // Move camera and target by the same delta to keep view direction unchanged.
+            panDelta.copy(hitPoint).sub(this.controls.target);
+            this.middlePanTargetGoal.copy(this.controls.target).add(panDelta);
+            this.middlePanCameraGoal.copy(this.camera.position).add(panDelta);
+            this.middlePanAnimating = true;
+
+            this.cameraRotateGizmo?.setTarget(this.middlePanTargetGoal);
         });
+
+        this.renderer.domElement.addEventListener('pointerup', (event) => {
+            if (event.button !== 1) return;
+            this.isMiddlePointerDown = false;
+            this.cameraRotateGizmo?.hide();
+        });
+
+        this.renderer.domElement.addEventListener('pointercancel', () => {
+            this.isMiddlePointerDown = false;
+            this.cameraRotateGizmo?.hide();
+        });
+    }
+
+    #updateMiddlePan(deltaSeconds: number) {
+        if (!this.controls || !this.middlePanAnimating) return;
+
+        const alpha = 1 - Math.exp(-MIDDLE_PAN_SMOOTHING * deltaSeconds);
+        this.controls.target.lerp(this.middlePanTargetGoal, alpha);
+        this.camera.position.lerp(this.middlePanCameraGoal, alpha);
+
+        const targetDone = this.controls.target.distanceToSquared(this.middlePanTargetGoal) <= MIDDLE_PAN_EPSILON_SQ;
+        const cameraDone = this.camera.position.distanceToSquared(this.middlePanCameraGoal) <= MIDDLE_PAN_EPSILON_SQ;
+        if (targetDone && cameraDone) {
+            this.controls.target.copy(this.middlePanTargetGoal);
+            this.camera.position.copy(this.middlePanCameraGoal);
+            this.middlePanAnimating = false;
+        }
     }
 
     protected addStats() {
@@ -196,8 +241,11 @@ export abstract class Page {
             this.statsMS?.begin();
             this.statsMB?.begin();
 
-            const elapsedTime = clock.getElapsedTime();
+            const deltaSeconds = clock.getDelta();
+            const elapsedTime = clock.elapsedTime;
             this.loop(elapsedTime);
+            this.#updateMiddlePan(deltaSeconds);
+            this.cameraRotateGizmo?.update(deltaSeconds, this.camera);
             this.controls?.update();
             this.renderer.render(this.scene, this.camera);
             this.statsFPS?.end();
@@ -210,7 +258,8 @@ export abstract class Page {
 
 
     cleanup() {
-        // nothing here but can be overriden
+        this.cameraRotateGizmo?.dispose();
+        this.cameraRotateGizmo = undefined;
     }
 
     loop(_elapsed: number) {

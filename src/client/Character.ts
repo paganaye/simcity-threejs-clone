@@ -44,7 +44,6 @@ export class Character {
   x = 0;
   z = 0;
   private realTarget: CharacterTarget | null = null;
-  private detourTarget: CharacterTarget | null = null;
 
 
 
@@ -58,40 +57,54 @@ export class Character {
     this.updateHeadingToTarget(delta);
     this.isBlocked = this.isWalking && this.checkForwardBlockage();
     this.waitTime = this.isBlocked ? this.waitTime + delta : 0;
-    if (this.waitTime > 2 && this.blockedBy && this.blockedBy.blockedBy === this) {
-      // If mutually blocked for more than 2 seconds, we just teleport them Character.charDiameter apart
-      const midx = (this.x + this.blockedBy.x) / 2;
-      const midz = (this.z + this.blockedBy.z) / 2;
-      const angle = Math.atan2(this.blockedBy.x - this.x, this.blockedBy.z - this.z);
-      const offsetX = Math.sin(angle) * Character.charDiameter;
-      const offsetZ = Math.cos(angle) * Character.charDiameter;
-      this.x = midx - offsetX / 2;
-      this.z = midz - offsetZ / 2;
-      this.blockedBy.x = midx + offsetX / 2;
-      this.blockedBy.z = midz + offsetZ / 2;
-    }
-    // If blocked, push a perpendicular detour waypoint to navigate around the obstacle.
-    if (this.isBlocked) {
+    // if (this.waitTime > 2 && this.blockedBy && this.blockedBy.blockedBy === this) {
+    //   // If mutually blocked for more than 2 seconds, we just teleport them Character.charDiameter apart
+    //   const midx = (this.x + this.blockedBy.x) / 2;
+    //   const midz = (this.z + this.blockedBy.z) / 2;
+    //   const angle = Math.atan2(this.blockedBy.x - this.x, this.blockedBy.z - this.z);
+    //   const offsetX = Math.sin(angle) * Character.charDiameter;
+    //   const offsetZ = Math.cos(angle) * Character.charDiameter;
+    //   this.x = midx - offsetX / 2;
+    //   this.z = midz - offsetZ / 2;
+    //   this.blockedBy.x = midx + offsetX / 2;
+    //   this.blockedBy.z = midz + offsetZ / 2;
+    // }
+    // If blocked, make a small lateral step to navigate around the obstacle.
+    let isWalking: 'normal' | 'lateral' | false = this.isBlocked ? false : 'normal';
+    if (!isWalking) {
       if (Math.random() < 0.0001) this.detourToTheRight = !this.detourToTheRight; // Occasionally switch detour direction to add some variability to the paths
-      this.heading += (this.detourToTheRight ? 1 : -1) * Math.PI / 2 / 100;
-      //const perpAngle = this.heading + (this.detourToTheRight ? 1 : -1) * Math.PI / 2;
-      const detourDist = Character.charDiameter * 1.1;
-      this.detourTarget = {
-        x: this.x + Math.sin(this.heading) * detourDist,
-        z: this.z + Math.cos(this.heading) * detourDist,
-        type: 'detour'
-      };
+      const perpHeading = this.heading + (this.detourToTheRight ? 1 : -1) * Math.PI / 2;
+      const lateralStep = 0.015; // Small step size perpendicular to heading
+      const nextX = this.x + Math.sin(perpHeading) * lateralStep;
+      const nextZ = this.z + Math.cos(perpHeading) * lateralStep;
+
+      // Check if the lateral path is clear
+      let isLateralPathClear = true;
+      for (const other of this.population.characters) {
+        if (other === this) continue;
+        const dx = other.x - nextX;
+        const dz = other.z - nextZ;
+        if (Math.hypot(dx, dz) < Character.charDiameter) {
+          isLateralPathClear = false;
+          break;
+        }
+      }
+
+      if (isLateralPathClear) {
+        this.x = nextX;
+        this.z = nextZ;
+        isWalking = 'lateral';
+      }
     }
 
     // Stand still while turning to face a detour waypoint.
     // const isTurningToDetour = this.isWalking && this.target?.type === 'detour' && this.isAngularlyMisaligned();
 
-    const shouldWalk = this.isWalking && !this.isBlocked; // && !isTurningToDetour;
     if (walkAttribute) {
-      walkAttribute.setX(index, shouldWalk ? 1 : 0);
+      walkAttribute.setX(index, isWalking == 'lateral' ? 2 : (isWalking ? 1 : 0));
     }
 
-    if (shouldWalk) {
+    if (isWalking) {
       const oldX = this.x;
       const oldZ = this.z;
       this.move(delta, minX, maxX, minZ, maxZ);
@@ -107,7 +120,7 @@ export class Character {
 
 
   get target(): CharacterTarget | null {
-    return this.detourTarget ?? this.realTarget ?? null;
+    return this.realTarget ?? null;
   }
 
 
@@ -126,12 +139,10 @@ export class Character {
   constructor(readonly population: Population) { }
 
   setTarget(target: { x: number; z: number }): void {
-    this.detourTarget = null;
     this.realTarget = { x: target.x, z: target.z, type: 'goal' };
   }
 
   clearTarget(): void {
-    this.detourTarget = null;
     this.realTarget = null;
   }
 
@@ -151,21 +162,13 @@ export class Character {
     if (!t) {
       return;
     }
-
     const dx = t.x - this.x;
     const dz = t.z - this.z;
-    const dist2 = dx * dx + dz * dz;
+    const dist2 = Math.hypot(dx, dz);
 
-    // Auto-pop detour waypoints once reached.
-    if (t.type === 'detour' && dist2 < 0.25) {
-      this.detourTarget = null;
+    if (dist2 < 0.01) {
       return;
     }
-
-    if (dist2 < 0.0001) {
-      return;
-    }
-
     const desiredHeading = Math.atan2(dx, dz);
     this.heading = rotateTowards(this.heading, desiredHeading, Character.targetTurnSpeed * delta);
   }
@@ -207,21 +210,27 @@ export class Character {
 
 
 
-  move(delta: number, minX: number, maxX: number, minZ: number, maxZ: number): void {
+  move(delta: number, _minX: number, _maxX: number, _minZ: number, _maxZ: number): void {
     if (!this.isWalking) {
       return;
     }
-    this.x += Math.sin(this.heading) * this.speed * delta;
-    this.z += Math.cos(this.heading) * this.speed * delta;
 
-    if (this.x < minX || this.x > maxX) {
-      this.heading = -this.heading;
-      this.x = Math.max(minX, Math.min(maxX, this.x));
+    let stepSize = this.speed * delta;
+
+    // If we have a target, limit movement to not overshoot it.
+    if (this.target) {
+      let distToTarget = Math.hypot(this.target.x - this.x, this.target.z - this.z);
+      if (stepSize > distToTarget) {
+        stepSize = distToTarget;
+      }
     }
-    if (this.z < minZ || this.z > maxZ) {
-      this.heading = Math.PI - this.heading;
-      this.z = Math.max(minZ, Math.min(maxZ, this.z));
-    }
+
+    if (stepSize < 0.01) return;
+
+    this.x += Math.sin(this.heading) * stepSize;
+    this.z += Math.cos(this.heading) * stepSize;
+
+
   }
 
   writeInstanceAnimationData(index: number, walkData: Float32Array, phaseData?: Float32Array, cadenceData?: Float32Array): void {
@@ -574,22 +583,33 @@ if (aColorGroup < 1.5) {
 vInstanceTint = instanceTint;
 
 if (aWalk > 0.5 && aColorGroup > 3.5) {
-  float gait = sin(uTime * ${Character.baseWalkCycleFrequency.toFixed(1)} * aCadence + aPhase);
-  float angle = 0.0;
   float isLeft = step(aPivot.x, 0.0);
   float sideSign = mix(1.0, -1.0, isLeft);
 
-  if (aColorGroup < 4.5) {
-    angle = sideSign * gait * 0.40;  // arms
-  } else if (aColorGroup > 4.5) {
-    angle = -sideSign * gait * 0.70; // legs
+  if (aWalk < 1.5) {
+    float gait = sin(uTime * ${Character.baseWalkCycleFrequency.toFixed(1)} * aCadence + aPhase);
+    float angle = 0.0;
+    // Normal forward walk
+    if (aColorGroup < 4.5) {
+      angle = sideSign * gait * 0.40;  // arms
+    } else if (aColorGroup > 4.5) {
+      angle = -sideSign * gait * 0.70; // legs
+    }
+    float c = cos(angle);
+    float s = sin(angle);
+    vec3 p = transformed - aPivot;
+    vec3 rotated = vec3(p.x, p.y * c - p.z * s, p.y * s + p.z * c);
+    transformed = rotated + aPivot;
+
+  } else {
+    // Lateral walk (e.g. for detour) - only legs step side to side
+    if (aColorGroup > 4.5) {
+      float gait = sin(uTime * ${Character.baseWalkCycleFrequency.toFixed(1)} * aCadence + aPhase);
+      float stepAmount = sideSign * 0.15 * gait; // legs step side to side with gait
+      transformed.x += stepAmount;
+    }
   }
 
-  float c = cos(angle);
-  float s = sin(angle);
-  vec3 p = transformed - aPivot;
-  vec3 rotated = vec3(p.x, p.y * c - p.z * s, p.y * s + p.z * c);
-  transformed = rotated + aPivot;
 }
 `
       );

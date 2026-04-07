@@ -2,9 +2,14 @@ import { GameScene3D } from "./GameScene3D";
 import type { ModelName } from "./AssetManager";
 import type { Population } from "./Population";
 import type { IRoad } from "./roads/IRoad";
-import { roadTypeToIRoad } from "./roads/RoadTypeAdapter";
 import * as THREE from 'three';
 
+const DEFAULT_IROAD: IRoad = {
+    type: 'TwoWayRoad',
+    forwardWay: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
+    otherWay:   { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
+    gapSize: 0,
+};
 
 
 export interface IStoreGameData<TGameData> {
@@ -47,12 +52,18 @@ export interface ISerializedCharacter {
     workId?: string;
 }
 
+export interface ISerializedCamera {
+    position: { x: number; y: number; z: number };
+    target?: { x: number; y: number; z: number };
+}
+
 export interface ISerializedCity {
     version: 1;
     mapSize: { x: number; z: number };
     buildings: ISerializedBuilding[];
     roads: ISerializedRoad[];
     characters: ISerializedCharacter[];
+    camera?: ISerializedCamera;
 }
 
 export class GameStorage {
@@ -175,6 +186,18 @@ export class GameStorage {
             workId: character.workId,
         }));
 
+        const cameraTarget = this.scene.page?.cameraControls?.target;
+        const camera = {
+            position: {
+                x: this.scene.camera.position.x,
+                y: this.scene.camera.position.y,
+                z: this.scene.camera.position.z,
+            },
+            target: cameraTarget
+                ? { x: cameraTarget.x, y: cameraTarget.y, z: cameraTarget.z }
+                : undefined,
+        };
+
         return {
             version: 1,
             mapSize: {
@@ -184,6 +207,7 @@ export class GameStorage {
             buildings,
             roads,
             characters,
+            camera,
         };
     }
 
@@ -237,10 +261,7 @@ export class GameStorage {
                 road.angle,
                 road.length,
             );
-            // Prefer iRoad; fall back to legacy roadType field from old saves
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const legacyType = (road as any).roadType;
-            segment.setIRoad(road.iRoad ?? roadTypeToIRoad(legacyType ?? 'l1'));
+            segment.setIRoad(road.iRoad ?? DEFAULT_IROAD);
             if (road.arcMidX !== undefined && road.arcMidZ !== undefined) {
                 segment.setArc(road.arcMidX, road.arcMidZ, road.endX, road.endZ);
             }
@@ -272,6 +293,33 @@ export class GameStorage {
                 }
                 character.homeId = source.homeId;
                 character.workId = source.workId;
+            }
+        }
+
+        if (save.camera?.position) {
+            this.scene.camera.position.set(
+                save.camera.position.x,
+                save.camera.position.y,
+                save.camera.position.z,
+            );
+            if (save.camera.target) {
+                const controls = this.scene.page?.cameraControls;
+                if (controls) {
+                    controls.target.set(
+                        save.camera.target.x,
+                        save.camera.target.y,
+                        save.camera.target.z,
+                    );
+                    // Keep controls' internal spherical state in sync with restored camera.
+                    controls.updateSphericalFromCamera();
+                    controls.update();
+                } else {
+                    this.scene.camera.lookAt(
+                        save.camera.target.x,
+                        save.camera.target.y,
+                        save.camera.target.z,
+                    );
+                }
             }
         }
     }

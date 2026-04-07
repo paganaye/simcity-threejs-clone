@@ -13,9 +13,9 @@ export class RoadSegment {
     readonly group = new THREE.Group();
     private iRoad: IRoad = {
         type: 'TwoWayRoad',
-        forwardWay: { roadColor: 'old', lanes: 1, shoulder: 'none', sidewalk: 'small' },
-        otherWay:   { roadColor: 'old', lanes: 1, shoulder: 'none', sidewalk: 'small' },
-        dividing: 'none',
+        forwardWay: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
+        otherWay:   { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
+        gapSize: 0,
     };
 
     // Arc control point (world space). When set, road is rebuilt as a curve.
@@ -66,7 +66,7 @@ export class RoadSegment {
                 type: 'TwoWayRoad',
                 forwardWay: { ...nextRoad.forwardWay },
                 otherWay: { ...nextRoad.otherWay },
-                dividing: nextRoad.dividing,
+                gapSize: nextRoad.gapSize,
             };
         this.group.userData.iRoad = this.iRoad;
         this.rebuild();

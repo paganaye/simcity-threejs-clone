@@ -1,12 +1,14 @@
-export type ShoulderType = 'parallelParking' | 'perpendicularParking' | 'emergencyLane' | 'line' | 'gap' | 'none';
-export type DividingType = 'yellowLineSolid' | 'yellowLineDashed' | 'gap' | 'none';
+export type KerbType = 'parallelParking' | 'perpendicularParking' | 'emergencyLane' | 'line' | 'gap' /*| 'entry' | 'exit'*/ | 'none';
 export type SideWalkType = 'small' | 'large' | 'none';
 
 export interface IRoadOptions {
     roadColor: 'old' | 'new';
     lanes: number;
-    shoulder: ShoulderType;
-    sidewalk: SideWalkType;
+    rightKerb: KerbType;
+    rightSidewalk: SideWalkType;
+    laneWidth: 'narrow' | 'normal' | 'wide';
+    leftKerb: KerbType;
+    leftSidewalk: SideWalkType;
 }
 
 export type OneWayRoad = {
@@ -18,7 +20,7 @@ export type TwoWayRoad = {
     type: 'TwoWayRoad';
     forwardWay: IRoadOptions;
     otherWay: IRoadOptions;
-    dividing: DividingType;
+    gapSize: number; // metre
 };
 
 export type IRoad = OneWayRoad | TwoWayRoad;

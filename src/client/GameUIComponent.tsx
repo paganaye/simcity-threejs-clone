@@ -54,10 +54,9 @@ export function GameUIComponent(props: {
                 </div>
             </Show>
             <div id="instructions">
-                Lorem, ipsum dolor<br />
-                sit amet consectetur adipisicing elit.<br />
-                Quia neque quam, dignissimos<br />
-                ea esse necessitatibus.
+                Lorem, ipsum<br />
+                sit amet <br />
+                ea esse 
             </div>
             <div id="version">v0.3.0</div>
         </div>

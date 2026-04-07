@@ -4,13 +4,10 @@ import { IFloorPos } from "./GameUIComponent";
 import type { IRoad } from "./roads/IRoad";
 import {
     iRoadToRenderOptions,
-    roadTypeToRenderOptions,
     type RoadRenderOptions,
-    type RoadType,
 } from "./roads/RoadTypeAdapter";
 
-export type { RoadType } from "./roads/RoadTypeAdapter";
-export { roadTypeToIRoad, iRoadToLegacyRoadType } from "./roads/RoadTypeAdapter";
+export type { RoadRenderOptions } from "./roads/RoadTypeAdapter";
 
 export class RoadBuilder implements IOrientation2D {
     x: number;
@@ -21,52 +18,99 @@ export class RoadBuilder implements IOrientation2D {
 
     static materialByStyle = new Map<string, THREE.MeshStandardMaterial>();
 
-    static LINE_REPEAT_PER_UNIT = 2;
+    // One texture (V range [0..1]) represents TEXTURE_HEIGHT_M meters.
+    // This avoids overly dense dashed lines.
+    static LINE_REPEAT_PER_UNIT = 1 / 8; // every 8 metres, which is a common length for dashed lines and also works well for solid lines.
     static OLD_ROAD_COLOR = 'hsl(0, 2%, 7%)';
     static NEW_ROAD_COLOR = 'hsl(0, 2%, 3.5%)';
-    static SMALL_SIDEWALK = 8;
-    static LARGE_SIDEWALK = 16;
+    static TEXTURE_PPM = 10; // to be refined
     static SIDEWALK_COLOR = 'hsl(230, 3%, 40.0%)';
     static YELLOW_LINE = 'hsl(66, 38.70%, 46.70%)';
-    static YELLOW_LINE_WIDTH = 2;
     static WHITE_LINE = 'hsl(66, 10.0%, 86.70%)';
-    static PAVEMENT_WIDTH = 12;
-    static ROAD_WIDTH_UNITS = 10; // in metre
-    static TEXTURE_HEIGHT = 32;
-    static ROAD_WIDTH = 18;
+    static NARROW_LANE_WIDTH_M = 3.0;
+    static NORMAL_LANE_WIDTH_M = 3.5;
+    static WIDE_LANE_WIDTH_M = 4.25;
     static TRANSPARENT = 'transparent';
-
-    static DEFAULT_SHOULDER_WIDTH = 20;
-    static EMERGENCY_LANE_WIDTH = 16;
     static PARKING_COLOR = 'hsl(0, 2.70%, 7.30%)';
-    static PARALLEL_PARKING_WIDTH = 12;
-    static PERPENDICULAR_PARKING_WIDTH = 20;
 
-    static TURNING_SEGMENTS_MULTIPLIER = 3;
+    static YELLOW_LINE_WIDTH_M = 0.15; // 15 cm
+    static PAVEMENT_WIDTH_M = 1.5; // metre
+    static TEXTURE_HEIGHT_M = 8; // This allow us to make 4m discontinous yellow line
 
-    static computeTextureWidth(options: RoadRenderOptions): number {
-        let width = 0;
-        switch (options.dividing) {
-            case 'yellowLineSolid': case 'yellowLineDashed': case 'gap':
-                width += this.YELLOW_LINE_WIDTH; break;
-        }
-        const lanes = Math.max(0, options.lanes);
-        width += lanes * this.ROAD_WIDTH;
-        if (lanes > 1) width += (lanes - 1) * this.YELLOW_LINE_WIDTH;
-        switch (options.shoulder) {
-            case 'parallelParking':      width += this.PARALLEL_PARKING_WIDTH; break;
-            case 'perpendicularParking': width += this.PERPENDICULAR_PARKING_WIDTH; break;
-            case 'emergencyLane':        width += this.YELLOW_LINE_WIDTH + this.EMERGENCY_LANE_WIDTH; break;
-            case 'line':                 width += this.YELLOW_LINE_WIDTH + this.YELLOW_LINE_WIDTH; break;
-            case 'gap':                  width += this.YELLOW_LINE_WIDTH; break;
-        }
-        switch (options.sidewalk) {
-            case 'small': width += this.SMALL_SIDEWALK; break;
-            case 'large': width += this.LARGE_SIDEWALK; break;
-        }
-        return Math.max(1, width);
+    static DEFAULT_SHOULDER_WIDTH_M = 0.5; // 50 cm
+    static EMERGENCY_LANE_WIDTH_M = 2; // metre
+    static PARALLEL_PARKING_WIDTH_M = 2.4; // metre
+    static PERPENDICULAR_PARKING_WIDTH_M = 5.0; // metre
+    static SMALL_SIDEWALK_M = 1; // metre
+    static LARGE_SIDEWALK_M = 2; // metre
+
+    static TURNING_SEGMENTS_MULTIPLIER = 12;
+
+    static metersToPixels(meters: number): number {
+        return Math.round(meters * this.TEXTURE_PPM);
     }
 
+    static getLaneWidthMeters(laneWidth: 'narrow' | 'normal' | 'wide'): number {
+        switch (laneWidth) {
+            case 'narrow': return this.NARROW_LANE_WIDTH_M;
+            case 'wide': return this.WIDE_LANE_WIDTH_M;
+            default: return this.NORMAL_LANE_WIDTH_M;
+        }
+    }
+
+    static getGapWidthMeters(gapSize: number): number {
+        // gapSize is the total distance between forward and other ways.
+        // Each rendered way gets half of it from the center seam.
+        return Math.max(0, gapSize || 0) / 2;
+    }
+
+    static getEntryExitWidthMeters(laneWidth: RoadRenderOptions['laneWidth']): number {
+        return this.getLaneWidthMeters(laneWidth) + this.YELLOW_LINE_WIDTH_M;
+    }
+
+    static getKerbWidthMeters(kerb: RoadRenderOptions['rightKerb'], _laneWidth: RoadRenderOptions['laneWidth']): number {
+        switch (kerb) {
+            case 'parallelParking': return this.PARALLEL_PARKING_WIDTH_M;
+            case 'perpendicularParking': return this.PERPENDICULAR_PARKING_WIDTH_M;
+            case 'emergencyLane': return this.YELLOW_LINE_WIDTH_M + this.EMERGENCY_LANE_WIDTH_M;
+            case 'line': return this.YELLOW_LINE_WIDTH_M + this.YELLOW_LINE_WIDTH_M;
+            case 'gap': return this.YELLOW_LINE_WIDTH_M;
+            //case 'entry': return this.getEntryExitWidthMeters(laneWidth);
+            //case 'exit': return this.getEntryExitWidthMeters(laneWidth);
+            default: return 0;
+        }
+    }
+
+    // static hasEntryExitKerb(options: RoadRenderOptions): boolean {
+    //     return options.leftKerb === 'entry' || options.leftKerb === 'exit'
+    //         || options.rightKerb === 'entry' || options.rightKerb === 'exit';
+    // }
+
+    static getSidewalkWidthMeters(sidewalk: RoadRenderOptions['rightSidewalk']): number {
+        switch (sidewalk) {
+            case 'small': return this.SMALL_SIDEWALK_M;
+            case 'large': return this.LARGE_SIDEWALK_M;
+            default: return 0;
+        }
+    }
+
+    static computeRoadWidthMeters(options: RoadRenderOptions): number {
+        let widthM = 0;
+        widthM += this.getKerbWidthMeters(options.leftKerb, options.laneWidth);
+        widthM += this.getSidewalkWidthMeters(options.leftSidewalk);
+        const laneWidthM = this.getLaneWidthMeters(options.laneWidth);
+        const lanes = Math.max(0, options.lanes);
+        widthM += lanes * laneWidthM;
+        if (lanes > 1) widthM += (lanes - 1) * this.YELLOW_LINE_WIDTH_M;
+        widthM += this.getKerbWidthMeters(options.rightKerb, options.laneWidth);
+        widthM += this.getSidewalkWidthMeters(options.rightSidewalk);
+        return widthM;
+    }
+
+    static computeTextureWidthPx(options: RoadRenderOptions): number {
+        let w = this.computeRoadWidthMeters(options);
+        return Math.max(1, this.metersToPixels(w));
+    }
 
     constructor(startPosition: IOrientation2D, readonly scene: THREE.Object3D) {
         this.x = startPosition.x;
@@ -79,9 +123,11 @@ export class RoadBuilder implements IOrientation2D {
         return [
             options.roadColor,
             options.lanes,
-            options.shoulder,
-            options.sidewalk,
-            options.dividing,
+            options.rightSidewalk,
+            options.rightKerb,
+            options.laneWidth,
+            options.leftKerb,
+            options.leftSidewalk
         ].join('|');
     }
 
@@ -105,13 +151,14 @@ export class RoadBuilder implements IOrientation2D {
     static createRoadTexture(options: RoadRenderOptions) {
 
         const canvas = document.createElement('canvas');
-        const textureWidth = this.computeTextureWidth(options);
-        canvas.width = textureWidth;
-        canvas.height = this.TEXTURE_HEIGHT;
+        const textureWidthPx = this.computeTextureWidthPx(options);
+        const textureHeightPx = this.metersToPixels(this.TEXTURE_HEIGHT_M);
+        canvas.width = textureWidthPx;
+        canvas.height = textureHeightPx;
         const ctx = canvas.getContext('2d')!;
 
         ctx.fillStyle = this.TRANSPARENT;
-        ctx.fillRect(0, 0, textureWidth, this.TEXTURE_HEIGHT);
+        ctx.fillRect(0, 0, textureWidthPx, textureHeightPx);
 
         const drawRoad = (style: RoadRenderOptions) => {
             let currentX = 0;
@@ -123,93 +170,74 @@ export class RoadBuilder implements IOrientation2D {
                 height: number,
                 color: string) => {
                 ctx.fillStyle = color;
-                ctx.fillRect(currentX, y * this.TEXTURE_HEIGHT, width, height * this.TEXTURE_HEIGHT);
+                ctx.fillRect(currentX, y * textureHeightPx, width, height * textureHeightPx);
             }
             const drawRectAndIncrement = (width: number, color: string) => {
                 drawLine(width, 0, 1, color);
                 currentX += width;
             }
 
-            const drawDivide = () => {
-                switch (style.dividing) {
-                    case 'yellowLineSolid':
-                        drawRectAndIncrement(this.YELLOW_LINE_WIDTH, this.YELLOW_LINE);
-                        break;
-                    case 'yellowLineDashed':
-                        drawLine(this.YELLOW_LINE_WIDTH, 0, 0.5, this.YELLOW_LINE);
-                        drawLine(this.YELLOW_LINE_WIDTH, 0.5, 1, roadColor);
-                        currentX += this.YELLOW_LINE_WIDTH;
-                        break;
-                    case 'gap':
-                        currentX += this.YELLOW_LINE_WIDTH;
-                        break;
-                    case undefined:
-                    case 'none':
-                        break;
-                    default:
-                        throw Error("Divide not implemented yet");
-                }
-            };
 
-            const drawLanes = () => {
-                for (let i = 0; i < style.lanes; i++) {
-                    drawRectAndIncrement(this.ROAD_WIDTH, roadColor)
-                    if (i < style.lanes - 1) {
-                        drawLine(this.YELLOW_LINE_WIDTH, 0, 0.5, this.YELLOW_LINE);
-                        drawLine(this.YELLOW_LINE_WIDTH, 0.5, 1, roadColor);
-                        currentX += this.YELLOW_LINE_WIDTH;
-                    }
-                }
-            };
+            const drawKerb = (kerb: RoadRenderOptions['rightKerb'],
+                side: 'left' | 'right'
+            ) => {
 
-            const drawShoulder = () => {
 
-                switch (style.shoulder) {
+                switch (kerb) {
                     case 'parallelParking':
-                        drawLine(this.PARALLEL_PARKING_WIDTH, 0, 1, this.PARKING_COLOR);
-                        drawLine(this.PARALLEL_PARKING_WIDTH, 0, 1 / 32, this.WHITE_LINE);
-                        drawLine(this.PARALLEL_PARKING_WIDTH, 1 / 2, 1 / 32, this.WHITE_LINE);
-                        drawLine(this.YELLOW_LINE_WIDTH, 0, 0.1, this.WHITE_LINE);
-                        drawLine(this.YELLOW_LINE_WIDTH, 0.4, 0.2, this.WHITE_LINE);
-                        drawLine(this.YELLOW_LINE_WIDTH, 1 - 0.1, 0.1, this.WHITE_LINE);
-                        currentX += this.PARALLEL_PARKING_WIDTH;
+                        drawLine(this.metersToPixels(this.PARALLEL_PARKING_WIDTH_M), 0, 1, this.PARKING_COLOR);
+                        drawLine(this.metersToPixels(this.PARALLEL_PARKING_WIDTH_M), 0, 1 / 32, this.WHITE_LINE);
+                        drawLine(this.metersToPixels(this.PARALLEL_PARKING_WIDTH_M), 1 / 2, 1 / 32, this.WHITE_LINE);
+                        drawLine(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), 0, 0.1, this.WHITE_LINE);
+                        drawLine(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), 0.4, 0.2, this.WHITE_LINE);
+                        drawLine(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), 1 - 0.1, 0.1, this.WHITE_LINE);
+                        currentX += this.metersToPixels(this.PARALLEL_PARKING_WIDTH_M);
                         break;
                     case 'perpendicularParking':
-                        drawLine(this.PERPENDICULAR_PARKING_WIDTH, 0, 1, this.PARKING_COLOR);
-                        drawLine(this.PERPENDICULAR_PARKING_WIDTH, 0, 1 / 32, this.WHITE_LINE);
-                        drawLine(this.PERPENDICULAR_PARKING_WIDTH, 1 / 4, 1 / 32, this.WHITE_LINE);
-                        drawLine(this.PERPENDICULAR_PARKING_WIDTH, 3 / 4, 1 / 32, this.WHITE_LINE);
-                        drawLine(this.PERPENDICULAR_PARKING_WIDTH, 2 / 4, 1 / 32, this.WHITE_LINE);
-                        currentX += this.PERPENDICULAR_PARKING_WIDTH;
-
+                        drawLine(this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M), 0, 1, this.PARKING_COLOR);
+                        drawLine(this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M), 0, 1 / 32, this.WHITE_LINE);
+                        drawLine(this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M), 1 / 4, 1 / 32, this.WHITE_LINE);
+                        drawLine(this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M), 3 / 4, 1 / 32, this.WHITE_LINE);
+                        drawLine(this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M), 2 / 4, 1 / 32, this.WHITE_LINE);
+                        currentX += this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M);
                         break;
                     case 'emergencyLane':
-                        drawRectAndIncrement(this.YELLOW_LINE_WIDTH, this.YELLOW_LINE);
-                        drawRectAndIncrement(this.EMERGENCY_LANE_WIDTH, roadColor);
+                        drawRectAndIncrement(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), this.YELLOW_LINE);
+                        drawRectAndIncrement(this.metersToPixels(this.EMERGENCY_LANE_WIDTH_M), roadColor);
                         break;
                     case 'line':
-                        drawRectAndIncrement(this.YELLOW_LINE_WIDTH, this.YELLOW_LINE);
-                        drawRectAndIncrement(this.YELLOW_LINE_WIDTH, roadColor);
+                        if (side === 'left') {
+                            drawRectAndIncrement(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), roadColor);
+                            drawRectAndIncrement(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), this.YELLOW_LINE);
+                        } else {
+                            drawRectAndIncrement(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), this.YELLOW_LINE);
+                            drawRectAndIncrement(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), roadColor);
+                        }
                         break;
                     case 'gap':
-                        drawRectAndIncrement(this.YELLOW_LINE_WIDTH, roadColor);
+                        drawRectAndIncrement(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), roadColor);
                         break;
-
+                    // case 'entry':
+                    //     drawEntryExitDiagonal('entry');
+                    //     break;
+                    // case 'exit':
+                    //     drawEntryExitDiagonal('exit');
+                    //     break;
                     case undefined:
                     case 'none':
                         break;
                     default:
-                        throw Error("shoulder not implemented yet");
+                        console.warn(`kerb "${kerb}" not implemented yet.`);
                 }
             };
 
-            const drawSidewalk = () => {
-                switch (style.sidewalk) {
+            const drawSidewalk = (sidewalk: RoadRenderOptions['rightSidewalk']) => {
+                switch (sidewalk) {
                     case 'small':
-                        drawRectAndIncrement(this.SMALL_SIDEWALK, this.SIDEWALK_COLOR);
+                        drawRectAndIncrement(this.metersToPixels(this.SMALL_SIDEWALK_M), this.SIDEWALK_COLOR);
                         break;
                     case 'large':
-                        drawRectAndIncrement(this.LARGE_SIDEWALK, this.SIDEWALK_COLOR);
+                        drawRectAndIncrement(this.metersToPixels(this.LARGE_SIDEWALK_M), this.SIDEWALK_COLOR);
                         break;
                     case undefined:
                     case 'none':
@@ -219,21 +247,34 @@ export class RoadBuilder implements IOrientation2D {
                 }
             };
 
-            drawDivide();
+            const drawLanes = () => {
+                const laneWidth = RoadBuilder.metersToPixels(RoadBuilder.getLaneWidthMeters(style.laneWidth));
+                for (let i = 0; i < style.lanes; i++) {
+                    drawRectAndIncrement(laneWidth, roadColor)
+                    if (i < style.lanes - 1) {
+                        drawLine(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), 0, 0.5, this.YELLOW_LINE);
+                        drawLine(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), 0.5, 1, roadColor);
+                        currentX += this.metersToPixels(this.YELLOW_LINE_WIDTH_M);
+                    }
+                }
+            };
+
+            drawSidewalk(style.leftSidewalk);
+            drawKerb(style.leftKerb, 'left');
             drawLanes();
-            drawShoulder();
-            drawSidewalk();
+            drawKerb(style.rightKerb, 'right');
+            drawSidewalk(style.rightSidewalk);
         };
 
         drawRoad(options);
 
-        const imageData = ctx.getImageData(0, 0, textureWidth, this.TEXTURE_HEIGHT);
+        const imageData = ctx.getImageData(0, 0, textureWidthPx, textureHeightPx);
         const data = new Uint8Array(imageData.data);
 
         const texture = new THREE.DataTexture(
             data,
-            textureWidth,
-            this.TEXTURE_HEIGHT,
+            textureWidthPx,
+            textureHeightPx,
             THREE.RGBAFormat
         );
         texture.needsUpdate = true;
@@ -284,17 +325,12 @@ export class RoadBuilder implements IOrientation2D {
         this.addStraightRoadWithOptions(length, render.left, render.right);
     }
 
-    addStraightRoad(length: number, leftType: RoadType = 'l1', rightType: RoadType = leftType) {
-        this.addStraightRoadWithOptions(length, roadTypeToRenderOptions(leftType), roadTypeToRenderOptions(rightType));
-    }
-
     addStraightRoadWithOptions(length: number, left: RoadRenderOptions, right: RoadRenderOptions) {
         // Don't create geometry for zero or negative length
         if (length <= 0) return;
 
-        const roadWidth = RoadBuilder.ROAD_WIDTH_UNITS;
-        const halfRoadWidth = roadWidth / 2;
-        const geometry = new THREE.PlaneGeometry(length, roadWidth);
+        const rightWidthM = RoadBuilder.computeRoadWidthMeters(right);
+        const leftWidthM = RoadBuilder.computeRoadWidthMeters(left);
         const dx = Math.cos(this.angle) * length;
         const dz = -Math.sin(this.angle) * length;
         const normalX = Math.sin(this.angle);
@@ -302,16 +338,19 @@ export class RoadBuilder implements IOrientation2D {
         const repeat = length * RoadBuilder.LINE_REPEAT_PER_UNIT;
         const startV = this.textureProgressV;
         const endV = startV + repeat;
+        // const rightShouldStretch = RoadBuilder.hasEntryExitKerb(right);
+        // const leftShouldStretch = RoadBuilder.hasEntryExitKerb(left);
         const rightUvArray = [0, startV, 0, endV, 1, startV, 1, endV];
-        const leftUvArray = [1, startV, 1, endV, 0, startV, 0, endV];
+        const leftUvArray = [0, startV, 0, endV, 1, startV, 1, endV];
 
-        const createRoad = (offsetX: number, offsetZ: number, side: 'left' | 'right', options: RoadRenderOptions) => {
-            const roadGeometry = geometry.clone();
+        const createRoad = (halfOffsetM: number, widthM: number, side: 'left' | 'right', options: RoadRenderOptions) => {
+            if (widthM <= 0) return;
+            const roadGeometry = new THREE.PlaneGeometry(length, widthM);
             const road = new THREE.Mesh(roadGeometry, RoadBuilder.getRoadMaterial(options));
             road.position.set(
-                this.x + dx / 2 + offsetX,
+                this.x + dx / 2 + normalX * halfOffsetM,
                 this.y,
-                this.z + dz / 2 + offsetZ
+                this.z + dz / 2 + normalZ * halfOffsetM
             );
             road.rotation.x = -Math.PI / 2;
             road.rotation.z = this.angle;
@@ -320,21 +359,19 @@ export class RoadBuilder implements IOrientation2D {
             this.scene.add(road);
         };
 
-        createRoad(-normalX * halfRoadWidth, -normalZ * halfRoadWidth, 'left', left);
-        createRoad(normalX * halfRoadWidth, normalZ * halfRoadWidth, 'right', right);
+        // Right side starts at seam (0) and extends outward → center at +rightW/2
+        // Left side starts at seam (0) and extends outward → center at -leftW/2
+        createRoad(+rightWidthM / 2, rightWidthM, 'right', right);
+        createRoad(-leftWidthM / 2, leftWidthM, 'left', left);
 
         this.x += dx;
         this.z += dz;
-        this.textureProgressV = endV; // Mise à jour de la progression V
+        this.textureProgressV = endV;
     }
 
     addTurningRoadFromIRoad(turnAngle: number, radius: number, road: IRoad) {
         const render = iRoadToRenderOptions(road);
         this.addTurningRoadWithOptions(turnAngle, radius, render.left, render.right);
-    }
-
-    addTurningRoad(turnAngle: number, radius: number, leftType: RoadType = 'l1', rightType: RoadType = leftType) {
-        this.addTurningRoadWithOptions(turnAngle, radius, roadTypeToRenderOptions(leftType), roadTypeToRenderOptions(rightType));
     }
 
     addTurningRoadWithOptions(turnAngle: number, radius: number, left: RoadRenderOptions, right: RoadRenderOptions) {
@@ -370,24 +407,29 @@ export class RoadBuilder implements IOrientation2D {
         };
 
         const addHalfRoad = (side: 'left' | 'right', options: RoadRenderOptions) => {
+            const widthM = RoadBuilder.computeRoadWidthMeters(options);
+            if (widthM <= 0) return;
             const vertices: number[] = [];
             const uvsSide: number[] = [];
-            const offsetLeftInner = -RoadBuilder.ROAD_WIDTH_UNITS;
-            const offsetLeftOuter = 0;
-            const offsetRightInner = 0;
-            const offsetRightOuter = RoadBuilder.ROAD_WIDTH_UNITS;
+            // Right: seam at 0, outer edge at +w  (positive = outward from center)
+            // Left:  seam at 0, outer edge at -w  (negative = outward from center)
+            const innerOffset = 0;
+            const outerOffset = side === 'right' ? widthM : -widthM;
 
             for (let i = 0; i <= segments; i++) {
                 const t = i / segments;
-                const innerPoint = getCurvePoint(t, side == 'left' ? offsetLeftInner : offsetRightInner);
-                const outerPoint = getCurvePoint(t, side == 'left' ? offsetLeftOuter : offsetRightOuter);
+                const innerPoint = getCurvePoint(t, innerOffset);
+                const outerPoint = getCurvePoint(t, outerOffset);
 
                 vertices.push(innerPoint.x, this.y, innerPoint.z);
                 vertices.push(outerPoint.x, this.y, outerPoint.z);
 
                 const v = (radius * totalCurveAngle * t) * RoadBuilder.LINE_REPEAT_PER_UNIT;
-                uvsSide.push(side == 'left' ? 1 : 0, startV + v);
-                uvsSide.push(side == 'left' ? 0 : 1, startV + v);
+                // const stretchV = t;
+                // const useStretch = RoadBuilder.hasEntryExitKerb(options);
+                const vv = (startV + v);
+                uvsSide.push(0, vv);
+                uvsSide.push(1, vv);
             }
 
             const geometry = new THREE.BufferGeometry();

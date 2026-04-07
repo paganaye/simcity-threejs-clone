@@ -188,6 +188,40 @@
   padding: 4px;
 }
 
+.info-json {
+  margin: 8px 0 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.road-form-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.road-input {
+  width: 100%;
+  background: rgba(15, 18, 27, 0.9);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.road-inline-value {
+  font-size: 0.9rem;
+  color: #d8e2ff;
+}
+
 .ui-button {
   height: 48px;
   width: 48px;

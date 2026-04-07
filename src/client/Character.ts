@@ -45,6 +45,7 @@ export class Character {
   //private static readonly targetSnapRadius = 0.01;
   private static readonly baseWalkCycleFrequency = 8.0;
   private static readonly referenceWalkSpeed = 1.4;
+  private static nextCharacterId = 0;
   otherBlocking: Character | null = null;
 
   //path: CharacterPath | undefined;
@@ -139,7 +140,13 @@ export class Character {
   private static readonly BASE_MODEL_HEIGHT = 1.8;
   private static readonly walkTimeUniform = { value: 0 };
 
-  constructor(readonly population: Population) { }
+  readonly characterId: string;
+  homeId?: string;
+  workId?: string;
+
+  constructor(readonly population: Population) {
+    this.characterId = `C${Character.nextCharacterId++}`;
+  }
 
   setTarget(target: { x: number; z: number }): void {
     this.realTarget = { x: target.x, z: target.z, type: 'goal' };
@@ -147,6 +154,20 @@ export class Character {
 
   clearTarget(): void {
     this.realTarget = null;
+  }
+
+  setCharacterId(id?: string): void {
+    if (!id) {
+      return;
+    }
+    (this as any).characterId = id;
+    const match = id.match(/C(\d+)/);
+    if (match) {
+      const num = parseInt(match[1], 10) + 1;
+      if (num > Character.nextCharacterId) {
+        Character.nextCharacterId = num;
+      }
+    }
   }
 
   getSelectionInfo(): CharacterSelectionInfo[] {
@@ -159,6 +180,7 @@ export class Character {
       : "none";
 
     return [
+      { label: "ID", value: this.characterId },
       { label: "X", value: this.x.toFixed(2) },
       { label: "Z", value: this.z.toFixed(2) },
       { label: "Speed", value: this.speed.toFixed(2) },
@@ -167,6 +189,8 @@ export class Character {
       { label: "Wait Time", value: `${this.waitDuration.toFixed(2)} s` },
       { label: "Target", value: targetValue },
       { label: "Blocking At", value: blocker },
+      { label: "Home", value: this.homeId ?? "none" },
+      { label: "Work", value: this.workId ?? "none" },
     ];
   }
 

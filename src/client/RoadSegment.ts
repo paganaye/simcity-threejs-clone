@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { RoadBuilder, RoadType } from './RoadBuilder';
+import type { IRoad } from './roads/IRoad';
+import { roadTypeToIRoad } from './roads/RoadTypeAdapter';
 
 /**
  * A single straight road segment.
@@ -10,6 +12,7 @@ import { RoadBuilder, RoadType } from './RoadBuilder';
  */
 export class RoadSegment {
     readonly group = new THREE.Group();
+    private iRoad: IRoad;
 
     // Arc control point (world space). When set, road is rebuilt as a curve.
     private _arcMidX?: number;
@@ -26,8 +29,10 @@ export class RoadSegment {
         public length: number,
         public roadType: RoadType = 'l1',
     ) {
+        this.iRoad = roadTypeToIRoad(roadType);
         this.group.userData.selectableType = 'road';
         this.group.userData.roadSegment = this;
+        this.group.userData.iRoad = this.iRoad;
         this.group.position.set(startX, 0, startZ);
         this.group.rotation.y = angle;
         sceneRoot.add(this.group);
@@ -44,6 +49,34 @@ export class RoadSegment {
 
     get arcMidX(): number | undefined { return this._arcMidX; }
     get arcMidZ(): number | undefined { return this._arcMidZ; }
+
+    getIRoad(): IRoad {
+        return this.iRoad;
+    }
+
+    setIRoad(nextRoad: IRoad): void {
+        this.iRoad = nextRoad.type === 'OneWayRoad'
+            ? {
+                type: 'OneWayRoad',
+                options: { ...nextRoad.options },
+            }
+            : {
+                type: 'TwoWayRoad',
+                forwardWay: { ...nextRoad.forwardWay },
+                otherWay: { ...nextRoad.otherWay },
+                dividing: nextRoad.dividing,
+            };
+        this.group.userData.iRoad = this.iRoad;
+    }
+
+    setRoadType(nextType: RoadType): void {
+        if (this.roadType === nextType) {
+            return;
+        }
+        this.roadType = nextType;
+        this.setIRoad(roadTypeToIRoad(nextType));
+        this.rebuild();
+    }
 
     /** Curve the road through a world-space control point. Keeps start and end fixed. */
     setArc(midX: number, midZ: number, endX?: number, endZ?: number): void {

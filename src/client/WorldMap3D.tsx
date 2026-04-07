@@ -31,6 +31,10 @@ type PlacedBuilding = PlacedFootprint & {
     instanceId: number;
 };
 
+interface BuildingMetadata {
+    buildingId: string;
+}
+
 export class WorldMap3D {
     readonly buildingModels: ModelName[] = [
         ...residentialBuildings,
@@ -39,6 +43,8 @@ export class WorldMap3D {
     ];
     readonly buildings: IFastMesh[] = [];
     readonly placedByInstance = new Map<string, PlacedBuilding>();
+    private readonly buildingMetadata = new Map<string, BuildingMetadata>();
+    private nextBuildingId = 0;
     private readonly tempMatrix = new THREE.Matrix4();
     private readonly tempPosition = new THREE.Vector3();
     private readonly tempQuaternion = new THREE.Quaternion();
@@ -62,9 +68,32 @@ export class WorldMap3D {
         }
         this.buildings.length = 0;
         this.placedByInstance.clear();
+        this.buildingMetadata.clear();
     }
 
     drawFrame(_now: number) {
+    }
+
+    getBuildingId(mesh: THREE.InstancedMesh, instanceId: number): string | undefined {
+        const key = this.instanceKey(mesh, instanceId);
+        return this.buildingMetadata.get(key)?.buildingId;
+    }
+
+    createNewBuildingId(meshKey: string): string {
+        const id = `B${this.nextBuildingId++}`;
+        this.buildingMetadata.set(meshKey, { buildingId: id });
+        return id;
+    }
+
+    setBuildingId(meshKey: string, id: string): void {
+        this.buildingMetadata.set(meshKey, { buildingId: id });
+        const match = id.match(/B(\d+)/);
+        if (match) {
+            const num = parseInt(match[1], 10) + 1;
+            if (num > this.nextBuildingId) {
+                this.nextBuildingId = num;
+            }
+        }
     }
 
     buildPlacementFootprint(
@@ -165,6 +194,7 @@ export class WorldMap3D {
                 this.placedByInstance.delete(legacyEntry[0]);
             }
         }
+        this.buildingMetadata.delete(key);
         return true;
     }
 

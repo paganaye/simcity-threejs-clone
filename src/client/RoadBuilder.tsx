@@ -1,19 +1,12 @@
 import * as THREE from "three";
 import { IOrientation2D } from "../sim/IPoint";
 import { IFloorPos } from "./GameUIComponent";
+import type { DividingType, IRoadOptions } from "./roads/IRoad";
 
 
-type ShoulderType = 'parallelParking' | 'perpendicularParking' | 'emergencyLane' | 'line' | 'gap' | 'none';
-type DividingType = 'yellowLineSolid' | 'yellowLineDashed' | 'gap' | 'none';
-type SideWalkType = 'small' | 'large' | 'none';
-
-interface IRoadOptions {
-    roadColor: 'old' | 'new';
+type ITextureRoadOptions = IRoadOptions & {
     dividing: DividingType;
-    lanes: number;
-    shoulder: ShoulderType;
-    sidewalk: SideWalkType;
-}
+};
 
 export const roadTypes = {
     none: { dividing: 'none', lanes: 0, shoulder: 'none', sidewalk: 'small', roadColor: 'old' },
@@ -24,7 +17,7 @@ export const roadTypes = {
     l5: { dividing: 'yellowLineSolid', lanes: 2, shoulder: 'line', sidewalk: 'large', roadColor: 'new' },
     l6: { dividing: 'yellowLineSolid', lanes: 3, shoulder: 'line', sidewalk: 'large', roadColor: 'new' },
     l7: { dividing: 'yellowLineSolid', lanes: 1, shoulder: 'emergencyLane', sidewalk: 'large', roadColor: 'new' },
-} satisfies Record<string, IRoadOptions>
+} satisfies Record<string, ITextureRoadOptions>
 let roadTypeIndex: Record<keyof typeof roadTypes, number> = {} as any;
 
 export type RoadType = keyof typeof roadTypes;
@@ -96,7 +89,7 @@ export class RoadBuilder implements IOrientation2D {
         ctx.fillStyle = this.TRANSPARENT;
         ctx.fillRect(0, 0, textureWidth, this.TEXTURE_HEIGHT);
 
-        const drawRoad = (roadNo: number, options: IRoadOptions) => {
+        const drawRoad = (roadNo: number, options: ITextureRoadOptions) => {
             const roadStartX = this.TEXTURE_WIDTH * roadNo;
             let currentX = roadStartX;
             let roadColor = options.roadColor === 'new' ? RoadBuilder.NEW_ROAD_COLOR : RoadBuilder.OLD_ROAD_COLOR;

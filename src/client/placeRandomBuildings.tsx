@@ -63,17 +63,19 @@ export function placeRandomBuildings(map: WorldMap3D, targetCount: number) {
 
         const mesh = map.scene.assetManager.addFastMesh(model, x, 0.0, z, orientation);
         map.buildings.push(mesh);
-        map.placedByInstance.set(map.instanceKey(mesh.parent.instancedMesh, mesh.index), {
+        const instanceKey = map.instanceKey(mesh.parent.instancedMesh, mesh.index);
+        map.placedByInstance.set(instanceKey, {
             ...candidate,
             mesh: mesh.parent.instancedMesh,
             instanceId: mesh.index,
         });
+        map.createNewBuildingId(instanceKey);
 
         const newIndex = placed.length;
         placed.push(candidate);
-        const key = `${bx}:${bz}`;
-        const list = buckets.get(key);
+        const bucketKey = `${bx}:${bz}`;
+        const list = buckets.get(bucketKey);
         if (list) list.push(newIndex);
-        else buckets.set(key, [newIndex]);
+        else buckets.set(bucketKey, [newIndex]);
     }
 }

@@ -12,6 +12,7 @@ export interface IStoreGameData<TGameData> {
 }
 
 export interface ISerializedBuilding {
+    buildingId: string;
     modelName: ModelName;
     x: number;
     y: number;
@@ -32,6 +33,7 @@ export interface ISerializedRoad {
 }
 
 export interface ISerializedCharacter {
+    characterId?: string;
     x: number;
     z: number;
     heading: number;
@@ -40,6 +42,8 @@ export interface ISerializedCharacter {
     isBlocked: boolean;
     waitDuration: number;
     target?: { x: number; z: number };
+    homeId?: string;
+    workId?: string;
 }
 
 export interface ISerializedCity {
@@ -75,7 +79,7 @@ export class GameStorage {
     }
 
     getDefaultName(): string {
-        return 'simcity';
+        return 'city1';
     }
 
     listSaveNames(): string[] {
@@ -103,13 +107,14 @@ export class GameStorage {
             try {
                 const parsed = JSON.parse(input) as Partial<ISerializedCity>;
                 if (!this.#isValidSave(parsed)) {
+                    console.warn(`Save validation failed for "${saveName}":`, parsed);
                     return false;
                 }
                 this.#restoreCity(parsed);
                 localStorage.setItem(GameStorage.LAST_SAVE_NAME_KEY, saveName);
                 return true;
             } catch (e) {
-                void e;
+                console.error(`Failed to load "${saveName}":`, e);
             }
         }
         return false;
@@ -131,7 +136,9 @@ export class GameStorage {
             this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
             this.tempEuler.setFromQuaternion(this.tempQuaternion);
             const modelName = mesh.userData?.modelName as ModelName;
+            const buildingId = this.scene.worldMap3D.getBuildingId(mesh, entry.index) ?? 'unknown';
             return {
+                buildingId,
                 modelName,
                 x: this.tempPosition.x,
                 y: this.tempPosition.y,
@@ -154,6 +161,7 @@ export class GameStorage {
 
         const population = this.getPopulation();
         const characters = (population?.characters ?? []).map((character) => ({
+            characterId: character.characterId,
             x: character.x,
             z: character.z,
             heading: character.heading,
@@ -162,6 +170,8 @@ export class GameStorage {
             isBlocked: character.isBlocked,
             waitDuration: character.waitDuration,
             target: character.target ? { x: character.target.x, z: character.target.z } : undefined,
+            homeId: character.homeId,
+            workId: character.workId,
         }));
 
         return {
@@ -187,28 +197,35 @@ export class GameStorage {
         }
 
         for (const building of save.buildings) {
-            const mesh = this.scene.assetManager.addFastMesh(
-                building.modelName,
-                building.x,
-                building.y,
-                building.z,
-                building.yaw,
-            );
-            world.buildings.push(mesh);
+            try {
+                const mesh = this.scene.assetManager.addFastMesh(
+                    building.modelName,
+                    building.x,
+                    building.y,
+                    building.z,
+                    building.yaw,
+                );
+                world.buildings.push(mesh);
 
-            const footprint = world.buildPlacementFootprint(
-                building.x,
-                building.z,
-                building.yaw,
-                this.scene.assetManager.getModelFootprint(building.modelName),
-            );
-            if (footprint) {
-                world.placedByInstance.set(world.instanceKey(mesh.parent.instancedMesh, mesh.index), {
-                    ...footprint,
-                    mesh: mesh.parent.instancedMesh,
-                    instanceId: mesh.index,
-                });
+                const footprint = world.buildPlacementFootprint(
+                    building.x,
+                    building.z,
+                    building.yaw,
+                    this.scene.assetManager.getModelFootprint(building.modelName),
+                );
+                if (footprint) {
+                    const key = world.instanceKey(mesh.parent.instancedMesh, mesh.index);
+                    world.placedByInstance.set(key, {
+                        ...footprint,
+                        mesh: mesh.parent.instancedMesh,
+                        instanceId: mesh.index,
+                    });
+                    world.setBuildingId(key, building.buildingId);
+                }
+            } catch (error) {
+                console.warn(`Failed to load building ${building.buildingId} (${building.modelName}) at (${building.x}, ${building.z}):`, error);
             }
+
         }
 
         for (const road of save.roads) {
@@ -234,6 +251,9 @@ export class GameStorage {
                 const character = population.characters[i];
                 if (!character) continue;
 
+                if (source.characterId) {
+                    character.setCharacterId(source.characterId);
+                }
                 character.x = source.x;
                 character.z = source.z;
                 character.heading = source.heading;
@@ -246,12 +266,16 @@ export class GameStorage {
                 } else {
                     character.clearTarget();
                 }
+                character.homeId = source.homeId;
+                character.workId = source.workId;
             }
         }
     }
 
     #isValidSave(value: Partial<ISerializedCity>): value is ISerializedCity {
-        return value.version === 1
+        // Accept saves with or without explicit version field (backwards compatibility)
+        const hasVersion = value.version === 1 || value.version === undefined;
+        return hasVersion
             && !!value.mapSize
             && typeof value.mapSize.x === 'number'
             && typeof value.mapSize.z === 'number'

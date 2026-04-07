@@ -26,6 +26,57 @@ Early levels should be short, typically lasting from a few seconds to a couple o
 
 Players can also create and share their own puzzles.
 
+## Road System Plan (Step 1)
+
+The road network source of truth is a simple list of road instructions:
+
+* `IRoad[]`
+
+Each `IRoad` describes what the user drew (straight or curved segment, road options, one-way or two-way semantics).
+
+At runtime, the engine can compile this list into smaller internal segments to:
+
+* resolve intersections
+* generate render meshes
+* support pathfinding/traffic
+
+The editable/savable format remains the same: a list of `IRoad`.
+
+Current domain contract (independent from 3D rendering):
+
+```ts
+type IRoadOptions = {
+        roadColor: 'old' | 'new';
+        lanes: number;
+        shoulder: ShoulderType;
+        sidewalk: SideWalkType;
+};
+
+type IRoad = OneWayRoad | TwoWayRoad;
+
+type OneWayRoad = {
+        type: 'OneWayRoad';
+        options: IRoadOptions;
+};
+
+type TwoWayRoad = {
+        type: 'TwoWayRoad';
+        forwardWay: IRoadOptions;
+        otherWay: IRoadOptions;
+        dividing: DividingType;
+};
+
+type IRoadInstruction = {
+        id: string;
+        shape: LineShape | ArcShape;
+        road: IRoad;
+};
+
+type IRoadNetwork = {
+        roads: IRoadInstruction[];
+};
+```
+
 ## How did you make this?
 
 Want to know how I made this? Follow the YouTube tutorial series [here](https://www.youtube.com/playlist?list=PLtzt35QOXmkJ9unmoeA5gXHcscQHJVQpW)

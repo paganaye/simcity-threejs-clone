@@ -110,7 +110,15 @@ export class WorldMap3D {
 
     tryUpdateBuildingTransform(mesh: THREE.InstancedMesh, instanceId: number, x: number, z: number, yaw: number): boolean {
         const selfKey = this.instanceKey(mesh, instanceId);
-        const current = this.placedByInstance.get(selfKey);
+        let current = this.placedByInstance.get(selfKey);
+        if (!current) {
+            const legacyEntry = this.#findPlacedEntryByInstance(mesh, instanceId);
+            if (legacyEntry) {
+                current = legacyEntry[1];
+                this.placedByInstance.delete(legacyEntry[0]);
+                this.placedByInstance.set(selfKey, current);
+            }
+        }
         if (!current) return false;
 
         const modelName = mesh.userData?.modelName as ModelName | undefined;
@@ -140,7 +148,33 @@ export class WorldMap3D {
     }
 
     instanceKey(mesh: THREE.InstancedMesh, instanceId: number): string {
-        return `${mesh.id}:${instanceId}`;
+        const modelName = mesh.userData?.modelName as string | undefined;
+        return `${modelName ?? mesh.id}:${instanceId}`;
+    }
+
+    removeBuilding(mesh: THREE.InstancedMesh, instanceId: number): boolean {
+        const key = this.instanceKey(mesh, instanceId);
+        const index = this.buildings.findIndex((entry) => entry.parent.instancedMesh === mesh && entry.index === instanceId);
+        if (index < 0) return false;
+
+        this.scene.assetManager.removeFastMesh(this.buildings[index]);
+        this.buildings.splice(index, 1);
+        if (!this.placedByInstance.delete(key)) {
+            const legacyEntry = this.#findPlacedEntryByInstance(mesh, instanceId);
+            if (legacyEntry) {
+                this.placedByInstance.delete(legacyEntry[0]);
+            }
+        }
+        return true;
+    }
+
+    #findPlacedEntryByInstance(mesh: THREE.InstancedMesh, instanceId: number): [string, PlacedBuilding] | undefined {
+        for (const entry of this.placedByInstance.entries()) {
+            if (entry[1].mesh === mesh && entry[1].instanceId === instanceId) {
+                return entry;
+            }
+        }
+        return undefined;
     }
 
 }

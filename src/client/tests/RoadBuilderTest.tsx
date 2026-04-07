@@ -1,16 +1,18 @@
 import { render } from 'solid-js/web';
 import { GameScene3D } from '../GameScene3D';
-import { UIProps, GameUIComponent, UIButton } from '../GameUIComponent';
+import { GameUIComponent, UIButton } from '../GameUIComponent';
 import { Page } from '../Page';
 import { Signal } from '../Signal';
 import { ActiveTool } from '../tools/ToolTypes';
 
 export default class RoadBuildTest extends Page {
     scene3DInstance: GameScene3D | undefined;
-    uiProps: UIProps | undefined;
 
 
     async run() {
+        const mapSize = { x: 40, z: 40 };
+        const scene3D = new GameScene3D(mapSize);
+        this.scene3DInstance = scene3D;
 
         const ToolButton = (toolProps: { tool: ActiveTool; icon: string; }) => {
             return <UIButton
@@ -25,26 +27,25 @@ export default class RoadBuildTest extends Page {
 
         const activeTool = new Signal<ActiveTool>('road');
 
-        const handleUILoaded = async (uiProps: UIProps): Promise<void> => {
-            this.uiProps = uiProps;
-            uiProps.activeTool.set(activeTool.get());
-            this.scene3DInstance = new GameScene3D(uiProps);
-            await this.scene3DInstance.init(this);
-            this.scene3DInstance.setActiveTool(activeTool.get());
+        const handleUILoaded = async (): Promise<void> => {
+            scene3D.activeTool.set(activeTool.get());
+            await scene3D.init(this);
+            scene3D.setActiveTool(activeTool.get());
 
             console.log("GameUI: Scene3D initialized after UI loaded.");
 
-            uiProps.isLoading.set(false);
+            scene3D.isLoading.set(false);
         };
 
 
         render(() => <GameUIComponent page={this}
+            scene3D={scene3D}
             toolbar={<>
                 <ToolButton tool="select" icon="select-color" />
                 <ToolButton tool="bulldoze" icon="bulldozer-color" />
                 <ToolButton tool="road" icon="road-color" />
             </>}
-            mapSize={{ x: 40, z: 40 }} onUILoaded={handleUILoaded} />, this.appContainer);
+            mapSize={mapSize} onUILoaded={handleUILoaded} />, this.appContainer);
 
     }
 

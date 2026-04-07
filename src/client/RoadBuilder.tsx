@@ -49,7 +49,7 @@ export class RoadBuilder implements IOrientation2D {
     static YELLOW_LINE_WIDTH = 2;
     static WHITE_LINE = 'hsl(66, 10.0%, 86.70%)';
     static PAVEMENT_WIDTH = 12;
-    static ROAD_WIDTH_UNITS = 0.6; // in units
+    static ROAD_WIDTH_UNITS = 10; // in metre
     static TEXTURE_HEIGHT = 32;
     static ROAD_WIDTH = 18;
     static TRANSPARENT = 'transparent';

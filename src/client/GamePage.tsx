@@ -2,7 +2,7 @@ import { render } from 'solid-js/web';
 import { GameScene3D } from "./GameScene3D";
 import { Page } from './Page';
 import { Population } from './Population';
-import { GameUIComponent, UIButton, UIProps } from './GameUIComponent';
+import { GameUIComponent, UIButton } from './GameUIComponent';
 import { Signal } from './Signal';
 import { placeRandomBuildings } from './placeRandomBuildings';
 import { ActiveTool } from './tools/ToolTypes';
@@ -37,19 +37,21 @@ export default class GamePage extends Page {
 
 
     async run() {
+        const mapSize = { x: 256, z: 256 };
+        const scene3D = new GameScene3D(mapSize);
+        this.scene3DInstance = scene3D;
 
         const activeTool = new Signal<ActiveTool>('select');
 
-        const handleUILoaded = async (uiProps: UIProps): Promise<void> => {
-            this.scene3DInstance = new GameScene3D(uiProps);
-            await this.scene3DInstance.init(this);
+        const handleUILoaded = async (): Promise<void> => {
+            await scene3D.init(this);
             this.population3D = new Population(this.scene);
-            this.population3D.init(this.scene3DInstance.worldMap3D.size.x, this.scene3DInstance.worldMap3D.size.z);
+            this.population3D.init(scene3D.worldMap3D.size.x, scene3D.worldMap3D.size.z);
             this.updateRandomTargets();
-            placeRandomBuildings(this.scene3DInstance!.worldMap3D, 100);
+            placeRandomBuildings(scene3D.worldMap3D, 100);
 
             console.log("GameUI: Scene3D initialized after UI loaded.");
-            uiProps.isLoading.set(false);
+            scene3D.isLoading.set(false);
         };
 
 
@@ -65,7 +67,8 @@ export default class GamePage extends Page {
 
 
         render(() => <GameUIComponent
-            mapSize={{ x: 256, z: 256 }}
+            scene3D={scene3D}
+            mapSize={mapSize}
             toolbar={<>
                 <ToolButton tool="select" icon="select-color" />
                 <ToolButton tool="bulldoze" icon="bulldozer-color" />
@@ -80,7 +83,7 @@ export default class GamePage extends Page {
 
     override loop(elapsed: number): void {
         this.scene3DInstance?.drawFrame(elapsed);
-        if (this.scene3DInstance) {
+        if (this.scene3DInstance?.worldMap3D) {
             this.updateRandomTargets();
             this.population3D?.tick(elapsed);
         }

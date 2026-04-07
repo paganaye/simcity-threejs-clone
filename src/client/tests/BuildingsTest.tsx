@@ -11,7 +11,7 @@ import {
 import { initAssetManagerData } from "../AssetManagerData";
 import type { ISelectedInstance } from "../editor/ObjectGizmo";
 import { GameScene3D } from "../GameScene3D";
-import { GameUIComponent, UIProps } from "../GameUIComponent";
+import { GameUIComponent } from "../GameUIComponent";
 import { Page } from "../Page";
 
 const TILE = appConstants.BuildingsScale;
@@ -175,7 +175,7 @@ export default class TestBuildings extends Page {
         this.scene3DInstance.objectGizmo.setSelection(handle.root);
     }
 
-    #setBuilding(modelName: ModelName, uiProps: UIProps) {
+    #setBuilding(modelName: ModelName) {
         if (!this.scene3DInstance) return;
 
         if (this.currentBuilding) {
@@ -196,8 +196,8 @@ export default class TestBuildings extends Page {
             selected,
         };
 
-        this.scene3DInstance.selectedInstance = selected;
-        uiProps.selectedInstance.set(selected);
+        //this.scene3DInstance.selectedInstance = selected;
+        //uiProps.selectedInstance.set(selected);
         this.scene3DInstance.objectGizmo.syncSelectionFromSelectedInstance();
 
         const meta = modelsMetaData[modelName as keyof typeof modelsMetaData] as IAssetMeta;
@@ -213,13 +213,13 @@ export default class TestBuildings extends Page {
         this.#selectAccessHandle(this.accessHandles[0]);
     }
 
-    #setupGui(uiProps: UIProps) {
+    #setupGui() {
         const selectionFolder = this.gui?.addFolder("Selection");
         selectionFolder
             ?.add(this.guiState, "building", BUILDING_MODELS)
             .name("Building")
             .onChange((modelName: ModelName) => {
-                this.#setBuilding(modelName, uiProps);
+                this.#setBuilding(modelName);
             });
         selectionFolder
             ?.add({ generateData: () => void this.#generateData() }, "generateData")
@@ -267,31 +267,39 @@ export default class TestBuildings extends Page {
     }
 
     async run() {
-        const handleUILoaded = async (uiProps: UIProps): Promise<void> => {
-            this.scene3DInstance = new GameScene3D(uiProps);
-            this.scene3DInstance.selectionFilter = (selected) => {
-                return selected.selectableType !== "building";
-            };
-            this.scene3DInstance.isCustomGizmoSelectableObject = (obj) => {
+        const mapSize = { x: 20, z: 20 };
+        const scene3D = new GameScene3D(mapSize);
+        this.scene3DInstance = scene3D;
+
+        const handleUILoaded = async (): Promise<void> => {
+            // this.scene3DInstance.selectionFilter = (selected) => {
+            //     return selected.selectableType !== "building";
+            // };
+            scene3D.isCustomGizmoSelectableObject = (obj) => {
                 return this.accessHandles.some((handle) => handle.pickMesh === obj || handle.root === obj);
             };
-            this.scene3DInstance.onCustomGizmoObjectSelected = (obj) => {
+            scene3D.onCustomGizmoObjectSelected = (obj) => {
                 const handle = this.accessHandles.find((item) => item.pickMesh === obj || item.root === obj);
                 if (!handle) return;
                 this.#selectAccessHandle(handle);
             };
-            await this.scene3DInstance.init(this);
+            await scene3D.init(this);
             initAssetManagerData();
 
             this.camera.position.set(0, TILE * 3.2, TILE * 3.8);
             this.camera.lookAt(0, 0, 0);
 
-            this.#setupGui(uiProps);
-            this.#setBuilding(this.guiState.building, uiProps);
-            uiProps.isLoading.set(false);
+            this.#setupGui();
+            this.#setBuilding(this.guiState.building);
+            scene3D.isLoading.set(false);
         };
 
-        render(() => <GameUIComponent mapSize={{ x: 20, z: 20 }} page={this} onUILoaded={handleUILoaded} />, this.appContainer);
+        render(() => <GameUIComponent
+            mapSize={mapSize}
+            page={this}
+            onUILoaded={handleUILoaded}
+            scene3D={scene3D}
+        />, this.appContainer);
     }
 
     override loop(elapsed: number): void {

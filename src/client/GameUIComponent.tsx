@@ -1,10 +1,7 @@
-import { JSX, Show } from 'solid-js';
-import type * as THREE from 'three';
-import type { ISelectedInstance } from './editor/ObjectGizmo';
+import { JSX, Show, onMount } from 'solid-js';
 import { Page } from './Page';
 import { SelectedObjectPanel } from './SelectedObjectPanel';
-import { Signal } from './Signal';
-import { ActiveTool } from './tools/ToolTypes';
+import { GameScene3D } from './GameScene3D';
 
 export interface IFloorPos {
     x: number;
@@ -12,77 +9,44 @@ export interface IFloorPos {
 }
 export type IFloorSize = IFloorPos;
 
-export interface UIProps {
-    mapSize: { x: number; z: number };
-    gameWindow: HTMLElement;
-    isLoading: Signal<boolean>;
-    isPaused: Signal<boolean>;
-    activeTool: Signal<ActiveTool>;
-    selectedInstance: Signal<ISelectedInstance | undefined>;
-    selectedCustomObject: Signal<THREE.Object3D | undefined>;
-    simMoney: Signal<number>;
-    population: Signal<number>;
-    simTime: Signal<number>;
-    cityName: Signal<string>;
-}
-
 export function GameUIComponent(props: {
     page: Page;
-    onUILoaded: (uiProps: UIProps) => void;
+    onUILoaded?: () => void | Promise<void>;
     toolbar?: JSX.Element;
     mapSize: IFloorSize;
+    scene3D: GameScene3D;
 }) {
-    const isLoading = new Signal(true);
-    const isPaused = new Signal(false);
-    const activeTool = new Signal<ActiveTool>('select');
-    const selectedInstance = new Signal<ISelectedInstance | undefined>(undefined);
-    const selectedCustomObject = new Signal<THREE.Object3D | undefined>(undefined);
-    const simMoney = new Signal(0);
-    const population = new Signal(0);
-    const simTime = new Signal(0);
-    const cityName = new Signal('My City');
-
-    props.onUILoaded({
-        mapSize: props.mapSize,
-        gameWindow: props.page.appContainer,
-        isLoading,
-        isPaused,
-        activeTool,
-        selectedInstance,
-        selectedCustomObject,
-        simMoney,
-        population,
-        simTime,
-        cityName,
+    onMount(() => {
+        void props.onUILoaded?.();
     });
 
     return (
         <div class="ui-root">
-            <Show when={isLoading.get()}>
+            <Show when={props.scene3D.isLoading.get()}>
                 <div id="loading" class="text-overlay"><div>LOADING...</div></div>
             </Show>
-            <Show when={isPaused.get()}>
+            <Show when={props.scene3D.isPaused.get()}>
                 <div id="paused-text" class="text-overlay"><div>PAUSED</div></div>
             </Show>
             <div id="title-bar">
-                <div class="title-bar-left-items title-bar-items">${simMoney.get()}</div>
+                <div class="title-bar-left-items title-bar-items">${props.scene3D.simMoney.get()}</div>
                 <div class="title-bar-center-items title-bar-items">
-                    <span id="city-name">{cityName.get()}</span>
+                    <span id="city-name">{props.scene3D.cityName.get()}</span>
                     <span>&nbsp;-&nbsp;</span>
-                    <span id="sim-time">{simTime.get()}</span>
+                    <span id="sim-time">{props.scene3D.simTime.get()}</span>
                 </div>
                 <div class="title-bar-right-items title-bar-items">
                     <img id="population-icon" src="./icons/person.png" alt="population" />
-                    <span id="population-counter">{population.get()}</span>
+                    <span id="population-counter">{props.scene3D.population.get()}</span>
                 </div>
             </div>
             <Show when={props.toolbar}>
                 <div id="ui-toolbar" class="container">
                     {props.toolbar}
-                    <UIButton icon={isPaused.get() ? "play-color" : "pause-color"} onclick={() => isPaused.set(!isPaused.get())} selected={false} />
+                    <UIButton icon={props.scene3D.isPaused.get() ? "play-color" : "pause-color"} onclick={() => props.scene3D.isPaused.set(!props.scene3D.isPaused.get())} selected={false} />
                 </div>
             </Show>
-            <SelectedObjectPanel selectedInstance={selectedInstance.get} selectedCustomObject={selectedCustomObject.get} />
+            <SelectedObjectPanel selectedInstance={props.scene3D.selectedInstance.get} selectedCustomObject={props.scene3D.selectedCustomObject.get} />
             <div id="instructions">
                 Lorem, ipsum dolor<br />
                 sit amet consectetur adipisicing elit.<br />

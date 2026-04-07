@@ -7,7 +7,7 @@ import { ICityChanged } from '../sim/Init';
 import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
-import { IFloorSize, UIProps } from './GameUIComponent';
+import { IFloorSize } from './GameUIComponent';
 import { RoadGizmo } from './editor/RoadGizmo';
 import type { CustomGizmo } from './editor/CustomGizmo';
 import { ISelectedInstance, ObjectGizmo } from './editor/ObjectGizmo';
@@ -18,6 +18,7 @@ import { BulldozerToolController } from './tools/BulldozerToolController';
 import { SelectToolController } from './tools/SelectToolController';
 import { ActiveTool } from './tools/ToolTypes';
 import { RoadNetwork } from './RoadNetwork';
+import { Signal } from './Signal';
 
 export type ILeftPointerGesture = {
     downX: number;
@@ -45,7 +46,6 @@ export class GameScene3D {
     camera!: THREE.PerspectiveCamera;
     container!: HTMLElement;
     renderDom?: HTMLCanvasElement;
-    selectedInstance?: ISelectedInstance;
     readonly tempMatrix = new THREE.Matrix4();
     readonly tempPosition = new THREE.Vector3();
     readonly tempQuaternion = new THREE.Quaternion();
@@ -55,7 +55,6 @@ export class GameScene3D {
     roadGizmo!: RoadGizmo;
     currentGizmo?: CustomGizmo;
     readonly transformProxy = new THREE.Object3D();
-    selectionFilter?: (selected: ISelectedInstance) => boolean;
     selectionHalo?: THREE.Group;
     readonly selectionHaloLayers: THREE.LineSegments<THREE.EdgesGeometry, THREE.LineBasicMaterial>[] = [];
     lastTransformValid = true;
@@ -78,9 +77,18 @@ export class GameScene3D {
     private currentTool: ActiveTool = 'select';
     private readonly toolMap = new Map<ActiveTool, ToolController>();
     size: IFloorSize;
+    isLoading = new Signal(true);
+    isPaused = new Signal(false);
+    activeTool = new Signal<ActiveTool>('select');
+    selectedInstance = new Signal<ISelectedInstance | undefined>(undefined);
+    selectedCustomObject = new Signal<THREE.Object3D | undefined>(undefined);
+    simMoney = new Signal(0);
+    population = new Signal(0);
+    simTime = new Signal(0);
+    cityName = new Signal('My City');
 
-    constructor(readonly uiProps: UIProps) {
-        this.size = uiProps.mapSize;
+    constructor(readonly mapSize: IFloorSize) {
+        this.size = mapSize;
     }
 
     async init(context: Page) {
@@ -92,7 +100,6 @@ export class GameScene3D {
         this.container = context.appContainer;
         this.renderDom = context.renderer.domElement;
 
-        let uiProps = this.uiProps;
         let pendingAssetManager = this.assetManager.init()
         this.worldMap3D = new WorldMap3D(this);
         this.cars3D = new Cars3D(this)
@@ -109,7 +116,7 @@ export class GameScene3D {
         this.#setupToolControllers();
         this.#setupGround();
         await pendingAssetManager;
-        uiProps.isLoading.set(false);
+        this.isLoading.set(false);
 
         let changes = await this.sim.init();
         if (changes.cityChanged) {
@@ -122,7 +129,7 @@ export class GameScene3D {
     }
 
     onCityChanged(cityChanged: ICityChanged) {
-        this.uiProps.cityName.set(cityChanged.name);
+        this.cityName.set(cityChanged.name);
         if (cityChanged.clear) this.worldMap3D.clearCity();
         //this.worldMap3D.setSize(cityChanged.width, cityChanged.height);
 
@@ -137,7 +144,7 @@ export class GameScene3D {
     }
 
     setActiveTool(tool: ActiveTool): void {
-        this.uiProps.activeTool.set(tool);
+        this.activeTool.set(tool);
         this.currentTool = tool;
         this.currentToolController = this.toolMap.get(tool);
         this.currentToolController?.onToolChanged(tool);
@@ -157,17 +164,16 @@ export class GameScene3D {
 
         this.onRoadSegmentResized = (seg) => roadController.onRoadSegmentResized(seg);
 
-        this.setActiveTool(this.uiProps.activeTool.get());
+        this.setActiveTool(this.activeTool.get());
     }
 
     #getSelectedRoadSegment(): RoadSegment | undefined {
-        return this.uiProps.selectedCustomObject.get()?.userData?.roadSegment as RoadSegment | undefined;
+        return this.selectedCustomObject.get()?.userData?.roadSegment as RoadSegment | undefined;
     }
 
     clearSelection(): void {
-        this.selectedInstance = undefined;
-        this.uiProps.selectedInstance.set(undefined);
-        this.uiProps.selectedCustomObject.set(undefined);
+        this.selectedInstance.set(undefined);
+        this.selectedCustomObject.set(undefined);
         this.currentGizmo = undefined;
         this.roadGizmo.clearSelection();
         this.objectGizmo.clearSelection();
@@ -180,9 +186,8 @@ export class GameScene3D {
             return;
         }
 
-        this.selectedInstance = undefined;
-        this.uiProps.selectedInstance.set(undefined);
-        this.uiProps.selectedCustomObject.set(segment.group);
+        this.selectedInstance.set(undefined);
+        this.selectedCustomObject.set(segment.group);
         this.currentGizmo = this.roadGizmo;
         this.objectGizmo.clearSelection();
         this.roadGizmo.setRoadSelection({
@@ -222,9 +227,7 @@ export class GameScene3D {
             if (hit.instanceId == null) continue;
             const obj = hit.object as THREE.InstancedMesh;
             selected = { mesh: obj, instanceId: hit.instanceId, selectableType };
-            if (this.selectionFilter && !this.selectionFilter(selected)) {
-                selected = undefined;
-            } else break;
+            break;
         }
 
         if (selectedObject3D?.userData?.roadSegment) {
@@ -235,10 +238,9 @@ export class GameScene3D {
     }
 
     #selectInstance(selected: ISelectedInstance | undefined): void {
-        this.selectedInstance = selected;
-        this.uiProps.selectedInstance.set(selected);
-        this.uiProps.selectedCustomObject.set(undefined);
         this.roadGizmo.clearSelection();
+        this.selectedInstance.set(selected);
+        this.selectedCustomObject.set(undefined);
 
         if (selected?.selectableType === 'building') {
             this.currentGizmo = this.objectGizmo;
@@ -324,18 +326,18 @@ export class GameScene3D {
     #updateSelectionHalo() {
         if (!this.selectionHalo) return;
 
-        const selected = this.selectedInstance;
+        const selected = this.selectedInstance.get();
         if (!selected) {
             this.selectionHalo.visible = false;
             return;
         }
 
         const geometry = selected.mesh.geometry;
-        if (!geometry.boundingBox) {
-            geometry.computeBoundingBox();
+        if (!geometry?.boundingBox) {
+            geometry?.computeBoundingBox();
         }
 
-        if (!geometry.boundingBox) {
+        if (!geometry?.boundingBox) {
             this.selectionHalo.visible = false;
             return;
         }
@@ -494,7 +496,7 @@ export class GameScene3D {
             camera: this.camera,
             raycaster: this.raycaster,
             domElement: context.renderer.domElement,
-            getSelectedInstance: () => this.selectedInstance,
+            getSelectedInstance: () => this.selectedInstance.get(),
             getInstanceYaw: (mesh, instanceId) => this.worldMap3D.getBuildingYaw(mesh, instanceId),
             onTryUpdateSelectedInstanceTransform: (mesh, instanceId, x, z, yaw) => {
                 return this.worldMap3D.tryUpdateBuildingTransform(mesh, instanceId, x, z, yaw);
@@ -509,7 +511,7 @@ export class GameScene3D {
             onSelectObject: (obj) => {
                 if (obj === this.transformProxy) {
                     this.roadGizmo.clearSelection();
-                    this.uiProps.selectedCustomObject.set(undefined);
+                    this.selectedCustomObject.set(undefined);
                     // Re-sync proxy pose with active selected instance.
                     this.currentGizmo = this.objectGizmo;
                     this.objectGizmo.syncSelectionFromSelectedInstance();
@@ -523,9 +525,8 @@ export class GameScene3D {
                     return;
                 }
 
-                this.selectedInstance = undefined;
-                this.uiProps.selectedInstance.set(undefined);
-                this.uiProps.selectedCustomObject.set(obj);
+                this.selectedInstance.set(undefined);
+                this.selectedCustomObject.set(obj);
                 if (obj.userData?.selectableType === 'road') {
                     this.objectGizmo.clearSelection();
                 }
@@ -575,9 +576,8 @@ export class GameScene3D {
             this.#getSelectedRoadSegment()?.setArc(midX, midZ);
         };
         this.roadGizmo.onDeselect = () => {
-            this.selectedInstance = undefined;
-            this.uiProps.selectedInstance.set(undefined);
-            this.uiProps.selectedCustomObject.set(undefined);
+            this.selectedInstance.set(undefined);
+            this.selectedCustomObject.set(undefined);
             this.currentGizmo = undefined;
             this.#updateSelectionHalo();
         };

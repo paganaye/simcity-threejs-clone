@@ -58,6 +58,9 @@ export class ObjectGizmo extends CustomGizmo {
     private readonly tempScale = new THREE.Vector3();
     private readonly tempEuler = new THREE.Euler();
     private readonly cameraToGizmo = new THREE.Vector3();
+    private pendingSelectable?: THREE.Object3D;
+    private pendingSelectDownX = 0;
+    private pendingSelectDownY = 0;
 
     constructor(props: IObjectGizmoProps) {
         super(props);
@@ -219,12 +222,11 @@ export class ObjectGizmo extends CustomGizmo {
         if (!axis) {
             const selectable = this.#pickSelectableAtPointer(event);
             if (selectable) {
+                this.pendingSelectable = selectable;
+                this.pendingSelectDownX = event.clientX;
+                this.pendingSelectDownY = event.clientY;
                 event.preventDefault();
                 event.stopPropagation();
-                if (selectable.userData?.selectableType !== 'road') {
-                    this.setSelection(selectable);
-                }
-                this.onSelectObject?.(selectable);
                 return true;
             }
             return false;
@@ -292,6 +294,13 @@ export class ObjectGizmo extends CustomGizmo {
         if (!this.root.visible) return false;
 
         if (!this.activeAxis) {
+            if (this.pendingSelectable) {
+                const dx = event.clientX - this.pendingSelectDownX;
+                const dy = event.clientY - this.pendingSelectDownY;
+                if ((dx * dx + dy * dy) > 9) {
+                    this.pendingSelectable = undefined;
+                }
+            }
             const axis = this.#pickAxisAtPointer(event);
             if (axis !== this.hoveredAxis) {
                 this.hoveredAxis = axis;
@@ -350,14 +359,32 @@ export class ObjectGizmo extends CustomGizmo {
     }
 
     onPointerUp(event?: PointerEvent) {
-        if (!this.activeAxis) return;
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.#positionRoot();
-        this.activeAxis = undefined;
-        this.#applyAxisColors();
-        this.onDraggingChanged?.(false);
-        this.domElement.style.cursor = this.hoveredAxis ? 'pointer' : this.resolveDefaultCursor();
+        if (this.activeAxis) {
+            event?.preventDefault();
+            event?.stopPropagation();
+            this.#positionRoot();
+            this.activeAxis = undefined;
+            this.#applyAxisColors();
+            this.onDraggingChanged?.(false);
+            this.domElement.style.cursor = this.hoveredAxis ? 'pointer' : this.resolveDefaultCursor();
+            this.pendingSelectable = undefined;
+            return;
+        }
+
+        const selectable = this.pendingSelectable;
+        this.pendingSelectable = undefined;
+        if (!event || !selectable) return;
+
+        const dx = event.clientX - this.pendingSelectDownX;
+        const dy = event.clientY - this.pendingSelectDownY;
+        if ((dx * dx + dy * dy) > 9) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        if (selectable.userData?.selectableType !== 'road') {
+            this.setSelection(selectable);
+        }
+        this.onSelectObject?.(selectable);
     }
 
     #pickAxisAtPointer(event: PointerEvent): GizmoAxis | undefined {

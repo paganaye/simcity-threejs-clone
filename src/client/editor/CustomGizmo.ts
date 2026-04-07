@@ -3,6 +3,7 @@ import * as THREE from 'three';
 const SLOPE_1_2 = Math.atan2(1, 2);
 const SLOPE_1_2_DELTA = SLOPE_1_2 - Math.PI / 8;
 const GRID_SNAP = 5;
+export const ROAD_SNAP = 1;
 const SECTOR_ANGLE = Math.PI / 8;
 
 export type IRoadHandle = {
@@ -12,6 +13,8 @@ export type IRoadHandle = {
     endZ: number;
     angle: number;
     length: number;
+    midX?: number;
+    midZ?: number;
 };
 
 export type ICustomGizmoProps = {
@@ -53,14 +56,14 @@ export abstract class CustomGizmo {
         );
     }
 
-    defaultSnapping(position: THREE.Vector3, rotationY: number): { x: number; z: number; angle: number } | undefined {
+    defaultSnapping(position: THREE.Vector3, rotationY: number, snap: number = GRID_SNAP): { x: number; z: number; angle: number } | undefined {
         let x = position.x;
         let z = position.z;
 
-        const xi = Math.round(x / GRID_SNAP);
-        const zi = Math.round(z / GRID_SNAP);
-        x = xi * GRID_SNAP;
-        z = zi * GRID_SNAP;
+        const xi = Math.round(x / snap);
+        const zi = Math.round(z / snap);
+        x = xi * snap;
+        z = zi * snap;
 
         const sector = Math.round(rotationY / SECTOR_ANGLE);
         const type = ((sector % 4) + 4) % 4;

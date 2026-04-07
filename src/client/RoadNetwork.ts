@@ -25,4 +25,9 @@ export class RoadNetwork {
             segment.dispose();
         }
     }
+
+    /** Register an already-constructed segment (created externally) into this network. */
+    registerSegment(segment: RoadSegment): void {
+        this.segments.push(segment);
+    }
 }

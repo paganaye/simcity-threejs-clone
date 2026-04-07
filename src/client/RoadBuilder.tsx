@@ -268,6 +268,9 @@ export class RoadBuilder implements IOrientation2D {
     //     }
 
     addStraightRoad(length: number, leftType: RoadType = 'l1', rightType: RoadType = leftType) {
+        // Don't create geometry for zero or negative length
+        if (length <= 0) return;
+
         const roadWidth = RoadBuilder.ROAD_WIDTH_UNITS;
         const halfRoadWidth = roadWidth / 2;
         const geometry = new THREE.PlaneGeometry(length, roadWidth);

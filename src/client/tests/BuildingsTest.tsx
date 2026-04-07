@@ -164,15 +164,15 @@ export default class TestBuildings extends Page {
 
     #selectAccessHandle(handle?: AccessHandle) {
         this.activeAccessHandle = handle;
-        if (!this.scene3DInstance?.customGizmo) return;
+        if (!this.scene3DInstance?.objectGizmo) return;
 
         if (!handle) {
-            this.scene3DInstance.customGizmo.clearSelection();
-            this.scene3DInstance.customGizmo.syncSelectionFromSelectedInstance();
+            this.scene3DInstance.objectGizmo.clearSelection();
+            this.scene3DInstance.objectGizmo.syncSelectionFromSelectedInstance();
             return;
         }
 
-        this.scene3DInstance.customGizmo.setSelection(handle.root);
+        this.scene3DInstance.objectGizmo.setSelection(handle.root);
     }
 
     #setBuilding(modelName: ModelName, uiProps: UIProps) {
@@ -198,7 +198,7 @@ export default class TestBuildings extends Page {
 
         this.scene3DInstance.selectedInstance = selected;
         uiProps.selectedInstance.set(selected);
-        this.scene3DInstance.customGizmo?.syncSelectionFromSelectedInstance();
+        this.scene3DInstance.objectGizmo.syncSelectionFromSelectedInstance();
 
         const meta = modelsMetaData[modelName as keyof typeof modelsMetaData] as IAssetMeta;
         const center = this.#buildingCenter();

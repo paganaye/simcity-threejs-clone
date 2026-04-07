@@ -7,9 +7,11 @@ import { ICityChanged } from '../sim/Init';
 import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
-import { ObjectGizmo, type ISelectedInstance } from './editor/ObjectGizmo';
 import { IFloorSize, UIProps } from './GameUIComponent';
 import { RoadGizmo } from './editor/RoadGizmo';
+import type { CustomGizmo } from './editor/CustomGizmo';
+import { ISelectedInstance, ObjectGizmo } from './editor/ObjectGizmo';
+import { RoadSegment } from './RoadSegment';
 
 export type ILeftPointerGesture = {
     downX: number;
@@ -43,8 +45,9 @@ export class GameScene3D {
     readonly tempQuaternion = new THREE.Quaternion();
     readonly tempScale = new THREE.Vector3();
     pageContext?: Page;
-    customGizmo?: ObjectGizmo;
-    roadGizmo?: RoadGizmo;
+    objectGizmo!: ObjectGizmo;
+    roadGizmo!: RoadGizmo;
+    currentGizmo?: CustomGizmo;
     readonly transformProxy = new THREE.Object3D();
     selectionHalo?: THREE.Group;
     readonly selectionHaloLayers: THREE.LineSegments<THREE.EdgesGeometry, THREE.LineBasicMaterial>[] = [];
@@ -65,6 +68,10 @@ export class GameScene3D {
     onLeftPointerMove?: (event: PointerEvent, gesture: ILeftPointerGesture) => void;
     onLeftPointerUp?: (event: PointerEvent, gesture: ILeftPointerGesture) => void;
     onLeftPointerCancel?: () => void;
+    /** Called by the road gizmo after each resize (drag of end handle). */
+    onRoadSegmentResized?: (segment: RoadSegment) => void;
+    /** Called by the road gizmo when a drag ends (pointer up). */
+    onRoadDragEnded?: () => void;
     size: IFloorSize;
 
     constructor(readonly uiProps: UIProps) {
@@ -123,6 +130,61 @@ export class GameScene3D {
 
     }
 
+    #getSelectedRoadSegment(): RoadSegment | undefined {
+        return this.uiProps.selectedCustomObject.get()?.userData?.roadSegment as RoadSegment | undefined;
+    }
+
+    clearSelection(): void {
+        this.selectedInstance = undefined;
+        this.uiProps.selectedInstance.set(undefined);
+        this.uiProps.selectedCustomObject.set(undefined);
+        this.currentGizmo = undefined;
+        this.roadGizmo.clearSelection();
+        this.objectGizmo.clearSelection();
+        this.#updateSelectionHalo();
+    }
+
+    selectRoadSegment(segment: RoadSegment | undefined): void {
+        if (!segment) {
+            this.clearSelection()
+            return;
+        }
+
+        this.selectedInstance = undefined;
+        this.uiProps.selectedInstance.set(undefined);
+        this.uiProps.selectedCustomObject.set(segment.group);
+        this.currentGizmo = this.roadGizmo;
+        this.objectGizmo.clearSelection();
+        this.roadGizmo.setRoadSelection({
+            startX: segment.startX,
+            startZ: segment.startZ,
+            endX: segment.endX,
+            endZ: segment.endZ,
+            angle: segment.angle,
+            length: segment.length,
+            midX: segment.arcMidX,
+            midZ: segment.arcMidZ,
+        });
+        this.#updateSelectionHalo();
+    }
+
+    #selectInstance(selected: ISelectedInstance | undefined): void {
+        this.selectedInstance = selected;
+        this.uiProps.selectedInstance.set(selected);
+        this.uiProps.selectedCustomObject.set(undefined);
+        this.roadGizmo.clearSelection();
+
+        if (selected?.selectableType === 'building') {
+            this.currentGizmo = this.objectGizmo;
+            this.objectGizmo.syncSelectionFromSelectedInstance();
+        } else {
+            this.currentGizmo = undefined;
+            this.objectGizmo.clearSelection();
+        }
+
+        this.#updateSelectionHalo();
+    }
+
     #setupGround() {
         if (this.grid) this.scene.remove(this.grid)
         let size = this.worldMap3D.size
@@ -168,8 +230,7 @@ export class GameScene3D {
         //}
         this.cars3D?.drawFrame(now)
         this.worldMap3D?.drawFrame(now)
-        this.customGizmo?.update();
-        this.roadGizmo?.update();
+        this.currentGizmo?.update();
         this.#updateSelectionHalo();
     }
 
@@ -266,22 +327,21 @@ export class GameScene3D {
             this.leftPointerDownX = event.clientX;
             this.leftPointerDownY = event.clientY;
 
-            if (this.roadGizmo?.onPointerDown(event) || this.customGizmo?.onPointerDown(event)) {
-                this.leftPointerDownConsumedByGizmo = true;
+            this.leftPointerDownConsumedByGizmo = this.currentGizmo?.onPointerDown(event) ?? false;
+            if (this.leftPointerDownConsumedByGizmo) {
                 event.stopPropagation();
                 event.preventDefault();
+            } else {
+                this.onLeftPointerDown?.(event, {
+                    downX: this.leftPointerDownX,
+                    downY: this.leftPointerDownY,
+                    moved: this.leftPointerDownMoved,
+                    consumedByGizmo: this.leftPointerDownConsumedByGizmo,
+                    currentX: event.clientX,
+                    currentY: event.clientY,
+                });
+                controls?.handlePointerDown(event);
             }
-
-            this.onLeftPointerDown?.(event, {
-                downX: this.leftPointerDownX,
-                downY: this.leftPointerDownY,
-                moved: this.leftPointerDownMoved,
-                consumedByGizmo: this.leftPointerDownConsumedByGizmo,
-                currentX: event.clientX,
-                currentY: event.clientY,
-            });
-
-            controls?.handlePointerDown(event);
         });
 
         this.renderDom?.addEventListener('pointermove', (event) => {
@@ -294,28 +354,29 @@ export class GameScene3D {
                 }
             }
 
-            if (this.roadGizmo?.onPointerMove(event) || this.customGizmo?.onPointerMove(event)) {
+            const gizmoHandledMove = this.currentGizmo?.onPointerMove(event)
+
+            if (gizmoHandledMove) {
                 //this.#onTransformChanged();
-            }
+            } else {
 
-            if (this.isLeftPointerDown) {
-                this.onLeftPointerMove?.(event, {
-                    downX: this.leftPointerDownX,
-                    downY: this.leftPointerDownY,
-                    moved: this.leftPointerDownMoved,
-                    consumedByGizmo: this.leftPointerDownConsumedByGizmo,
-                    currentX: event.clientX,
-                    currentY: event.clientY,
-                });
+                if (this.isLeftPointerDown) {
+                    this.onLeftPointerMove?.(event, {
+                        downX: this.leftPointerDownX,
+                        downY: this.leftPointerDownY,
+                        moved: this.leftPointerDownMoved,
+                        consumedByGizmo: this.leftPointerDownConsumedByGizmo,
+                        currentX: event.clientX,
+                        currentY: event.clientY,
+                    });
+                }
+                controls?.handlePointerMove(event);
             }
-
-            controls?.handlePointerMove(event);
         });
 
         this.renderDom?.addEventListener('pointerup', (event) => {
             const controls = this.pageContext?.controls;
-            this.roadGizmo?.onPointerUp(event);
-            this.customGizmo?.onPointerUp(event);
+            this.currentGizmo?.onPointerUp(event);
 
             if (event.button === 0) {
                 const gesture: ILeftPointerGesture = {
@@ -343,14 +404,23 @@ export class GameScene3D {
                     const hits = this.raycaster.intersectObjects(this.scene.children, true);
 
                     let selected: ISelectedInstance | undefined;
+                    let selectedObject3D: THREE.Object3D | undefined;
                     for (const hit of hits) {
                         // Skip the proxy itself
                         if (hit.object === this.transformProxy) continue;
 
-                        const obj = hit.object as THREE.InstancedMesh;
-                        const selectableType = obj.userData?.selectableType as ('building' | 'character' | undefined);
+                        const selectableType = hit.object.userData?.selectableType as ('building' | 'character' | 'road' | undefined);
                         if (!selectableType) continue;
+
+                        if (selectableType === 'road') {
+                            selectedObject3D = hit.object.userData?.roadSegment?.group as THREE.Object3D | undefined;
+                            if (selectedObject3D) break;
+                            continue;
+                        }
+
                         if (hit.instanceId == null) continue;
+
+                        const obj = hit.object as THREE.InstancedMesh;
 
                         selected = {
                             mesh: obj,
@@ -362,21 +432,14 @@ export class GameScene3D {
                         } else break;
                     }
 
-                    this.selectedInstance = selected;
-                    this.uiProps.selectedInstance.set(selected);
-                    this.uiProps.selectedCustomObject.set(undefined);
-                    this.roadGizmo?.clearSelection();
-                    this.lastTransformValid = true;
-                    if (selected) {
-                        this.customGizmo?.syncSelectionFromSelectedInstance();
+                    if (selectedObject3D?.userData?.roadSegment) {
+                        this.selectRoadSegment(selectedObject3D.userData.roadSegment as RoadSegment);
                     } else {
-                        this.customGizmo?.clearSelection();
+                        this.#selectInstance(selected);
                     }
-                    this.#updateSelectionHalo();
                 }
 
                 this.onLeftPointerUp?.(event, gesture);
-
                 this.isLeftPointerDown = false;
                 this.leftPointerDownMoved = false;
                 this.leftPointerDownConsumedByGizmo = false;
@@ -387,8 +450,7 @@ export class GameScene3D {
 
         this.renderDom?.addEventListener('pointercancel', () => {
             const controls = this.pageContext?.controls;
-            this.roadGizmo?.onPointerUp();
-            this.customGizmo?.onPointerUp();
+            this.currentGizmo?.onPointerUp();
             this.onLeftPointerCancel?.();
             this.isLeftPointerDown = false;
             this.leftPointerDownMoved = false;
@@ -415,7 +477,7 @@ export class GameScene3D {
 
     #setupCustomGizmo(context: Page) {
         this.scene.add(this.transformProxy);
-        this.customGizmo = new ObjectGizmo({
+        this.objectGizmo = new ObjectGizmo({
             scene: this.scene,
             camera: this.camera,
             raycaster: this.raycaster,
@@ -434,10 +496,18 @@ export class GameScene3D {
             },
             onSelectObject: (obj) => {
                 if (obj === this.transformProxy) {
-                    this.roadGizmo?.clearSelection();
+                    this.roadGizmo.clearSelection();
                     this.uiProps.selectedCustomObject.set(undefined);
                     // Re-sync proxy pose with active selected instance.
-                    this.customGizmo?.syncSelectionFromSelectedInstance();
+                    this.currentGizmo = this.objectGizmo;
+                    this.objectGizmo.syncSelectionFromSelectedInstance();
+                    return;
+                }
+
+                const roadSegment = obj.userData?.roadSegment as RoadSegment | undefined;
+                if (roadSegment) {
+                    this.selectRoadSegment(roadSegment);
+                    this.onCustomGizmoObjectSelected?.(obj);
                     return;
                 }
 
@@ -445,7 +515,7 @@ export class GameScene3D {
                 this.uiProps.selectedInstance.set(undefined);
                 this.uiProps.selectedCustomObject.set(obj);
                 if (obj.userData?.selectableType === 'road') {
-                    this.customGizmo?.clearSelection();
+                    this.objectGizmo.clearSelection();
                 }
                 this.#updateSelectionHalo();
                 this.onCustomGizmoObjectSelected?.(obj);
@@ -464,6 +534,44 @@ export class GameScene3D {
                 if (context.controls) context.controls.enabled = !dragging;
             },
         });
+
+        this.roadGizmo.getSelectedRoadHandle = () => {
+            const roadSegment = this.#getSelectedRoadSegment();
+            if (!roadSegment) return undefined;
+
+            return {
+                startX: roadSegment.startX,
+                startZ: roadSegment.startZ,
+                endX: roadSegment.endX,
+                endZ: roadSegment.endZ,
+                angle: roadSegment.angle,
+                length: roadSegment.length,
+                midX: roadSegment.arcMidX,
+                midZ: roadSegment.arcMidZ,
+            };
+        };
+        this.roadGizmo.onRoadMoved = (x, z, angle) => {
+            this.#getSelectedRoadSegment()?.moveTo(x, z, angle);
+        };
+        this.roadGizmo.onRoadResized = (newLength) => {
+            const seg = this.#getSelectedRoadSegment();
+            if (!seg) return;
+            seg.resize(newLength);
+            this.onRoadSegmentResized?.(seg);
+        };
+        this.roadGizmo.onArcChanged = (midX, midZ) => {
+            this.#getSelectedRoadSegment()?.setArc(midX, midZ);
+        };
+        this.roadGizmo.onDeselect = () => {
+            this.selectedInstance = undefined;
+            this.uiProps.selectedInstance.set(undefined);
+            this.uiProps.selectedCustomObject.set(undefined);
+            this.currentGizmo = undefined;
+            this.#updateSelectionHalo();
+        };
+        this.roadGizmo.onDragEnded = () => {
+            this.onRoadDragEnded?.();
+        };
     }
 
 }

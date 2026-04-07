@@ -420,6 +420,7 @@ export class AssetManager {
     fastMeshes.count = Math.floor(fastMeshes.count * appConstants.MeshInstancesGrowth);
     let oldMesh = fastMeshes.instancedMesh;
     let newMesh = fastMeshes.instancedMesh = new THREE.InstancedMesh(oldMesh.geometry, oldMesh.material, fastMeshes.count);
+    newMesh.userData = { ...oldMesh.userData };
     let tempMatrix = new THREE.Matrix4();
     for (let i = 0; i < oldMesh.count; i++) {
       oldMesh.getMatrixAt(i, tempMatrix);

@@ -5,7 +5,7 @@ import { Population } from './Population';
 import { GameUIComponent, UIButton, UIProps } from './GameUIComponent';
 import { Signal } from './Signal';
 import { placeRandomBuildings } from './placeRandomBuildings';
-export type ActiveTool = "select" | "bulldoze" | "residential" | "commercial" | "industrial" | "road" | "power-plant" | "power-line";
+import { ActiveTool } from './tools/ToolTypes';
 
 export default class GamePage extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -53,11 +53,14 @@ export default class GamePage extends Page {
         };
 
 
-        function ToolButton(toolProps: { tool: ActiveTool; icon: string; }) {
+        let ToolButton = (toolProps: { tool: ActiveTool; icon: string; }) => {
             return <UIButton
                 icon={toolProps.icon}
                 selected={activeTool.get() === toolProps.tool}
-                onclick={() => activeTool.set(toolProps.tool)} />;
+                onclick={() => {
+                    activeTool.set(toolProps.tool);
+                    this.scene3DInstance?.setActiveTool(toolProps.tool);
+                }} />;
         }
 
 
@@ -67,11 +70,8 @@ export default class GamePage extends Page {
                 <ToolButton tool="select" icon="select-color" />
                 <ToolButton tool="bulldoze" icon="bulldozer-color" />
                 <ToolButton tool="residential" icon="house-color" />
-                <ToolButton tool="commercial" icon="store-color" />
-                <ToolButton tool="industrial" icon="factory-color" />
                 <ToolButton tool="road" icon="road-color" />
                 <ToolButton tool="power-plant" icon="power-color" />
-                <ToolButton tool="power-line" icon="power-line-color" />
 
             </>}
             page={this} onUILoaded={handleUILoaded} />,

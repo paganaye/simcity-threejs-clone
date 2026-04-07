@@ -1,10 +1,10 @@
 import { JSX, Show } from 'solid-js';
 import type * as THREE from 'three';
 import type { ISelectedInstance } from './editor/ObjectGizmo';
-import { ActiveTool } from './GamePage';
 import { Page } from './Page';
 import { SelectedObjectPanel } from './SelectedObjectPanel';
 import { Signal } from './Signal';
+import { ActiveTool } from './tools/ToolTypes';
 
 export interface IFloorPos {
     x: number;

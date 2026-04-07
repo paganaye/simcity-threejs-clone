@@ -12,6 +12,10 @@ import { RoadGizmo } from './editor/RoadGizmo';
 import type { CustomGizmo } from './editor/CustomGizmo';
 import { ISelectedInstance, ObjectGizmo } from './editor/ObjectGizmo';
 import { RoadSegment } from './RoadSegment';
+import { ToolController } from './tools/ToolController';
+import { RoadToolController } from './tools/RoadToolController';
+import { SelectToolController } from './tools/SelectToolController';
+import { ActiveTool } from './tools/ToolTypes';
 
 export type ILeftPointerGesture = {
     downX: number;
@@ -72,6 +76,7 @@ export class GameScene3D {
     onRoadSegmentResized?: (segment: RoadSegment) => void;
     /** Called by the road gizmo when a drag ends (pointer up). */
     onRoadDragEnded?: () => void;
+    readonly toolControllers: ToolController[] = [];
     size: IFloorSize;
 
     constructor(readonly uiProps: UIProps) {
@@ -101,6 +106,7 @@ export class GameScene3D {
         this.#setupSelectionHalo();
         this.#setupSelectionInput();
         this.#setupCustomGizmo(context);
+        this.#setupToolControllers();
         this.#setupGround();
         await pendingAssetManager;
         uiProps.isLoading.set(false);
@@ -128,6 +134,19 @@ export class GameScene3D {
             this.pageContext.controls.update();
         }
 
+    }
+
+    setActiveTool(tool: ActiveTool): void {
+        this.uiProps.activeTool.set(tool);
+        this.toolControllers.forEach((controller) => controller.onToolChanged(this.uiProps.activeTool, tool));
+    }
+
+    #setupToolControllers(): void {
+        this.toolControllers.length = 0;
+        this.toolControllers.push(new RoadToolController(this));
+        this.toolControllers.push(new SelectToolController(this));
+        this.toolControllers.forEach((controller) => controller.bind(this.uiProps.activeTool));
+        this.setActiveTool(this.uiProps.activeTool.get());
     }
 
     #getSelectedRoadSegment(): RoadSegment | undefined {

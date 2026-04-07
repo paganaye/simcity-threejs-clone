@@ -1,13 +1,8 @@
 import * as THREE from "three";
 import { IOrientation2D } from "../sim/IPoint";
 import { IFloorPos } from "./GameUIComponent";
-import type { IRoad } from "./roads/IRoad";
-import {
-    iRoadToRenderOptions,
-    type RoadRenderOptions,
-} from "./roads/RoadTypeAdapter";
+import type { IRoad, IRoadOptions, LaneWidth } from "./roads/IRoad";
 
-export type { RoadRenderOptions } from "./roads/RoadTypeAdapter";
 
 export class RoadBuilder implements IOrientation2D {
     x: number;
@@ -25,14 +20,15 @@ export class RoadBuilder implements IOrientation2D {
     static NEW_ROAD_COLOR = 'hsl(0, 2%, 3.5%)';
     static TEXTURE_PPM = 10; // to be refined
     static SIDEWALK_COLOR = 'hsl(230, 3%, 40.0%)';
+    static GRASS_COLOR = 'hsl(120, 40%, 40%)';
     static YELLOW_LINE = 'hsl(66, 38.70%, 46.70%)';
     static WHITE_LINE = 'hsl(66, 10.0%, 86.70%)';
     static NARROW_LANE_WIDTH_M = 3.0;
     static NORMAL_LANE_WIDTH_M = 3.5;
     static WIDE_LANE_WIDTH_M = 4.25;
     static TRANSPARENT = 'transparent';
-    static PARKING_COLOR = 'hsl(0, 2.70%, 7.30%)';
 
+    static GRASS_WIDTH_M = 1; // metre
     static YELLOW_LINE_WIDTH_M = 0.15; // 15 cm
     static PAVEMENT_WIDTH_M = 1.5; // metre
     static TEXTURE_HEIGHT_M = 8; // This allow us to make 4m discontinous yellow line
@@ -59,34 +55,30 @@ export class RoadBuilder implements IOrientation2D {
     }
 
     static getGapWidthMeters(gapSize: number): number {
-        // gapSize is the total distance between forward and other ways.
-        // Each rendered way gets half of it from the center seam.
-        return Math.max(0, gapSize || 0) / 2;
+        return Math.max(0, gapSize || 0);
     }
 
-    static getEntryExitWidthMeters(laneWidth: RoadRenderOptions['laneWidth']): number {
+    static getEntryExitWidthMeters(laneWidth: LaneWidth): number {
         return this.getLaneWidthMeters(laneWidth) + this.YELLOW_LINE_WIDTH_M;
     }
 
-    static getKerbWidthMeters(kerb: RoadRenderOptions['rightKerb'], _laneWidth: RoadRenderOptions['laneWidth']): number {
+    static getKerbWidthMeters(kerb: IRoadOptions['rightKerb'], _laneWidth: LaneWidth): number {
         switch (kerb) {
             case 'parallelParking': return this.PARALLEL_PARKING_WIDTH_M;
             case 'perpendicularParking': return this.PERPENDICULAR_PARKING_WIDTH_M;
             case 'emergencyLane': return this.YELLOW_LINE_WIDTH_M + this.EMERGENCY_LANE_WIDTH_M;
             case 'line': return this.YELLOW_LINE_WIDTH_M + this.YELLOW_LINE_WIDTH_M;
             case 'gap': return this.YELLOW_LINE_WIDTH_M;
-            //case 'entry': return this.getEntryExitWidthMeters(laneWidth);
-            //case 'exit': return this.getEntryExitWidthMeters(laneWidth);
             default: return 0;
         }
     }
 
-    // static hasEntryExitKerb(options: RoadRenderOptions): boolean {
+    // static hasEntryExitKerb(options: IRoadOptions): boolean {
     //     return options.leftKerb === 'entry' || options.leftKerb === 'exit'
     //         || options.rightKerb === 'entry' || options.rightKerb === 'exit';
     // }
 
-    static getSidewalkWidthMeters(sidewalk: RoadRenderOptions['rightSidewalk']): number {
+    static getSidewalkWidthMeters(sidewalk: IRoadOptions['rightSidewalk']): number {
         switch (sidewalk) {
             case 'small': return this.SMALL_SIDEWALK_M;
             case 'large': return this.LARGE_SIDEWALK_M;
@@ -94,7 +86,7 @@ export class RoadBuilder implements IOrientation2D {
         }
     }
 
-    static computeRoadWidthMeters(options: RoadRenderOptions): number {
+    static computeRoadWidthMeters(options: IRoadOptions): number {
         let widthM = 0;
         widthM += this.getKerbWidthMeters(options.leftKerb, options.laneWidth);
         widthM += this.getSidewalkWidthMeters(options.leftSidewalk);
@@ -107,7 +99,7 @@ export class RoadBuilder implements IOrientation2D {
         return widthM;
     }
 
-    static computeTextureWidthPx(options: RoadRenderOptions): number {
+    static computeTextureWidthPx(options: IRoadOptions): number {
         let w = this.computeRoadWidthMeters(options);
         return Math.max(1, this.metersToPixels(w));
     }
@@ -119,7 +111,7 @@ export class RoadBuilder implements IOrientation2D {
         this.angle = startPosition.angle;
     }
 
-    static styleKey(options: RoadRenderOptions): string {
+    static styleKey(options: IRoadOptions): string {
         return [
             options.roadColor,
             options.lanes,
@@ -131,7 +123,7 @@ export class RoadBuilder implements IOrientation2D {
         ].join('|');
     }
 
-    static getRoadMaterial(options: RoadRenderOptions): THREE.MeshStandardMaterial {
+    static getRoadMaterial(options: IRoadOptions): THREE.MeshStandardMaterial {
         const key = this.styleKey(options);
         const existing = this.materialByStyle.get(key);
         if (existing) {
@@ -148,7 +140,7 @@ export class RoadBuilder implements IOrientation2D {
         return material;
     }
 
-    static createRoadTexture(options: RoadRenderOptions) {
+    static createRoadTexture(options: IRoadOptions) {
 
         const canvas = document.createElement('canvas');
         const textureWidthPx = this.computeTextureWidthPx(options);
@@ -160,7 +152,7 @@ export class RoadBuilder implements IOrientation2D {
         ctx.fillStyle = this.TRANSPARENT;
         ctx.fillRect(0, 0, textureWidthPx, textureHeightPx);
 
-        const drawRoad = (style: RoadRenderOptions) => {
+        const drawRoad = (style: IRoadOptions) => {
             let currentX = 0;
             let roadColor = style.roadColor === 'new' ? RoadBuilder.NEW_ROAD_COLOR : RoadBuilder.OLD_ROAD_COLOR;
 
@@ -178,14 +170,14 @@ export class RoadBuilder implements IOrientation2D {
             }
 
 
-            const drawKerb = (kerb: RoadRenderOptions['rightKerb'],
+            const drawKerb = (kerb: IRoadOptions['rightKerb'],
                 side: 'left' | 'right'
             ) => {
 
 
                 switch (kerb) {
                     case 'parallelParking':
-                        drawLine(this.metersToPixels(this.PARALLEL_PARKING_WIDTH_M), 0, 1, this.PARKING_COLOR);
+                        drawLine(this.metersToPixels(this.PARALLEL_PARKING_WIDTH_M), 0, 1, roadColor);
                         drawLine(this.metersToPixels(this.PARALLEL_PARKING_WIDTH_M), 0, 1 / 32, this.WHITE_LINE);
                         drawLine(this.metersToPixels(this.PARALLEL_PARKING_WIDTH_M), 1 / 2, 1 / 32, this.WHITE_LINE);
                         drawLine(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), 0, 0.1, this.WHITE_LINE);
@@ -194,7 +186,7 @@ export class RoadBuilder implements IOrientation2D {
                         currentX += this.metersToPixels(this.PARALLEL_PARKING_WIDTH_M);
                         break;
                     case 'perpendicularParking':
-                        drawLine(this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M), 0, 1, this.PARKING_COLOR);
+                        drawLine(this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M), 0, 1, roadColor);
                         drawLine(this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M), 0, 1 / 32, this.WHITE_LINE);
                         drawLine(this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M), 1 / 4, 1 / 32, this.WHITE_LINE);
                         drawLine(this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M), 3 / 4, 1 / 32, this.WHITE_LINE);
@@ -202,8 +194,13 @@ export class RoadBuilder implements IOrientation2D {
                         currentX += this.metersToPixels(this.PERPENDICULAR_PARKING_WIDTH_M);
                         break;
                     case 'emergencyLane':
-                        drawRectAndIncrement(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), this.YELLOW_LINE);
-                        drawRectAndIncrement(this.metersToPixels(this.EMERGENCY_LANE_WIDTH_M), roadColor);
+                        if (side === 'left') {
+                            drawRectAndIncrement(this.metersToPixels(this.EMERGENCY_LANE_WIDTH_M), roadColor);
+                            drawRectAndIncrement(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), this.YELLOW_LINE);
+                        } else {
+                            drawRectAndIncrement(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), this.YELLOW_LINE);
+                            drawRectAndIncrement(this.metersToPixels(this.EMERGENCY_LANE_WIDTH_M), roadColor);
+                        }
                         break;
                     case 'line':
                         if (side === 'left') {
@@ -231,7 +228,7 @@ export class RoadBuilder implements IOrientation2D {
                 }
             };
 
-            const drawSidewalk = (sidewalk: RoadRenderOptions['rightSidewalk']) => {
+            const drawSidewalk = (sidewalk: IRoadOptions['rightSidewalk']) => {
                 switch (sidewalk) {
                     case 'small':
                         drawRectAndIncrement(this.metersToPixels(this.SMALL_SIDEWALK_M), this.SIDEWALK_COLOR);
@@ -239,7 +236,11 @@ export class RoadBuilder implements IOrientation2D {
                     case 'large':
                         drawRectAndIncrement(this.metersToPixels(this.LARGE_SIDEWALK_M), this.SIDEWALK_COLOR);
                         break;
+                    case 'grass':
+                        drawRectAndIncrement(this.metersToPixels(this.GRASS_WIDTH_M), this.GRASS_COLOR);
+                        break;
                     case undefined:
+
                     case 'none':
                         break;
                     default:
@@ -280,9 +281,12 @@ export class RoadBuilder implements IOrientation2D {
         texture.needsUpdate = true;
         texture.wrapS = THREE.ClampToEdgeWrapping;
         texture.wrapT = THREE.RepeatWrapping;
+
+        RoadBuilder.showTextureInBody(canvas);
         return texture;
     }
 
+    static texY = 20;
 
     static showTextureInBody(canvas: HTMLCanvasElement) {
         const imageDataURL = canvas.toDataURL('image/png');
@@ -291,7 +295,8 @@ export class RoadBuilder implements IOrientation2D {
         // Définir ses attributs et styles
         imgElement.src = imageDataURL;
         imgElement.style.position = 'fixed';
-        imgElement.style.top = '20px'; // Ou une autre position
+        imgElement.style.top = this.texY + 'px'; // Ou une autre position
+        this.texY += (canvas.height + 10); // Décale la prochaine image pour éviter le chevauchement
         imgElement.style.left = (80 + (document.querySelectorAll('img[id^="debugCanvasImage"]').length * (canvas.width + 10))) + 'px'; // Décale les images
         imgElement.style.zIndex = '200'; // Pour s'assurer qu'elle est au-dessus
 
@@ -321,16 +326,27 @@ export class RoadBuilder implements IOrientation2D {
     //     }
 
     addStraightRoadFromIRoad(length: number, road: IRoad) {
-        const render = iRoadToRenderOptions(road);
-        this.addStraightRoadWithOptions(length, render.left, render.right);
+        this.addStraightRoadWithOptions(length, road);
     }
 
-    addStraightRoadWithOptions(length: number, left: RoadRenderOptions, right: RoadRenderOptions) {
+    addStraightRoadWithOptions(length: number, road: IRoad) {
+        let left: IRoadOptions | null;
+        let right: IRoadOptions;
+        const safeGap = Number.isFinite(road.gapSize) ? road.gapSize : 0;
+        if (road.type === 'OneWayRoad') {
+            left = null;
+            right = road.options;;
+        } else {
+            right = road.forwardWay;
+            left = road.otherWay;
+        }
+
         // Don't create geometry for zero or negative length
         if (length <= 0) return;
 
         const rightWidthM = RoadBuilder.computeRoadWidthMeters(right);
-        const leftWidthM = RoadBuilder.computeRoadWidthMeters(left);
+        const leftWidthM = left ? RoadBuilder.computeRoadWidthMeters(left) : 0;
+        const halfGapM = road.type === 'OneWayRoad' ? 0 : safeGap / 2;
         const dx = Math.cos(this.angle) * length;
         const dz = -Math.sin(this.angle) * length;
         const normalX = Math.sin(this.angle);
@@ -343,7 +359,7 @@ export class RoadBuilder implements IOrientation2D {
         const rightUvArray = [0, startV, 0, endV, 1, startV, 1, endV];
         const leftUvArray = [0, startV, 0, endV, 1, startV, 1, endV];
 
-        const createRoad = (halfOffsetM: number, widthM: number, side: 'left' | 'right', options: RoadRenderOptions) => {
+        const createRoad = (halfOffsetM: number, widthM: number, side: 'left' | 'right', options: IRoadOptions) => {
             if (widthM <= 0) return;
             const roadGeometry = new THREE.PlaneGeometry(length, widthM);
             const road = new THREE.Mesh(roadGeometry, RoadBuilder.getRoadMaterial(options));
@@ -359,10 +375,9 @@ export class RoadBuilder implements IOrientation2D {
             this.scene.add(road);
         };
 
-        // Right side starts at seam (0) and extends outward → center at +rightW/2
-        // Left side starts at seam (0) and extends outward → center at -leftW/2
-        createRoad(+rightWidthM / 2, rightWidthM, 'right', right);
-        createRoad(-leftWidthM / 2, leftWidthM, 'left', left);
+        // Gap is geometric only: place each half-road away from center by halfGapM.
+        createRoad(halfGapM + rightWidthM / 2, rightWidthM, 'right', right);
+        if (left) createRoad(-(halfGapM + leftWidthM / 2), leftWidthM, 'left', left);
 
         this.x += dx;
         this.z += dz;
@@ -370,12 +385,39 @@ export class RoadBuilder implements IOrientation2D {
     }
 
     addTurningRoadFromIRoad(turnAngle: number, radius: number, road: IRoad) {
-        const render = iRoadToRenderOptions(road);
-        this.addTurningRoadWithOptions(turnAngle, radius, render.left, render.right);
+        this.addTurningRoadWithOptions(turnAngle, radius, road);
     }
 
-    addTurningRoadWithOptions(turnAngle: number, radius: number, left: RoadRenderOptions, right: RoadRenderOptions) {
+    addTurningRoadWithOptions(turnAngle: number, radius: number, road: IRoad) {
+
+        let left: IRoadOptions | null;
+        let right: IRoadOptions;
+        let gap: number;
+        if (road.type === 'OneWayRoad') {
+            left = null;
+            right = road.options;;
+            gap = 0;
+        } else {
+            right = road.forwardWay;
+            left = road.otherWay;
+            gap = Number.isFinite(road.gapSize) ? road.gapSize : 0;
+        }
+
         if (Math.abs(turnAngle) < 0.001) return;
+
+        const DEBUG_ROAD_ARC = true;
+
+        if (DEBUG_ROAD_ARC) {
+            console.log('[RoadBuilder.turn] input', {
+                roadType: road.type,
+                turnAngle,
+                radius,
+                x: this.x,
+                z: this.z,
+                angle: this.angle,
+                gap,
+            });
+        }
 
         const segments = Math.max(1, Math.round(Math.abs(RoadBuilder.TURNING_SEGMENTS_MULTIPLIER * turnAngle)));
         const initialRoadAngle = this.angle;
@@ -406,15 +448,28 @@ export class RoadBuilder implements IOrientation2D {
             return { x, z };
         };
 
-        const addHalfRoad = (side: 'left' | 'right', options: RoadRenderOptions) => {
+        const addHalfRoad = (side: 'left' | 'right', options: IRoadOptions) => {
             const widthM = RoadBuilder.computeRoadWidthMeters(options);
             if (widthM <= 0) return;
+            const halfGapM = gap / 2;
             const vertices: number[] = [];
             const uvsSide: number[] = [];
-            // Right: seam at 0, outer edge at +w  (positive = outward from center)
-            // Left:  seam at 0, outer edge at -w  (negative = outward from center)
-            const innerOffset = 0;
-            const outerOffset = side === 'right' ? widthM : -widthM;
+            const turnSideSign = turnAngle >= 0 ? 1 : -1;
+            // Gap is geometric only: inner edge starts at +/-halfGapM from the centerline.
+            const innerOffset = (side === 'right' ? halfGapM : -halfGapM) * turnSideSign;
+            const outerOffset = side === 'right'
+                ? (halfGapM + widthM) * turnSideSign
+                : -(halfGapM + widthM) * turnSideSign;
+
+            if (DEBUG_ROAD_ARC) {
+                console.log('[RoadBuilder.turn] side', {
+                    side,
+                    widthM,
+                    innerOffset,
+                    outerOffset,
+                    lanes: options.lanes,
+                });
+            }
 
             for (let i = 0; i <= segments; i++) {
                 const t = i / segments;
@@ -452,13 +507,24 @@ export class RoadBuilder implements IOrientation2D {
             this.scene.add(mesh);
         };
 
-        addHalfRoad("left", left);
+        if (left) addHalfRoad("left", left);
         addHalfRoad("right", right);
 
         this.angle = finalRoadAngle;
         const finalGeometryRayAngle = finalRoadAngle + geomAngleOffset;
         this.x = cx + Math.cos(finalGeometryRayAngle) * radius;
         this.z = cz - Math.sin(finalGeometryRayAngle) * radius;
+
+        if (DEBUG_ROAD_ARC) {
+            console.log('[RoadBuilder.turn] output', {
+                finalAngle: this.angle,
+                finalX: this.x,
+                finalZ: this.z,
+                centerX: cx,
+                centerZ: cz,
+                geomAngleOffset,
+            });
+        }
     }
 
 }

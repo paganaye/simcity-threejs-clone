@@ -31,7 +31,7 @@ export function SelectedObjectPanel(props: {
         return selected.userData?.roadSegment as RoadSegment | undefined;
     };
     const shoulderOptions: KerbType[] = ["parallelParking", "perpendicularParking", "emergencyLane", "line", "gap", "none"];
-    const sidewalkOptions: SideWalkType[] = ["small", "large", "none"];
+    const sidewalkOptions: SideWalkType[] = ["small", "large", "grass", "none"];
     const laneWidthOptions = ["narrow", "normal", "wide"] as const;
     const [roadDraft, setRoadDraft] = createSignal<IRoad>({
         type: "TwoWayRoad",
@@ -56,6 +56,7 @@ export function SelectedObjectPanel(props: {
             ? {
                 type: "OneWayRoad",
                 options: { ...current.options },
+                gapSize: current.gapSize,
             }
             : {
                 type: "TwoWayRoad",
@@ -76,7 +77,7 @@ export function SelectedObjectPanel(props: {
         const current = roadDraft();
         if (kind === "OneWayRoad") {
             const base = current.type === "OneWayRoad" ? current.options : current.forwardWay;
-            commitRoadDraft({ type: "OneWayRoad", options: { ...base } });
+            commitRoadDraft({ type: "OneWayRoad", options: { ...base }, gapSize: 0 });
             return;
         }
         const base = current.type === "TwoWayRoad" ? current.forwardWay : current.options;
@@ -91,7 +92,7 @@ export function SelectedObjectPanel(props: {
     const patchOneWay = (patch: Partial<IRoadOptions>): void => {
         const current = roadDraft();
         if (current.type !== "OneWayRoad") return;
-        commitRoadDraft({ type: "OneWayRoad", options: { ...current.options, ...patch } });
+        commitRoadDraft({ type: "OneWayRoad", options: { ...current.options, ...patch }, gapSize: current.gapSize });
     };
 
     const patchTwoWayForward = (patch: Partial<IRoadOptions>): void => {
@@ -188,7 +189,7 @@ export function SelectedObjectPanel(props: {
                                     <option value="TwoWayRoad">TwoWayRoad</option>
                                 </select>
                             </div>
-                            <Show when={roadDraft().type === "TwoWayRoad"}>
+                            <Show when={true}>
                                 <div class="road-form-row">
                                     <label class="info-label" for="tw-gap-size">Gap (m)</label>
                                     <input id="tw-gap-size" class="road-input" type="number" min="0" step="0.1" value={String(twoWayDraft()?.gapSize ?? 0)} onChange={(ev) => patchTwoWayGapSize(Math.max(0, Number(ev.currentTarget.value) || 0))} />
@@ -215,7 +216,8 @@ export function SelectedObjectPanel(props: {
                                 </div>
                                 <div class="road-form-row">
                                     <label class="info-label" for="ow-right-shoulder">Right shoulder</label>
-                                    <select id="ow-right-shoulder" class="road-input" value={oneWayDraft()?.options.rightSidewalk ?? "small"} onChange={(ev) => patchOneWay({ rightSidewalk: ev.currentTarget.value as SideWalkType })}>
+                                    <select id="ow-right-shoulder" class="road-input" value={oneWayDraft()?.options.rightSidewalk ?? "small"}
+                                        onChange={(ev) => patchOneWay({ rightSidewalk: ev.currentTarget.value as SideWalkType })}>
                                         {sidewalkOptions.map((value) => <option value={value}>{value}</option>)}
                                     </select>
                                 </div>

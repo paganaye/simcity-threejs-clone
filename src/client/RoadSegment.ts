@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { RoadBuilder } from './RoadBuilder';
 import type { IRoad } from './roads/IRoad';
 
+const DEBUG_ROAD_ARC = true;
+
 /**
  * A single straight road segment.
  * The group sits at (startX, 0, startZ) with rotation.y = angle.
@@ -31,7 +33,22 @@ export class RoadSegment {
         public startZ: number,
         public angle: number,
         public length: number,
+        initialRoad?: IRoad,
     ) {
+        if (initialRoad) {
+            this.iRoad = initialRoad.type === 'OneWayRoad'
+                ? {
+                    type: 'OneWayRoad',
+                    options: { ...initialRoad.options },
+                    gapSize: initialRoad.gapSize,
+                }
+                : {
+                    type: 'TwoWayRoad',
+                    forwardWay: { ...initialRoad.forwardWay },
+                    otherWay: { ...initialRoad.otherWay },
+                    gapSize: initialRoad.gapSize,
+                };
+        }
         this.group.userData.selectableType = 'road';
         this.group.userData.roadSegment = this;
         this.group.userData.iRoad = this.iRoad;
@@ -61,12 +78,13 @@ export class RoadSegment {
             ? {
                 type: 'OneWayRoad',
                 options: { ...nextRoad.options },
+                gapSize: Number.isFinite(nextRoad.gapSize) ? nextRoad.gapSize : 0,
             }
             : {
                 type: 'TwoWayRoad',
                 forwardWay: { ...nextRoad.forwardWay },
                 otherWay: { ...nextRoad.otherWay },
-                gapSize: nextRoad.gapSize,
+                gapSize: Number.isFinite(nextRoad.gapSize) ? nextRoad.gapSize : 0,
             };
         this.group.userData.iRoad = this.iRoad;
         this.rebuild();
@@ -157,9 +175,27 @@ export class RoadSegment {
         const p2x = midX,        p2z = midZ;
         const p3x = endX,        p3z = endZ;
 
+        if (DEBUG_ROAD_ARC) {
+            console.log('[RoadArc] input', {
+                segmentId: this.group.id,
+                roadType: this.iRoad.type,
+                start: { x: p1x, z: p1z },
+                mid: { x: p2x, z: p2z },
+                end: { x: p3x, z: p3z },
+                prevAngle: this.angle,
+                prevLength: this.length,
+            });
+        }
+
         // Circumcircle of three world points.
         const D = 2 * (p1x * (p2z - p3z) + p2x * (p3z - p1z) + p3x * (p1z - p2z));
         if (Math.abs(D) < 0.01) {
+            if (DEBUG_ROAD_ARC) {
+                console.log('[RoadArc] fallback-straight', {
+                    segmentId: this.group.id,
+                    determinant: D,
+                });
+            }
             // Points nearly collinear — fall back to straight road.
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
@@ -175,34 +211,71 @@ export class RoadSegment {
         const cz = (w1 * (p3x - p2x) + w2 * (p1x - p3x) + w3 * (p2x - p1x)) / D;
         const radius = Math.hypot(p1x - cx, p1z - cz);
 
-        // Is the mid point to the left or right of the chord start→end?
-        // In the XZ plane: crossMid < 0 → left turn (positive turnAngle in RoadBuilder).
-        const exChord = p3x - p1x, ezChord = p3z - p1z;
-        const mxChord = p2x - p1x, mzChord = p2z - p1z;
-        const crossMid = mxChord * ezChord - mzChord * exChord;
-        const leftTurn = crossMid < 0;
+        // Compute angles in builder-space (x, -z) to match RoadBuilder conventions.
+        const a1 = Math.atan2(-(p1z - cz), p1x - cx);
+        const a2 = Math.atan2(-(p2z - cz), p2x - cx);
+        const a3 = Math.atan2(-(p3z - cz), p3x - cx);
 
-        // Center-to-start vector.
-        const csx = p1x - cx, csz = p1z - cz;
+        const normalizeSigned = (angle: number): number => {
+            let a = angle;
+            while (a > Math.PI) a -= 2 * Math.PI;
+            while (a <= -Math.PI) a += 2 * Math.PI;
+            return a;
+        };
 
-        // Start tangent: CW perp of center→start for left turn, CCW perp for right turn.
-        const tx = leftTurn ? csz / radius : -csz / radius;
-        const tz = leftTurn ? -csx / radius : csx / radius;
-        const startAngle = Math.atan2(-tz, tx);
+        const positiveDelta = (from: number, to: number): number => {
+            let d = to - from;
+            while (d < 0) d += 2 * Math.PI;
+            while (d >= 2 * Math.PI) d -= 2 * Math.PI;
+            return d;
+        };
 
-        // Arc angle at the circumcircle center.
-        const a1 = Math.atan2(p1z - cz, p1x - cx);
-        const a3 = Math.atan2(p3z - cz, p3x - cx);
-        let rawDelta = a3 - a1;
-        while (rawDelta > Math.PI)  rawDelta -= 2 * Math.PI;
-        while (rawDelta < -Math.PI) rawDelta += 2 * Math.PI;
+        const negativeDelta = (from: number, to: number): number => {
+            let d = from - to;
+            while (d < 0) d += 2 * Math.PI;
+            while (d >= 2 * Math.PI) d -= 2 * Math.PI;
+            return d;
+        };
 
-        // Arc angle magnitude (always positive) in the direction of travel.
-        const arcAngle = leftTurn
-            ? (rawDelta <= 0 ? -rawDelta : 2 * Math.PI - rawDelta)
-            : (rawDelta >= 0 ?  rawDelta : 2 * Math.PI + rawDelta);
+        // Candidate 1: shortest signed arc from start to end.
+        const shortDelta = normalizeSigned(a3 - a1);
+        // Candidate 2: opposite wrapping arc with same endpoints.
+        const longDelta = shortDelta > 0 ? shortDelta - 2 * Math.PI : shortDelta + 2 * Math.PI;
 
-        const turnAngle = leftTurn ? arcAngle : -arcAngle;
+        const isOnArc = (start: number, mid: number, delta: number): boolean => {
+            if (delta > 0) {
+                const total = positiveDelta(start, start + delta);
+                const toMid = positiveDelta(start, mid);
+                return toMid <= total + 1e-6;
+            }
+            const total = negativeDelta(start, start + delta);
+            const toMid = negativeDelta(start, mid);
+            return toMid <= total + 1e-6;
+        };
+
+        let turnAngle = isOnArc(a1, a2, shortDelta) ? shortDelta : longDelta;
+        if (!isOnArc(a1, a2, turnAngle)) {
+            // Fallback for numeric edge-cases: prefer the shortest arc.
+            turnAngle = shortDelta;
+        }
+
+        const startAngle = a1 + (turnAngle > 0 ? Math.PI / 2 : -Math.PI / 2);
+        const arcAngle = Math.abs(turnAngle);
+
+        if (DEBUG_ROAD_ARC) {
+            console.log('[RoadArc] solved', {
+                segmentId: this.group.id,
+                center: { x: cx, z: cz },
+                radius,
+                angles: { a1, a2, a3 },
+                shortDelta,
+                longDelta,
+                chosenTurnAngle: turnAngle,
+                startAngle,
+                arcAngle,
+                containsMidOnShort: isOnArc(a1, a2, shortDelta),
+            });
+        }
 
         // Build at world-space identity so builder positions are world coordinates.
         this.group.position.set(0, 0, 0);
@@ -214,5 +287,13 @@ export class RoadSegment {
         // Keep stored state consistent with the arc geometry.
         this.angle = startAngle;
         this.length = arcAngle * radius;
+
+        if (DEBUG_ROAD_ARC) {
+            console.log('[RoadArc] output', {
+                segmentId: this.group.id,
+                newAngle: this.angle,
+                newLength: this.length,
+            });
+        }
     }
 }

@@ -87,7 +87,7 @@ export default class GamePage extends Page {
                 setSaveMessage(`Loaded at startup: ${lastSaveName}`);
             } else {
                 this.updateRandomTargets();
-                placeRandomBuildings(scene3D.worldMap3D, 100);
+                placeRandomBuildings(scene3D.worldMap3D, 10);
             }
             refreshSaveNames();
 

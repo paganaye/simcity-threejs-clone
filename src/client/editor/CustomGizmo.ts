@@ -57,6 +57,14 @@ export abstract class CustomGizmo {
     }
 
     defaultSnapping(position: THREE.Vector3, rotationY: number, snap: number = GRID_SNAP): { x: number; z: number; angle: number } | undefined {
+        const activeEvent = typeof window !== 'undefined' ? window.event : undefined;
+        if (activeEvent && 'shiftKey' in activeEvent) {
+            const eventWithModifiers = activeEvent as MouseEvent | KeyboardEvent;
+            if (eventWithModifiers.shiftKey) {
+                return { x: position.x, z: position.z, angle: rotationY };
+            }
+        }
+
         let x = position.x;
         let z = position.z;
 

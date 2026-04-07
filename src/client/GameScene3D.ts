@@ -19,6 +19,7 @@ import { SelectToolController } from './tools/SelectToolController';
 import { ActiveTool } from './tools/ToolTypes';
 import { RoadNetwork } from './RoadNetwork';
 import { Signal } from './Signal';
+import type { IRoad } from './roads/IRoad';
 
 export type ILeftPointerGesture = {
     downX: number;
@@ -89,6 +90,12 @@ export class GameScene3D {
     population = new Signal(0);
     simTime = new Signal(0);
     cityName = new Signal('My City');
+    lastSelectedRoad: IRoad = {
+        type: 'TwoWayRoad',
+        forwardWay: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
+        otherWay:   { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
+        gapSize: 0,
+    };
 
     constructor(readonly mapSize: IFloorSize) {
         this.size = mapSize;
@@ -213,6 +220,7 @@ export class GameScene3D {
         this.selectedCustomObject.set(segment.group);
         this.currentGizmo = this.roadGizmo;
         this.objectGizmo.clearSelection();
+        this.lastSelectedRoad = segment.getIRoad();
         this.roadGizmo.setRoadSelection({
             startX: segment.startX,
             startZ: segment.startZ,

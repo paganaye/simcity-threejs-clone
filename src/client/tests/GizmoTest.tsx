@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { Page } from "../Page";
-import { CustomGizmo } from '../editor/CustomGizmo';
+import { ObjectGizmo } from '../editor/ObjectGizmo';
 
 
 export default class GizmoTest extends Page {
-  private gizmo!: CustomGizmo;
+  private gizmo!: ObjectGizmo;
   private readonly selectableSet = new Set<THREE.Object3D>();
   private onPointerDown = (e: PointerEvent) => {
     this.gizmo?.onPointerDown(e);
@@ -67,7 +67,7 @@ export default class GizmoTest extends Page {
 
 
     // Create the gizmo
-    this.gizmo = new CustomGizmo({
+    this.gizmo = new ObjectGizmo({
       scene: this.scene,
       camera: this.camera,
       domElement: this.renderer.domElement,

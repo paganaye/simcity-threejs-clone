@@ -1,6 +1,6 @@
 import { Accessor, Show } from "solid-js";
 import type * as THREE from "three";
-import type { ISelectedInstance } from "./editor/CustomGizmo";
+import type { ISelectedInstance } from "./editor/ObjectGizmo";
 import type { Character, CharacterSelectionInfo } from "./Character";
 
 export function SelectedObjectPanel(props: {

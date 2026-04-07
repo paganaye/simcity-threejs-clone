@@ -9,7 +9,7 @@ import {
     modelsMetaData,
 } from "../AssetManager";
 import { initAssetManagerData } from "../AssetManagerData";
-import type { ISelectedInstance } from "../editor/CustomGizmo";
+import type { ISelectedInstance } from "../editor/ObjectGizmo";
 import { GameScene3D } from "../GameScene3D";
 import { GameUIComponent, UIProps } from "../GameUIComponent";
 import { Page } from "../Page";

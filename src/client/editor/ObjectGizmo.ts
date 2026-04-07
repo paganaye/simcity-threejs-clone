@@ -46,8 +46,7 @@ function Rad2Deg(rad: number): number {
 }
 
 
-export class CustomGizmo {
-    public defaultCursor = '';
+export class ObjectGizmo {
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.PerspectiveCamera;
     private readonly raycaster: THREE.Raycaster;
@@ -101,6 +100,11 @@ export class CustomGizmo {
     onRoadMoved?: (x: number, z: number, angle: number) => void;
     onRoadResized?: (newLength: number) => void;
     onDeselect?: () => void;
+    getDefaultCursor?: () => string;
+
+    #resolveDefaultCursor(): string {
+        return this.getDefaultCursor?.() ?? '';
+    }
 
     constructor(props: ICustomTransformGizmoProps) {
         this.scene = props.scene;
@@ -220,7 +224,7 @@ export class CustomGizmo {
             this.activeAxis = undefined;
             this.hoveredAxis = undefined;
             this.#applyAxisColors();
-            this.domElement.style.cursor = this.defaultCursor;
+            this.domElement.style.cursor = this.#resolveDefaultCursor();
             if (this.roadEndHandle) this.roadEndHandle.visible = false;
         }
     }
@@ -412,7 +416,7 @@ export class CustomGizmo {
                 this.hoveredAxis = axis;
                 this.#applyAxisColors();
             }
-            this.domElement.style.cursor = axis ? 'pointer' : this.defaultCursor;
+            this.domElement.style.cursor = axis ? 'pointer' : this.#resolveDefaultCursor();
             return false;
         }
 
@@ -497,7 +501,7 @@ export class CustomGizmo {
         this.#applyAxisColors();
         this.#updateRoadEndHandle();
         this.onDraggingChanged?.(false);
-        this.domElement.style.cursor = this.hoveredAxis ? 'pointer' : this.defaultCursor;
+        this.domElement.style.cursor = this.hoveredAxis ? 'pointer' : this.#resolveDefaultCursor();
     }
 
     #pickAxisAtPointer(event: PointerEvent): GizmoAxis | undefined {

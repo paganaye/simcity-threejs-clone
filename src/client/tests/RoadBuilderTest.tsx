@@ -22,6 +22,18 @@ export default class RoadBuildTest extends Page {
     roadDrawStartPoint: THREE.Vector3 | undefined;
     isRoadDrawing = false;
 
+    #applyToolCursor(activeTool: Signal<ActiveTool>): void {
+        const scene3D = this.scene3DInstance;
+        const renderDom = scene3D?.renderDom;
+        if (!scene3D || !renderDom) return;
+
+        const defaultCursor = activeTool.get() === 'road' ? 'crosshair' : '';
+        renderDom.style.cursor = defaultCursor;
+        if (scene3D.customGizmo) {
+            scene3D.customGizmo.getDefaultCursor = () => (activeTool.get() === 'road' ? 'crosshair' : '');
+        }
+    }
+
     #selectRoadSegment(segment: RoadSegment | undefined): void {
         this.selectedRoadSegment = segment;
         this.uiProps?.selectedCustomObject.set(segment?.group);
@@ -215,6 +227,8 @@ export default class RoadBuildTest extends Page {
         scene3D.onLeftPointerCancel = () => {
             this.#stopRoadDrawing(true);
         };
+
+        this.#applyToolCursor(activeTool);
     }
 
 
@@ -227,6 +241,7 @@ export default class RoadBuildTest extends Page {
                 onclick={() => {
                     activeTool.set(toolProps.tool);
                     this.uiProps?.activeTool.set(toolProps.tool);
+                    this.#applyToolCursor(activeTool);
                 }} />;
         };
 

@@ -1,6 +1,6 @@
 import { JSX, Show } from 'solid-js';
 import type * as THREE from 'three';
-import type { ISelectedInstance } from './editor/CustomGizmo';
+import type { ISelectedInstance } from './editor/ObjectGizmo';
 import { ActiveTool } from './GamePage';
 import { Page } from './Page';
 import { SelectedObjectPanel } from './SelectedObjectPanel';

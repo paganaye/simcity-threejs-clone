@@ -7,7 +7,7 @@ import { ICityChanged } from '../sim/Init';
 import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
-import { CustomGizmo, type ISelectedInstance } from './editor/CustomGizmo';
+import { ObjectGizmo, type ISelectedInstance } from './editor/ObjectGizmo';
 import { IFloorSize, UIProps } from './GameUIComponent';
 
 export type ILeftPointerGesture = {
@@ -42,7 +42,7 @@ export class GameScene3D {
     readonly tempQuaternion = new THREE.Quaternion();
     readonly tempScale = new THREE.Vector3();
     pageContext?: Page;
-    customGizmo?: CustomGizmo;
+    customGizmo?: ObjectGizmo;
     readonly transformProxy = new THREE.Object3D();
     selectionHalo?: THREE.Group;
     readonly selectionHaloLayers: THREE.LineSegments<THREE.EdgesGeometry, THREE.LineBasicMaterial>[] = [];
@@ -378,7 +378,7 @@ export class GameScene3D {
 
     #setupCustomGizmo(context: Page) {
         this.scene.add(this.transformProxy);
-        this.customGizmo = new CustomGizmo({
+        this.customGizmo = new ObjectGizmo({
             scene: this.scene,
             camera: this.camera,
             raycaster: this.raycaster,

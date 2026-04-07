@@ -9,6 +9,7 @@ import GUI from 'lil-gui';
 import { Page } from './Page';
 import { ObjectGizmo, type ISelectedInstance } from './editor/ObjectGizmo';
 import { IFloorSize, UIProps } from './GameUIComponent';
+import { RoadGizmo } from './editor/RoadGizmo';
 
 export type ILeftPointerGesture = {
     downX: number;
@@ -43,6 +44,7 @@ export class GameScene3D {
     readonly tempScale = new THREE.Vector3();
     pageContext?: Page;
     customGizmo?: ObjectGizmo;
+    roadGizmo?: RoadGizmo;
     readonly transformProxy = new THREE.Object3D();
     selectionHalo?: THREE.Group;
     readonly selectionHaloLayers: THREE.LineSegments<THREE.EdgesGeometry, THREE.LineBasicMaterial>[] = [];
@@ -167,6 +169,7 @@ export class GameScene3D {
         this.cars3D?.drawFrame(now)
         this.worldMap3D?.drawFrame(now)
         this.customGizmo?.update();
+        this.roadGizmo?.update();
         this.#updateSelectionHalo();
     }
 
@@ -263,7 +266,7 @@ export class GameScene3D {
             this.leftPointerDownX = event.clientX;
             this.leftPointerDownY = event.clientY;
 
-            if (this.customGizmo?.onPointerDown(event)) {
+            if (this.roadGizmo?.onPointerDown(event) || this.customGizmo?.onPointerDown(event)) {
                 this.leftPointerDownConsumedByGizmo = true;
                 event.stopPropagation();
                 event.preventDefault();
@@ -291,7 +294,7 @@ export class GameScene3D {
                 }
             }
 
-            if (this.customGizmo?.onPointerMove(event)) {
+            if (this.roadGizmo?.onPointerMove(event) || this.customGizmo?.onPointerMove(event)) {
                 //this.#onTransformChanged();
             }
 
@@ -311,7 +314,8 @@ export class GameScene3D {
 
         this.renderDom?.addEventListener('pointerup', (event) => {
             const controls = this.pageContext?.controls;
-            this.customGizmo?.onPointerUp();
+            this.roadGizmo?.onPointerUp(event);
+            this.customGizmo?.onPointerUp(event);
 
             if (event.button === 0) {
                 const gesture: ILeftPointerGesture = {
@@ -361,6 +365,7 @@ export class GameScene3D {
                     this.selectedInstance = selected;
                     this.uiProps.selectedInstance.set(selected);
                     this.uiProps.selectedCustomObject.set(undefined);
+                    this.roadGizmo?.clearSelection();
                     this.lastTransformValid = true;
                     if (selected) {
                         this.customGizmo?.syncSelectionFromSelectedInstance();
@@ -382,6 +387,7 @@ export class GameScene3D {
 
         this.renderDom?.addEventListener('pointercancel', () => {
             const controls = this.pageContext?.controls;
+            this.roadGizmo?.onPointerUp();
             this.customGizmo?.onPointerUp();
             this.onLeftPointerCancel?.();
             this.isLeftPointerDown = false;
@@ -428,6 +434,7 @@ export class GameScene3D {
             },
             onSelectObject: (obj) => {
                 if (obj === this.transformProxy) {
+                    this.roadGizmo?.clearSelection();
                     this.uiProps.selectedCustomObject.set(undefined);
                     // Re-sync proxy pose with active selected instance.
                     this.customGizmo?.syncSelectionFromSelectedInstance();
@@ -437,9 +444,22 @@ export class GameScene3D {
                 this.selectedInstance = undefined;
                 this.uiProps.selectedInstance.set(undefined);
                 this.uiProps.selectedCustomObject.set(obj);
+                if (obj.userData?.selectableType === 'road') {
+                    this.customGizmo?.clearSelection();
+                }
                 this.#updateSelectionHalo();
                 this.onCustomGizmoObjectSelected?.(obj);
             },
+            onDraggingChanged: (dragging) => {
+                if (context.controls) context.controls.enabled = !dragging;
+            },
+        });
+
+        this.roadGizmo = new RoadGizmo({
+            scene: this.scene,
+            camera: this.camera,
+            raycaster: this.raycaster,
+            domElement: context.renderer.domElement,
             onDraggingChanged: (dragging) => {
                 if (context.controls) context.controls.enabled = !dragging;
             },

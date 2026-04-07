@@ -32,6 +32,9 @@ export default class RoadBuildTest extends Page {
         if (scene3D.customGizmo) {
             scene3D.customGizmo.getDefaultCursor = () => (activeTool.get() === 'road' ? 'crosshair' : '');
         }
+        if (scene3D.roadGizmo) {
+            scene3D.roadGizmo.getDefaultCursor = () => (activeTool.get() === 'road' ? 'crosshair' : '');
+        }
     }
 
     #selectRoadSegment(segment: RoadSegment | undefined): void {
@@ -40,11 +43,13 @@ export default class RoadBuildTest extends Page {
         this.uiProps?.selectedInstance.set(undefined);
 
         if (!segment) {
+            this.scene3DInstance?.roadGizmo?.clearSelection();
             this.scene3DInstance?.customGizmo?.clearSelection();
             return;
         }
 
-        this.scene3DInstance?.customGizmo?.setRoadSelection({
+        this.scene3DInstance?.customGizmo?.clearSelection();
+        this.scene3DInstance?.roadGizmo?.setRoadSelection({
             startX: segment.startX,
             startZ: segment.startZ,
             endX: segment.endX,
@@ -112,8 +117,8 @@ export default class RoadBuildTest extends Page {
             }
         };
 
-        if (scene3D.customGizmo) {
-            scene3D.customGizmo.getSelectedRoadHandle = () => {
+        if (scene3D.roadGizmo) {
+            scene3D.roadGizmo.getSelectedRoadHandle = () => {
                 const segment = this.selectedRoadSegment;
                 if (!segment) return undefined;
                 return {
@@ -125,13 +130,13 @@ export default class RoadBuildTest extends Page {
                     length: segment.length,
                 };
             };
-            scene3D.customGizmo.onRoadMoved = (x, z, angle) => {
+            scene3D.roadGizmo.onRoadMoved = (x, z, angle) => {
                 this.selectedRoadSegment?.moveTo(x, z, angle);
             };
-            scene3D.customGizmo.onRoadResized = (newLength) => {
+            scene3D.roadGizmo.onRoadResized = (newLength) => {
                 this.selectedRoadSegment?.resize(newLength);
             };
-            scene3D.customGizmo.onDeselect = () => {
+            scene3D.roadGizmo.onDeselect = () => {
                 this.selectedRoadSegment = undefined;
                 this.uiProps?.selectedCustomObject.set(undefined);
             };
@@ -146,9 +151,9 @@ export default class RoadBuildTest extends Page {
             if (hitRoad) return;
 
             const startPoint = this.#eventToGroundPoint(event);
-            if (!startPoint || !scene3D.customGizmo) return;
+            if (!startPoint || !scene3D.roadGizmo) return;
 
-            const snappedStart = scene3D.customGizmo.defaultSnapping(startPoint, 0);
+            const snappedStart = scene3D.roadGizmo.defaultSnapping(startPoint, 0);
             const startX = snappedStart?.x ?? startPoint.x;
             const startZ = snappedStart?.z ?? startPoint.z;
 
@@ -161,7 +166,7 @@ export default class RoadBuildTest extends Page {
 
         scene3D.onLeftPointerMove = (event: PointerEvent, _gesture: ILeftPointerGesture) => {
             if (!this.isRoadDrawing || !this.roadDrawStartPoint || !this.roadPreviewSegment) return;
-            if (!scene3D.customGizmo) return;
+            if (!scene3D.roadGizmo) return;
 
             const endPoint = this.#eventToGroundPoint(event);
             if (!endPoint) return;
@@ -172,7 +177,7 @@ export default class RoadBuildTest extends Page {
             if (dragLength < 0.01) return;
 
             const angle = Math.atan2(-dragDz, dragDx);
-            const snappedStart = scene3D.customGizmo.defaultSnapping(this.roadDrawStartPoint, angle);
+            const snappedStart = scene3D.roadGizmo.defaultSnapping(this.roadDrawStartPoint, angle);
             const length = Math.max(0.5, Math.round(dragLength));
             this.roadPreviewSegment.moveTo(
                 snappedStart?.x ?? this.roadDrawStartPoint.x,

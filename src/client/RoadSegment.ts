@@ -46,8 +46,11 @@ export class RoadSegment {
     get arcMidZ(): number | undefined { return this._arcMidZ; }
 
     /** Curve the road through a world-space control point. Keeps start and end fixed. */
-    setArc(midX: number, midZ: number): void {
-        if (this._arcEndX === undefined) {
+    setArc(midX: number, midZ: number, endX?: number, endZ?: number): void {
+        if (endX !== undefined && endZ !== undefined) {
+            this._arcEndX = endX;
+            this._arcEndZ = endZ;
+        } else if (this._arcEndX === undefined) {
             this._arcEndX = this.startX + Math.cos(this.angle) * this.length;
             this._arcEndZ = this.startZ - Math.sin(this.angle) * this.length;
         }

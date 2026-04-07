@@ -13,6 +13,7 @@ export function GameUIComponent(props: {
     page: Page;
     onUILoaded?: () => void | Promise<void>;
     toolbar?: JSX.Element;
+    rightPanel?: JSX.Element;
     mapSize: IFloorSize;
     scene3D: GameScene3D;
 }) {
@@ -47,6 +48,11 @@ export function GameUIComponent(props: {
                 </div>
             </Show>
             <SelectedObjectPanel selectedInstance={props.scene3D.selectedInstance.get} selectedCustomObject={props.scene3D.selectedCustomObject.get} />
+            <Show when={props.rightPanel}>
+                <div id="ui-right-panel" class="container">
+                    {props.rightPanel}
+                </div>
+            </Show>
             <div id="instructions">
                 Lorem, ipsum dolor<br />
                 sit amet consectetur adipisicing elit.<br />

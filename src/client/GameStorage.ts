@@ -1,4 +1,8 @@
 import { GameScene3D } from "./GameScene3D";
+import type { ModelName } from "./AssetManager";
+import type { Population } from "./Population";
+import type { RoadType } from "./RoadBuilder";
+import * as THREE from 'three';
 
 
 
@@ -6,70 +10,254 @@ export interface IStoreGameData<TGameData> {
     loadGameData(data: TGameData): void;
     saveGameData(target: TGameData): void;
 }
+
+export interface ISerializedBuilding {
+    modelName: ModelName;
+    x: number;
+    y: number;
+    z: number;
+    yaw: number;
+}
+
+export interface ISerializedRoad {
+    startX: number;
+    startZ: number;
+    angle: number;
+    length: number;
+    roadType: RoadType;
+    endX?: number;
+    endZ?: number;
+    arcMidX?: number;
+    arcMidZ?: number;
+}
+
+export interface ISerializedCharacter {
+    x: number;
+    z: number;
+    heading: number;
+    speed: number;
+    scale: number;
+    isBlocked: boolean;
+    waitDuration: number;
+    target?: { x: number; z: number };
+}
+
+export interface ISerializedCity {
+    version: 1;
+    mapSize: { x: number; z: number };
+    buildings: ISerializedBuilding[];
+    roads: ISerializedRoad[];
+    characters: ISerializedCharacter[];
+}
+
 export class GameStorage {
-    constructor(readonly scene: GameScene3D) {
+    private static readonly STORAGE_PREFIX = 'simcity-debug-save:';
+    private static readonly LAST_SAVE_NAME_KEY = 'simcity-debug-last-save-name';
+    private readonly tempMatrix = new THREE.Matrix4();
+    private readonly tempPosition = new THREE.Vector3();
+    private readonly tempQuaternion = new THREE.Quaternion();
+    private readonly tempScale = new THREE.Vector3();
+    private readonly tempEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+    constructor(
+        readonly scene: GameScene3D,
+        private readonly getPopulation: () => Population | undefined,
+    ) {
         // if we stick to one game we might be able to do incremental saves
     }
 
-    saveGame(name?: string) {
-        //let city = this.game.cityView;
-
-        if (name == null) name = this.getDefaultName()
-        // let { width, height } = city;
-        // let buildings: IBuilding[] = [];
-        // let simTime = city.simTime;
-        // let simMoney = city.simMoney;
-        // for (let z = 0; z < height; z++) {
-        //     for (let x = 0; x < width; x++) {
-        //         //let tile = city.getTile(x, z);
-        //         // let { building, terrain } = tile;
-        //         // if (tile && building) {
-        //         //     let { x, z, type } = building;
-        //         //     let data = {}
-        //         //     building.saveGameData(data);
-        //         //     buildings.push({
-        //         //         terrain,
-        //         //         x,
-        //         //         z,
-        //         //         type,
-        //         //         data
-        //         //     })
-
-        //         // }
-        //     }
-        // }
-        // let storageGame: IGame = {
-        //     width,
-        //     height,
-        //     simTime,
-        //     simMoney,
-        //     buildings
-        // }
-        //let output = JSON.stringify(storageGame);
-        //localStorage.setItem(name, output);
+    saveGame(name?: string): string {
+        const saveName = this.#normalizeName(name);
+        const payload = this.#captureCity();
+        localStorage.setItem(this.#getStorageKey(saveName), JSON.stringify(payload));
+        localStorage.setItem(GameStorage.LAST_SAVE_NAME_KEY, saveName);
+        return saveName;
     }
 
     getDefaultName(): string {
         return 'simcity';
     }
 
+    listSaveNames(): string[] {
+        const names: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith(GameStorage.STORAGE_PREFIX)) continue;
+            names.push(key.slice(GameStorage.STORAGE_PREFIX.length));
+        }
+        names.sort((a, b) => a.localeCompare(b));
+        return names;
+    }
+
+    getLastSaveName(): string | undefined {
+        const lastName = localStorage.getItem(GameStorage.LAST_SAVE_NAME_KEY)?.trim();
+        if (!lastName) return undefined;
+        const exists = localStorage.getItem(this.#getStorageKey(lastName)) != null;
+        return exists ? lastName : undefined;
+    }
+
     loadGame(name?: string): boolean {
-        //let city = this.game.cityView;
-        if (name == null) name = this.getDefaultName()
-        let input = localStorage.getItem(name);
+        const saveName = this.#normalizeName(name);
+        const input = localStorage.getItem(this.#getStorageKey(saveName));
         if (input) {
             try {
-                // let storageGame = JSON.parse(input) as IGame;
-                // city.simTime = storageGame.simTime;
-                // city.simMoney = storageGame.simMoney;
-                // city.init(this.game) //, storageGame.size, name);
-
+                const parsed = JSON.parse(input) as Partial<ISerializedCity>;
+                if (!this.#isValidSave(parsed)) {
+                    return false;
+                }
+                this.#restoreCity(parsed);
+                localStorage.setItem(GameStorage.LAST_SAVE_NAME_KEY, saveName);
                 return true;
             } catch (e) {
-                console.error(e);
+                void e;
             }
         }
         return false;
+    }
+
+    #getStorageKey(name: string): string {
+        return `${GameStorage.STORAGE_PREFIX}${name}`;
+    }
+
+    #normalizeName(name?: string): string {
+        const trimmed = name?.trim();
+        return trimmed && trimmed.length > 0 ? trimmed : this.getDefaultName();
+    }
+
+    #captureCity(): ISerializedCity {
+        const buildings = this.scene.worldMap3D.buildings.map((entry) => {
+            const mesh = entry.parent.instancedMesh;
+            mesh.getMatrixAt(entry.index, this.tempMatrix);
+            this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
+            this.tempEuler.setFromQuaternion(this.tempQuaternion);
+            const modelName = mesh.userData?.modelName as ModelName;
+            return {
+                modelName,
+                x: this.tempPosition.x,
+                y: this.tempPosition.y,
+                z: this.tempPosition.z,
+                yaw: this.tempEuler.y,
+            };
+        });
+
+        const roads = this.scene.roadNetwork.segments.map((segment) => ({
+            startX: segment.startX,
+            startZ: segment.startZ,
+            angle: segment.angle,
+            length: segment.length,
+            roadType: segment.roadType,
+            endX: segment.endX,
+            endZ: segment.endZ,
+            arcMidX: segment.arcMidX,
+            arcMidZ: segment.arcMidZ,
+        }));
+
+        const population = this.getPopulation();
+        const characters = (population?.characters ?? []).map((character) => ({
+            x: character.x,
+            z: character.z,
+            heading: character.heading,
+            speed: character.speed,
+            scale: character.scale,
+            isBlocked: character.isBlocked,
+            waitDuration: character.waitDuration,
+            target: character.target ? { x: character.target.x, z: character.target.z } : undefined,
+        }));
+
+        return {
+            version: 1,
+            mapSize: {
+                x: this.scene.worldMap3D.size.x,
+                z: this.scene.worldMap3D.size.z,
+            },
+            buildings,
+            roads,
+            characters,
+        };
+    }
+
+    #restoreCity(save: ISerializedCity): void {
+        const world = this.scene.worldMap3D;
+
+        this.scene.clearSelection();
+        world.clearCity();
+
+        for (const existing of [...this.scene.roadNetwork.segments]) {
+            this.scene.roadNetwork.removeSegment(existing);
+        }
+
+        for (const building of save.buildings) {
+            const mesh = this.scene.assetManager.addFastMesh(
+                building.modelName,
+                building.x,
+                building.y,
+                building.z,
+                building.yaw,
+            );
+            world.buildings.push(mesh);
+
+            const footprint = world.buildPlacementFootprint(
+                building.x,
+                building.z,
+                building.yaw,
+                this.scene.assetManager.getModelFootprint(building.modelName),
+            );
+            if (footprint) {
+                world.placedByInstance.set(world.instanceKey(mesh.parent.instancedMesh, mesh.index), {
+                    ...footprint,
+                    mesh: mesh.parent.instancedMesh,
+                    instanceId: mesh.index,
+                });
+            }
+        }
+
+        for (const road of save.roads) {
+            const segment = this.scene.roadNetwork.addSegment(
+                this.scene.scene,
+                road.startX,
+                road.startZ,
+                road.angle,
+                road.length,
+                road.roadType,
+            );
+            if (road.arcMidX !== undefined && road.arcMidZ !== undefined) {
+                segment.setArc(road.arcMidX, road.arcMidZ, road.endX, road.endZ);
+            }
+        }
+
+        const population = this.getPopulation();
+        if (population) {
+            population.dispose();
+            population.init(save.mapSize.x, save.mapSize.z, { count: save.characters.length });
+            for (let i = 0; i < save.characters.length; i++) {
+                const source = save.characters[i];
+                const character = population.characters[i];
+                if (!character) continue;
+
+                character.x = source.x;
+                character.z = source.z;
+                character.heading = source.heading;
+                character.speed = source.speed;
+                character.scale = source.scale;
+                character.isBlocked = source.isBlocked;
+                character.waitDuration = source.waitDuration;
+                if (source.target) {
+                    character.setTarget({ x: source.target.x, z: source.target.z });
+                } else {
+                    character.clearTarget();
+                }
+            }
+        }
+    }
+
+    #isValidSave(value: Partial<ISerializedCity>): value is ISerializedCity {
+        return value.version === 1
+            && !!value.mapSize
+            && typeof value.mapSize.x === 'number'
+            && typeof value.mapSize.z === 'number'
+            && Array.isArray(value.buildings)
+            && Array.isArray(value.roads)
+            && Array.isArray(value.characters);
     }
 
 }

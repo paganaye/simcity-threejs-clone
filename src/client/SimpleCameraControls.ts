@@ -38,6 +38,7 @@ export class SimpleCameraControls {
     private activePointerButton: number | null = null;
     private activeMouseAction: MouseAction = undefined;
     private hasRotateAnchor = false;
+    private isHoverPanning = false;
 
     constructor(
         readonly camera: THREE.PerspectiveCamera,
@@ -102,6 +103,33 @@ export class SimpleCameraControls {
 
     handleContextMenu(event: MouseEvent) {
         this.#onContextMenu(event);
+    }
+
+    beginHoverPan(event: PointerEvent): boolean {
+        if (!this.enabled) return false;
+        const ok = this.#intersectPanPlane(event, this.panAnchor);
+        this.isHoverPanning = ok;
+        return ok;
+    }
+
+    moveHoverPan(event: PointerEvent): void {
+        if (!this.enabled || !this.isHoverPanning) return;
+
+        const currentHit = new THREE.Vector3();
+        if (!this.#intersectPanPlane(event, currentHit)) return;
+
+        const delta = new THREE.Vector3(
+            this.panAnchor.x - currentHit.x,
+            0,
+            this.panAnchor.z - currentHit.z,
+        );
+        if (delta.lengthSq() === 0) return;
+
+        this.panBy(delta);
+    }
+
+    endHoverPan(): void {
+        this.isHoverPanning = false;
     }
 
     updateSphericalFromCamera() {
@@ -192,6 +220,8 @@ export class SimpleCameraControls {
     #onPointerDown = (event: PointerEvent) => {
         if (!this.enabled) return;
 
+        this.isHoverPanning = false;
+
         const mouseAction = this.#getMouseAction(event.button);
         if (mouseAction == null) return;
 
@@ -249,10 +279,12 @@ export class SimpleCameraControls {
     };
 
     #onPointerUp = () => {
+        this.isHoverPanning = false;
         this.#endInteraction();
     };
 
     #onWindowPointerUp = () => {
+        this.isHoverPanning = false;
         this.#endInteraction();
     };
 

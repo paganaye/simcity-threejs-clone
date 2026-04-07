@@ -68,8 +68,11 @@ export class GameScene3D {
     isLeftPointerDown = false;
     leftPointerDownMoved = false;
     leftPointerDownConsumedByGizmo = false;
+    leftPointerDownPanMode = false;
+    isSpaceHoverPanning = false;
     leftPointerDownX = 0;
     leftPointerDownY = 0;
+    isSpacePanModifierDown = false;
     /** Called by the road gizmo after each resize (drag of end handle). */
     onRoadSegmentResized?: (segment: RoadSegment) => void;
     readonly roadNetwork = new RoadNetwork();
@@ -178,6 +181,26 @@ export class GameScene3D {
         this.roadGizmo.clearSelection();
         this.objectGizmo.clearSelection();
         this.#updateSelectionHalo();
+    }
+
+    deleteCurrentSelection(): boolean {
+        const selectedRoad = this.selectedCustomObject.get()?.userData?.roadSegment as RoadSegment | undefined;
+        if (selectedRoad) {
+            this.roadNetwork.removeSegment(selectedRoad);
+            this.clearSelection();
+            return true;
+        }
+
+        const selected = this.selectedInstance.get();
+        if (selected?.selectableType === 'building') {
+            const removed = this.worldMap3D.removeBuilding(selected.mesh, selected.instanceId);
+            if (removed) {
+                this.clearSelection();
+                return true;
+            }
+        }
+
+        return false;
     }
 
     selectRoadSegment(segment: RoadSegment | undefined): void {
@@ -377,6 +400,64 @@ export class GameScene3D {
     }
 
     #setupSelectionInput() {
+        const updateSpacePanBinding = () => {
+            const controls = this.page?.cameraControls;
+            if (!controls) return;
+            controls.mouseButtons.LEFT = this.isSpacePanModifierDown ? THREE.MOUSE.PAN : undefined;
+        };
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (this.#isEditableElement(event.target)) {
+                return;
+            }
+
+            const consumedByTools = this.#dispatchToolKeyDown(event);
+            if (consumedByTools) {
+                event.preventDefault();
+                return;
+            }
+
+            if (event.code === 'Space') { // Space bar
+                this.isSpacePanModifierDown = true;
+                updateSpacePanBinding();
+                this.isSpaceHoverPanning = false;
+                event.preventDefault();
+            }
+        };
+
+        const handleKeyUp = (event: KeyboardEvent) => {
+            if (event.code === 'Space') { // Space bar
+                this.isSpacePanModifierDown = false;
+                this.isSpaceHoverPanning = false;
+                this.page?.cameraControls?.endHoverPan();
+                updateSpacePanBinding();
+                event.preventDefault();
+                return;
+            }
+
+            if (this.#isEditableElement(event.target)) {
+                return;
+            }
+
+            const consumedByTools = this.#dispatchToolKeyUp(event);
+            if (consumedByTools) {
+                event.preventDefault();
+            }
+        };
+
+        const handleWindowBlur = () => {
+            this.isSpacePanModifierDown = false;
+            this.leftPointerDownPanMode = false;
+            this.isSpaceHoverPanning = false;
+            this.page?.cameraControls?.endHoverPan();
+            updateSpacePanBinding();
+            this.page?.cameraControls?.handlePointerUp();
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        window.addEventListener('blur', handleWindowBlur);
+
         this.renderDom?.addEventListener('pointerdown', (event) => {
             if (!this.renderDom) return;
 
@@ -386,9 +467,17 @@ export class GameScene3D {
                 return;
             }
 
+            if (this.isSpacePanModifierDown) {
+                this.leftPointerDownPanMode = true;
+                controls?.handlePointerDown(event);
+                event.preventDefault();
+                return;
+            }
+
             this.isLeftPointerDown = true;
             this.leftPointerDownMoved = false;
             this.leftPointerDownConsumedByGizmo = false;
+            this.leftPointerDownPanMode = false;
             this.leftPointerDownX = event.clientX;
             this.leftPointerDownY = event.clientY;
 
@@ -411,6 +500,27 @@ export class GameScene3D {
 
         this.renderDom?.addEventListener('pointermove', (event) => {
             const controls = this.page?.cameraControls;
+
+            if (this.isSpacePanModifierDown && !this.leftPointerDownPanMode && !this.isLeftPointerDown && event.buttons === 0) {
+                if (!this.isSpaceHoverPanning) {
+                    this.isSpaceHoverPanning = controls?.beginHoverPan(event) ?? false;
+                } else {
+                    controls?.moveHoverPan(event);
+                }
+                event.preventDefault();
+                return;
+            }
+
+            if (this.isSpaceHoverPanning) {
+                this.isSpaceHoverPanning = false;
+                controls?.endHoverPan();
+            }
+
+            if (this.leftPointerDownPanMode) {
+                controls?.handlePointerMove(event);
+                return;
+            }
+
             if (this.isLeftPointerDown) {
                 const dx = event.clientX - this.leftPointerDownX;
                 const dy = event.clientY - this.leftPointerDownY;
@@ -441,6 +551,18 @@ export class GameScene3D {
 
         this.renderDom?.addEventListener('pointerup', (event) => {
             const controls = this.page?.cameraControls;
+
+            if (this.leftPointerDownPanMode && event.button === 0) {
+                this.leftPointerDownPanMode = false;
+                this.isSpaceHoverPanning = false;
+                controls?.endHoverPan();
+                this.isLeftPointerDown = false;
+                this.leftPointerDownMoved = false;
+                this.leftPointerDownConsumedByGizmo = false;
+                controls?.handlePointerUp();
+                return;
+            }
+
             this.currentGizmo?.onPointerUp(event);
 
             if (event.button === 0) {
@@ -469,10 +591,15 @@ export class GameScene3D {
             this.isLeftPointerDown = false;
             this.leftPointerDownMoved = false;
             this.leftPointerDownConsumedByGizmo = false;
+            this.leftPointerDownPanMode = false;
+            this.isSpaceHoverPanning = false;
+            controls?.endHoverPan();
             controls?.handlePointerUp();
         });
 
         this.renderDom?.addEventListener('pointerleave', () => {
+            this.isSpaceHoverPanning = false;
+            this.page?.cameraControls?.endHoverPan();
             this.page?.cameraControls?.handlePointerUp();
         });
 
@@ -487,6 +614,42 @@ export class GameScene3D {
         window.addEventListener('pointerup', () => {
             this.page?.cameraControls?.handleWindowPointerUp();
         });
+    }
+
+    #dispatchToolKeyDown(event: KeyboardEvent): boolean {
+        if (this.currentToolController?.onKeyDown(event)) {
+            return true;
+        }
+
+        for (const controller of this.toolMap.values()) {
+            if (controller === this.currentToolController) continue;
+            if (controller.onKeyDown(event)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    #dispatchToolKeyUp(event: KeyboardEvent): boolean {
+        if (this.currentToolController?.onKeyUp(event)) {
+            return true;
+        }
+
+        for (const controller of this.toolMap.values()) {
+            if (controller === this.currentToolController) continue;
+            if (controller.onKeyUp(event)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    #isEditableElement(target: EventTarget | null): boolean {
+        if (!(target instanceof HTMLElement)) return false;
+        const tag = target.tagName;
+        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
     }
 
     #setupCustomGizmo(context: Page) {

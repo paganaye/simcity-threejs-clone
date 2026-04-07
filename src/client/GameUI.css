@@ -42,6 +42,58 @@
   justify-content: flex-start;
 }
 
+#ui-right-panel {
+  position: absolute;
+  top: 64px;
+  right: 12px;
+  width: min(300px, calc(100vw - 32px));
+  color: white;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.debug-save-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.debug-save-row {
+  display: flex;
+  gap: 8px;
+}
+
+.debug-save-input,
+.debug-save-select {
+  width: 100%;
+  background: rgba(15, 18, 27, 0.9);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.debug-save-btn {
+  flex: 1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+  color: white;
+  background: rgba(30, 35, 49, 0.9);
+  cursor: pointer;
+}
+
+.debug-save-btn:hover {
+  background: rgba(18, 22, 34, 0.95);
+}
+
+.debug-save-msg {
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
 .ui-button {
   height: 48px;
   width: 48px;

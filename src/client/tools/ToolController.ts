@@ -9,6 +9,8 @@ export abstract class ToolController {
 
     abstract onToolChanged(tool: ActiveTool): void;
 
+    onKeyDown(_event: KeyboardEvent): boolean { return false; }
+    onKeyUp(_event: KeyboardEvent): boolean { return false; }
     onPointerDown(_event: PointerEvent, _gesture: ILeftPointerGesture): void {}
     onPointerMove(_event: PointerEvent, _gesture: ILeftPointerGesture): void {}
     onPointerUp(_event: PointerEvent, _gesture: ILeftPointerGesture): void {}

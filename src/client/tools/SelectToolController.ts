@@ -4,6 +4,30 @@ import { ActiveTool } from './ToolTypes';
 
 export class SelectToolController extends ToolController {
 
+    override onKeyDown(event: KeyboardEvent): boolean {
+        const activeTool = this.scene3D.activeTool.get();
+
+        if (event.key === 'Escape') {
+            if (activeTool === 'select') {
+                const hasSelection = !!this.scene3D.selectedInstance.get() || !!this.scene3D.selectedCustomObject.get();
+                if (hasSelection) {
+                    this.scene3D.clearSelection();
+                    return true;
+                }
+                return false;
+            }
+
+            this.scene3D.setActiveTool('select');
+            return true;
+        }
+
+        if (event.key === 'Delete' && activeTool === 'select') {
+            return this.scene3D.deleteCurrentSelection();
+        }
+
+        return false;
+    }
+
     onToolChanged(tool: ActiveTool): void {
         if (tool !== 'select') return;
         const cursor = '';

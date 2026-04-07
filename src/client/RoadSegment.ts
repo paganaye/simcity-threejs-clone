@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import { RoadBuilder, RoadType } from './RoadBuilder';
+import { RoadBuilder, type RoadType, iRoadToLegacyRoadType, roadTypeToIRoad } from './RoadBuilder';
 import type { IRoad } from './roads/IRoad';
-import { roadTypeToIRoad } from './roads/RoadTypeAdapter';
 
 /**
  * A single straight road segment.
@@ -67,6 +66,8 @@ export class RoadSegment {
                 dividing: nextRoad.dividing,
             };
         this.group.userData.iRoad = this.iRoad;
+        this.roadType = iRoadToLegacyRoadType(this.iRoad);
+        this.rebuild();
     }
 
     setRoadType(nextType: RoadType): void {
@@ -74,7 +75,8 @@ export class RoadSegment {
             return;
         }
         this.roadType = nextType;
-        this.setIRoad(roadTypeToIRoad(nextType));
+        this.iRoad = roadTypeToIRoad(nextType);
+        this.group.userData.iRoad = this.iRoad;
         this.rebuild();
     }
 
@@ -126,7 +128,7 @@ export class RoadSegment {
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
             const builder = new RoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
-            builder.addStraightRoad(this.length, this.roadType);
+            builder.addStraightRoadFromIRoad(this.length, this.iRoad);
         }
 
         this.#tagChildren();
@@ -170,7 +172,7 @@ export class RoadSegment {
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
             const b = new RoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
-            b.addStraightRoad(this.length, this.roadType);
+            b.addStraightRoadFromIRoad(this.length, this.iRoad);
             return;
         }
 
@@ -215,7 +217,7 @@ export class RoadSegment {
         this.group.rotation.set(0, 0, 0);
 
         const builder = new RoadBuilder({ x: p1x, y: 0.015, z: p1z, angle: startAngle }, this.group);
-        builder.addTurningRoad(turnAngle, radius, this.roadType);
+        builder.addTurningRoadFromIRoad(turnAngle, radius, this.iRoad);
 
         // Keep stored state consistent with the arc geometry.
         this.angle = startAngle;

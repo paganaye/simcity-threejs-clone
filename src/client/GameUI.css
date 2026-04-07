@@ -202,7 +202,7 @@
 
 .road-form-row {
   display: grid;
-  grid-template-columns: 80px 1fr;
+  grid-template-columns: minmax(72px, 80px) minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   margin-top: 8px;
@@ -210,6 +210,9 @@
 
 .road-input {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   background: rgba(15, 18, 27, 0.9);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.25);

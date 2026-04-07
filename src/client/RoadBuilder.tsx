@@ -1,26 +1,16 @@
 import * as THREE from "three";
 import { IOrientation2D } from "../sim/IPoint";
 import { IFloorPos } from "./GameUIComponent";
-import type { DividingType, IRoadOptions } from "./roads/IRoad";
+import type { IRoad } from "./roads/IRoad";
+import {
+    iRoadToRenderOptions,
+    roadTypeToRenderOptions,
+    type RoadRenderOptions,
+    type RoadType,
+} from "./roads/RoadTypeAdapter";
 
-
-type ITextureRoadOptions = IRoadOptions & {
-    dividing: DividingType;
-};
-
-export const roadTypes = {
-    none: { dividing: 'none', lanes: 0, shoulder: 'none', sidewalk: 'small', roadColor: 'old' },
-    l1: { dividing: 'none', lanes: 1, shoulder: 'none', sidewalk: 'small', roadColor: 'old' },
-    l2: { dividing: 'none', lanes: 1, shoulder: 'parallelParking', sidewalk: 'small', roadColor: 'old' },
-    l3: { dividing: 'none', lanes: 1, shoulder: 'perpendicularParking', sidewalk: 'small', roadColor: 'old' },
-    l4: { dividing: 'yellowLineSolid', lanes: 1, shoulder: 'line', sidewalk: 'large', roadColor: 'new' },
-    l5: { dividing: 'yellowLineSolid', lanes: 2, shoulder: 'line', sidewalk: 'large', roadColor: 'new' },
-    l6: { dividing: 'yellowLineSolid', lanes: 3, shoulder: 'line', sidewalk: 'large', roadColor: 'new' },
-    l7: { dividing: 'yellowLineSolid', lanes: 1, shoulder: 'emergencyLane', sidewalk: 'large', roadColor: 'new' },
-} satisfies Record<string, ITextureRoadOptions>
-let roadTypeIndex: Record<keyof typeof roadTypes, number> = {} as any;
-
-export type RoadType = keyof typeof roadTypes;
+export type { RoadType } from "./roads/RoadTypeAdapter";
+export { roadTypeToIRoad, iRoadToLegacyRoadType } from "./roads/RoadTypeAdapter";
 
 export class RoadBuilder implements IOrientation2D {
     x: number;
@@ -29,8 +19,7 @@ export class RoadBuilder implements IOrientation2D {
     angle: number;
     textureProgressV: number = 0;
 
-    static roadTexture: THREE.DataTexture;
-    static roadMaterial: THREE.MeshStandardMaterial;
+    static materialByStyle = new Map<string, THREE.MeshStandardMaterial>();
 
     static LINE_REPEAT_PER_UNIT = 2;
     static OLD_ROAD_COLOR = 'hsl(0, 2%, 7%)';
@@ -54,9 +43,6 @@ export class RoadBuilder implements IOrientation2D {
     static PERPENDICULAR_PARKING_WIDTH = 20;
 
     static TURNING_SEGMENTS_MULTIPLIER = 3;
-    static ROAD_VARIANTS = Object.keys(roadTypes).length;
-    static UMAX = 1 / RoadBuilder.ROAD_VARIANTS;
-
     static TEXTURE_WIDTH = 92;
 
 
@@ -67,21 +53,37 @@ export class RoadBuilder implements IOrientation2D {
         this.angle = startPosition.angle;
     }
 
-    static {
-        this.roadTexture = this.createRoadTexture();
-        this.roadMaterial = new THREE.MeshStandardMaterial({
-            map: this.roadTexture,
+    static styleKey(options: RoadRenderOptions): string {
+        return [
+            options.roadColor,
+            options.lanes,
+            options.shoulder,
+            options.sidewalk,
+            options.dividing,
+        ].join('|');
+    }
+
+    static getRoadMaterial(options: RoadRenderOptions): THREE.MeshStandardMaterial {
+        const key = this.styleKey(options);
+        const existing = this.materialByStyle.get(key);
+        if (existing) {
+            return existing;
+        }
+
+        const texture = this.createRoadTexture(options);
+        const material = new THREE.MeshStandardMaterial({
+            map: texture,
             side: THREE.DoubleSide,
             transparent: true,
         });
-
+        this.materialByStyle.set(key, material);
+        return material;
     }
 
-
-    static createRoadTexture() {
+    static createRoadTexture(options: RoadRenderOptions) {
 
         const canvas = document.createElement('canvas');
-        let textureWidth = this.TEXTURE_WIDTH * this.ROAD_VARIANTS;
+        const textureWidth = this.TEXTURE_WIDTH;
         canvas.width = textureWidth;
         canvas.height = this.TEXTURE_HEIGHT;
         const ctx = canvas.getContext('2d')!;
@@ -89,10 +91,9 @@ export class RoadBuilder implements IOrientation2D {
         ctx.fillStyle = this.TRANSPARENT;
         ctx.fillRect(0, 0, textureWidth, this.TEXTURE_HEIGHT);
 
-        const drawRoad = (roadNo: number, options: ITextureRoadOptions) => {
-            const roadStartX = this.TEXTURE_WIDTH * roadNo;
-            let currentX = roadStartX;
-            let roadColor = options.roadColor === 'new' ? RoadBuilder.NEW_ROAD_COLOR : RoadBuilder.OLD_ROAD_COLOR;
+        const drawRoad = (style: RoadRenderOptions) => {
+            let currentX = 0;
+            let roadColor = style.roadColor === 'new' ? RoadBuilder.NEW_ROAD_COLOR : RoadBuilder.OLD_ROAD_COLOR;
 
             const drawLine = (
                 width: number,
@@ -108,7 +109,7 @@ export class RoadBuilder implements IOrientation2D {
             }
 
             const drawDivide = () => {
-                switch (options.dividing) {
+                switch (style.dividing) {
                     case 'yellowLineSolid':
                         drawRectAndIncrement(this.YELLOW_LINE_WIDTH, this.YELLOW_LINE);
                         break;
@@ -129,9 +130,9 @@ export class RoadBuilder implements IOrientation2D {
             };
 
             const drawLanes = () => {
-                for (let i = 0; i < options.lanes; i++) {
+                for (let i = 0; i < style.lanes; i++) {
                     drawRectAndIncrement(this.ROAD_WIDTH, roadColor)
-                    if (i < options.lanes - 1) {
+                    if (i < style.lanes - 1) {
                         drawLine(this.YELLOW_LINE_WIDTH, 0, 0.5, this.YELLOW_LINE);
                         drawLine(this.YELLOW_LINE_WIDTH, 0.5, 1, roadColor);
                         currentX += this.YELLOW_LINE_WIDTH;
@@ -141,7 +142,7 @@ export class RoadBuilder implements IOrientation2D {
 
             const drawShoulder = () => {
 
-                switch (options.shoulder) {
+                switch (style.shoulder) {
                     case 'parallelParking':
                         drawLine(this.PARALLEL_PARKING_WIDTH, 0, 1, this.PARKING_COLOR);
                         drawLine(this.PARALLEL_PARKING_WIDTH, 0, 1 / 32, this.WHITE_LINE);
@@ -181,7 +182,7 @@ export class RoadBuilder implements IOrientation2D {
             };
 
             const drawSidewalk = () => {
-                switch (options.sidewalk) {
+                switch (style.sidewalk) {
                     case 'small':
                         drawRectAndIncrement(this.SMALL_SIDEWALK, this.SIDEWALK_COLOR);
                         break;
@@ -202,10 +203,7 @@ export class RoadBuilder implements IOrientation2D {
             drawSidewalk();
         };
 
-        Object.entries(roadTypes).forEach(([name, roadOptions], i) => {
-            drawRoad(i, roadOptions);
-            roadTypeIndex[name as RoadType] = i
-        })
+        drawRoad(options);
 
         const imageData = ctx.getImageData(0, 0, textureWidth, this.TEXTURE_HEIGHT);
         const data = new Uint8Array(imageData.data);
@@ -219,7 +217,6 @@ export class RoadBuilder implements IOrientation2D {
         texture.needsUpdate = true;
         texture.wrapS = THREE.ClampToEdgeWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        this.showTextureInBody(canvas);
         return texture;
     }
 
@@ -260,7 +257,16 @@ export class RoadBuilder implements IOrientation2D {
     //         this.scene.add(sphere);
     //     }
 
+    addStraightRoadFromIRoad(length: number, road: IRoad) {
+        const render = iRoadToRenderOptions(road);
+        this.addStraightRoadWithOptions(length, render.left, render.right);
+    }
+
     addStraightRoad(length: number, leftType: RoadType = 'l1', rightType: RoadType = leftType) {
+        this.addStraightRoadWithOptions(length, roadTypeToRenderOptions(leftType), roadTypeToRenderOptions(rightType));
+    }
+
+    addStraightRoadWithOptions(length: number, left: RoadRenderOptions, right: RoadRenderOptions) {
         // Don't create geometry for zero or negative length
         if (length <= 0) return;
 
@@ -274,13 +280,12 @@ export class RoadBuilder implements IOrientation2D {
         const repeat = length * RoadBuilder.LINE_REPEAT_PER_UNIT;
         const startV = this.textureProgressV;
         const endV = startV + repeat;
-        const rightUvArray = [0, startV, 0, endV, RoadBuilder.UMAX, startV, RoadBuilder.UMAX, endV];
-        const leftUvArray = [RoadBuilder.UMAX, startV, RoadBuilder.UMAX, endV, 0, startV, 0, endV];
+        const rightUvArray = [0, startV, 0, endV, 1, startV, 1, endV];
+        const leftUvArray = [1, startV, 1, endV, 0, startV, 0, endV];
 
-
-        const createRoad = (offsetX: number, offsetZ: number, side: 'left' | 'right', roadType: RoadType) => {
+        const createRoad = (offsetX: number, offsetZ: number, side: 'left' | 'right', options: RoadRenderOptions) => {
             const roadGeometry = geometry.clone();
-            const road = new THREE.Mesh(roadGeometry, RoadBuilder.roadMaterial);
+            const road = new THREE.Mesh(roadGeometry, RoadBuilder.getRoadMaterial(options));
             road.position.set(
                 this.x + dx / 2 + offsetX,
                 this.y,
@@ -288,28 +293,29 @@ export class RoadBuilder implements IOrientation2D {
             );
             road.rotation.x = -Math.PI / 2;
             road.rotation.z = this.angle;
-            let uvSrc = (side === 'right' ? rightUvArray : leftUvArray).slice();
-            let textureIndex = roadTypeIndex[roadType] ?? 0;
-            let uOffset = textureIndex * RoadBuilder.UMAX;
-
-            const finalUvArray = [];
-            for (let i = 0; i < uvSrc.length; i += 2) {
-                finalUvArray.push(uvSrc[i] + uOffset, uvSrc[i + 1]);
-            }
-
-            roadGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(finalUvArray, 2));
+            const uvSrc = (side === 'right' ? rightUvArray : leftUvArray).slice();
+            roadGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvSrc, 2));
             this.scene.add(road);
         };
 
-        createRoad(-normalX * halfRoadWidth, -normalZ * halfRoadWidth, 'left', leftType);
-        createRoad(normalX * halfRoadWidth, normalZ * halfRoadWidth, 'right', rightType);
+        createRoad(-normalX * halfRoadWidth, -normalZ * halfRoadWidth, 'left', left);
+        createRoad(normalX * halfRoadWidth, normalZ * halfRoadWidth, 'right', right);
 
         this.x += dx;
         this.z += dz;
         this.textureProgressV = endV; // Mise à jour de la progression V
     }
 
+    addTurningRoadFromIRoad(turnAngle: number, radius: number, road: IRoad) {
+        const render = iRoadToRenderOptions(road);
+        this.addTurningRoadWithOptions(turnAngle, radius, render.left, render.right);
+    }
+
     addTurningRoad(turnAngle: number, radius: number, leftType: RoadType = 'l1', rightType: RoadType = leftType) {
+        this.addTurningRoadWithOptions(turnAngle, radius, roadTypeToRenderOptions(leftType), roadTypeToRenderOptions(rightType));
+    }
+
+    addTurningRoadWithOptions(turnAngle: number, radius: number, left: RoadRenderOptions, right: RoadRenderOptions) {
         if (Math.abs(turnAngle) < 0.001) return;
 
         const segments = Math.max(1, Math.round(Math.abs(RoadBuilder.TURNING_SEGMENTS_MULTIPLIER * turnAngle)));
@@ -327,7 +333,7 @@ export class RoadBuilder implements IOrientation2D {
             const t = i / segments;
             const v = (radius * totalCurveAngle * t) * RoadBuilder.LINE_REPEAT_PER_UNIT;
             uvs.push(0, startV + v);
-            uvs.push(RoadBuilder.UMAX, startV + v);
+            uvs.push(1, startV + v);
         }
         this.textureProgressV = startV + curveLength * RoadBuilder.LINE_REPEAT_PER_UNIT;
 
@@ -341,7 +347,7 @@ export class RoadBuilder implements IOrientation2D {
             return { x, z };
         };
 
-        const addHalfRoad = (side: 'left' | 'right', roadType: RoadType) => {
+        const addHalfRoad = (side: 'left' | 'right', options: RoadRenderOptions) => {
             const vertices: number[] = [];
             const uvsSide: number[] = [];
             const offsetLeftInner = -RoadBuilder.ROAD_WIDTH_UNITS;
@@ -358,23 +364,13 @@ export class RoadBuilder implements IOrientation2D {
                 vertices.push(outerPoint.x, this.y, outerPoint.z);
 
                 const v = (radius * totalCurveAngle * t) * RoadBuilder.LINE_REPEAT_PER_UNIT;
-                uvsSide.push(side == 'left' ? RoadBuilder.UMAX : 0, startV + v);
-                uvsSide.push(side == 'left' ? 0 : RoadBuilder.UMAX, startV + v);
+                uvsSide.push(side == 'left' ? 1 : 0, startV + v);
+                uvsSide.push(side == 'left' ? 0 : 1, startV + v);
             }
 
             const geometry = new THREE.BufferGeometry();
             geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-
-            // Ajout de la gestion du roadType pour les UVs
-            const finalUvArray: number[] = [];
-            const uvSrc = uvsSide.slice();
-            const textureIndex = roadTypeIndex[roadType] ?? 0;
-            const uOffset = textureIndex * RoadBuilder.UMAX;
-
-            for (let i = 0; i < uvSrc.length; i += 2) {
-                finalUvArray.push(uvSrc[i] + uOffset, uvSrc[i + 1]);
-            }
-            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(finalUvArray, 2));
+            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvsSide, 2));
 
             const indices: number[] = [];
             for (let i = 0; i < segments; i++) {
@@ -388,12 +384,12 @@ export class RoadBuilder implements IOrientation2D {
             geometry.setIndex(indices);
             geometry.computeVertexNormals();
 
-            let mesh = new THREE.Mesh(geometry, RoadBuilder.roadMaterial);
+            const mesh = new THREE.Mesh(geometry, RoadBuilder.getRoadMaterial(options));
             this.scene.add(mesh);
         };
 
-        addHalfRoad("left", leftType);
-        addHalfRoad("right", rightType);
+        addHalfRoad("left", left);
+        addHalfRoad("right", right);
 
         this.angle = finalRoadAngle;
         const finalGeometryRayAngle = finalRoadAngle + geomAngleOffset;

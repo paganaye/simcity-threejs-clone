@@ -2,6 +2,7 @@ import { GameScene3D } from "./GameScene3D";
 import type { ModelName } from "./AssetManager";
 import type { Population } from "./Population";
 import type { RoadType } from "./RoadBuilder";
+import type { IRoad } from "./roads/IRoad";
 import * as THREE from 'three';
 
 
@@ -26,6 +27,7 @@ export interface ISerializedRoad {
     angle: number;
     length: number;
     roadType: RoadType;
+    iRoad?: IRoad;
     endX?: number;
     endZ?: number;
     arcMidX?: number;
@@ -153,6 +155,7 @@ export class GameStorage {
             angle: segment.angle,
             length: segment.length,
             roadType: segment.roadType,
+            iRoad: segment.getIRoad(),
             endX: segment.endX,
             endZ: segment.endZ,
             arcMidX: segment.arcMidX,
@@ -237,6 +240,9 @@ export class GameStorage {
                 road.length,
                 road.roadType,
             );
+            if (road.iRoad) {
+                segment.setIRoad(road.iRoad);
+            }
             if (road.arcMidX !== undefined && road.arcMidZ !== undefined) {
                 segment.setArc(road.arcMidX, road.arcMidZ, road.endX, road.endZ);
             }

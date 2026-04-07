@@ -67,7 +67,7 @@ export class RoadBuilder implements IOrientation2D {
     static TEXTURE_WIDTH = 92;
 
 
-    constructor(startPosition: IOrientation2D, readonly scene: THREE.Scene) {
+    constructor(startPosition: IOrientation2D, readonly scene: THREE.Object3D) {
         this.x = startPosition.x;
         this.y = startPosition.y ?? 0;
         this.z = startPosition.z;

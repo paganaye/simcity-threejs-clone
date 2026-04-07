@@ -12,7 +12,7 @@ const pages = {
     "Maze": "client/tests/MazeTest",
     "Path": "client/tests/PathTest",
     "QuaternionTest": "client/tests/QuaternionTest",
-    "Road Scene": "client/tests/RoadSceneTest",
+    "Road Builder": "client/tests/RoadBuilderTest",
     "Simple Test": "client/tests/SimpleTest",
     "Stencil Buffer": "client/tests/StencilBufferTest",
     "Three Editor": "client/editor/ThreeEditor",

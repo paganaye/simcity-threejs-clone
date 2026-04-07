@@ -1,8 +1,17 @@
 import * as THREE from 'three';
 
-type GizmoAxis = 'x' | 'z' | 'xz' | 'yaw';
+type GizmoAxis = 'x' | 'z' | 'xz' | 'yaw' | 'roadEnd';
 
-export type GizmoSelectableType = 'building' | 'character';
+export type GizmoSelectableType = 'building' | 'character' | 'road';
+
+export type IRoadHandle = {
+    startX: number;
+    startZ: number;
+    endX: number;
+    endZ: number;
+    angle: number;
+    length: number;
+};
 
 export type ISelectedInstance = {
     mesh: THREE.InstancedMesh;
@@ -27,7 +36,7 @@ type ICustomTransformGizmoProps = {
 
 const SLOPE_1_2 = Math.atan2(1, 2); // 26.565051177077986
 const SLOPE_1_2_DELTA = SLOPE_1_2 - Math.PI / 8;
-const GRID_SNAP = 1;
+const GRID_SNAP = 5;
 const SECTOR_ANGLE = Math.PI / 8; // 16 secteurs
 const GIZMO_MIN_SCALE = 0.5;
 const GIZMO_SCALE_DISTANCE_FACTOR = 0.04;
@@ -38,6 +47,7 @@ function Rad2Deg(rad: number): number {
 
 
 export class CustomGizmo {
+    public defaultCursor = '';
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.PerspectiveCamera;
     private readonly raycaster: THREE.Raycaster;
@@ -62,6 +72,7 @@ export class CustomGizmo {
         z: new THREE.Color(0x55a8ff),
         yaw: new THREE.Color(0xff9f1c),
         xz: new THREE.Color(0xff55ff),
+        roadEnd: new THREE.Color(0x44ff44),
     };
     private readonly axisMaterials: Partial<Record<GizmoAxis, THREE.MeshBasicMaterial>> = {};
 
@@ -77,6 +88,19 @@ export class CustomGizmo {
     private readonly tempScale = new THREE.Vector3();
     private readonly tempEuler = new THREE.Euler();
     private readonly cameraToGizmo = new THREE.Vector3();
+
+    // Road end handle — a sphere placed at the far end of a selected road segment
+    private roadEndHandle!: THREE.Mesh;
+    private readonly dragRoadStartPos = new THREE.Vector3();
+    private readonly dragRoadDir = new THREE.Vector3();
+    private lastSentRoadLength = 0;
+    private _suppressDeselect = false;
+
+    // Public mutable callbacks — set from outside after construction for road tool support
+    getSelectedRoadHandle?: () => IRoadHandle | undefined;
+    onRoadMoved?: (x: number, z: number, angle: number) => void;
+    onRoadResized?: (newLength: number) => void;
+    onDeselect?: () => void;
 
     constructor(props: ICustomTransformGizmoProps) {
         this.scene = props.scene;
@@ -140,6 +164,7 @@ export class CustomGizmo {
         }
         this.proxy.visible = false;
         this.setVisible(false);
+        if (!this._suppressDeselect) this.onDeselect?.();
     }
 
     syncSelectionFromSelectedInstance(): void {
@@ -170,6 +195,7 @@ export class CustomGizmo {
         this.root.position.set(this.proxy.position.x, 0.06, this.proxy.position.z);
         this.root.rotation.set(0, this.proxy.rotation.y, 0);
         this.#updateScale();
+        this.#updateRoadEndHandle();
     }
 
     #updateScale() {
@@ -183,6 +209,7 @@ export class CustomGizmo {
 
     update() {
         this.#updateScale();
+        this.#updateRoadEndHandle();
     }
 
     setVisible(visible: boolean) {
@@ -193,8 +220,20 @@ export class CustomGizmo {
             this.activeAxis = undefined;
             this.hoveredAxis = undefined;
             this.#applyAxisColors();
-            this.domElement.style.cursor = '';
+            this.domElement.style.cursor = this.defaultCursor;
+            if (this.roadEndHandle) this.roadEndHandle.visible = false;
         }
+    }
+
+    /** Select a road segment in instance mode (proxy not attached to the group). */
+    setRoadSelection(handle: IRoadHandle): void {
+        this._suppressDeselect = true;
+        this.clearSelection();
+        this._suppressDeselect = false;
+        this.proxy.position.set(handle.startX, 0, handle.startZ);
+        this.proxy.rotation.set(0, handle.angle, 0);
+        this.proxy.visible = true;
+        this.setVisible(true); // calls #positionRoot → #updateRoadEndHandle
     }
 
     defaultSnapping(position: THREE.Vector3, rotationY: number): { x: number; z: number; angle: number } | undefined {
@@ -221,6 +260,23 @@ export class CustomGizmo {
         }
         console.log(`Snapping ${position.x}, ${position.z} to ${x},${z}, angle: ${Rad2Deg(angle)}° (type ${type})`);
         return { x, z, angle };
+    }
+
+    #updateRoadEndHandle() {
+        if (!this.roadEndHandle) return;
+
+        const road = this.getSelectedRoadHandle?.();
+        if (!road || !this.root.visible) {
+            this.roadEndHandle.visible = false;
+            return;
+        }
+
+        this.roadEndHandle.visible = true;
+        this.roadEndHandle.position.set(road.endX, 0.12, road.endZ);
+
+        const distance = this.camera.position.distanceTo(this.roadEndHandle.position);
+        const scale = Math.max(0.18, distance * 0.01);
+        this.roadEndHandle.scale.setScalar(scale);
     }
 
     #syncPoseFromProxy(position: THREE.Vector3, rotationY: number) {
@@ -294,6 +350,13 @@ export class CustomGizmo {
                 this.tempRayHit.z - this.dragStartProxyPosition.z,
                 this.tempRayHit.x - this.dragStartProxyPosition.x
             );
+        } else if (axis === 'roadEnd') {
+            const road = this.getSelectedRoadHandle?.();
+            if (road) {
+                this.dragRoadStartPos.set(road.startX, 0, road.startZ);
+                this.dragRoadDir.set(Math.cos(road.angle), 0, -Math.sin(road.angle));
+                this.lastSentRoadLength = road.length;
+            }
         }
 
         event.preventDefault();
@@ -349,7 +412,7 @@ export class CustomGizmo {
                 this.hoveredAxis = axis;
                 this.#applyAxisColors();
             }
-            this.domElement.style.cursor = axis ? 'pointer' : '';
+            this.domElement.style.cursor = axis ? 'pointer' : this.defaultCursor;
             return false;
         }
 
@@ -363,7 +426,24 @@ export class CustomGizmo {
         const newPosition = new THREE.Vector3();
         let newRotationY = this.dragStartYaw;
 
-        if (axis === 'x' || axis === 'z') {
+        if (axis === 'roadEnd') {
+            const road = this.getSelectedRoadHandle?.();
+            if (!road) return false;
+
+            const deltaX = this.tempRayHit.x - this.dragRoadStartPos.x;
+            const deltaZ = this.tempRayHit.z - this.dragRoadStartPos.z;
+            const projectedLength = deltaX * this.dragRoadDir.x + deltaZ * this.dragRoadDir.z;
+            const snappedLength = Math.max(0.5, Math.round(projectedLength / GRID_SNAP) * GRID_SNAP);
+
+            if (Math.abs(snappedLength - this.lastSentRoadLength) > 1e-6) {
+                this.lastSentRoadLength = snappedLength;
+                this.onRoadResized?.(snappedLength);
+                this.#updateRoadEndHandle();
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            return true;
+        } else if (axis === 'x' || axis === 'z') {
             const deltaX = this.tempRayHit.x - this.dragStartPoint.x;
             const deltaZ = this.tempRayHit.z - this.dragStartPoint.z;
             const yaw = this.dragStartYaw;
@@ -404,6 +484,7 @@ export class CustomGizmo {
         event.preventDefault();
         event.stopPropagation();
         this.#syncPoseFromProxy(newPosition, newRotationY);
+        this.onRoadMoved?.(this.proxy.position.x, this.proxy.position.z, this.proxy.rotation.y);
         return true;
     }
 
@@ -414,8 +495,9 @@ export class CustomGizmo {
         this.#positionRoot()
         this.activeAxis = undefined;
         this.#applyAxisColors();
+        this.#updateRoadEndHandle();
         this.onDraggingChanged?.(false);
-        this.domElement.style.cursor = this.hoveredAxis ? 'pointer' : '';
+        this.domElement.style.cursor = this.hoveredAxis ? 'pointer' : this.defaultCursor;
     }
 
     #pickAxisAtPointer(event: PointerEvent): GizmoAxis | undefined {
@@ -435,7 +517,7 @@ export class CustomGizmo {
 
     #applyAxisColors() {
         const dragging = !!this.activeAxis;
-        (['x', 'z', 'yaw', 'xz'] as GizmoAxis[]).forEach((axis) => {
+        (['x', 'z', 'yaw', 'xz', 'roadEnd'] as GizmoAxis[]).forEach((axis) => {
             const material = this.axisMaterials[axis];
             if (!material) return;
 
@@ -466,11 +548,13 @@ export class CustomGizmo {
         const zMaterial = new THREE.MeshBasicMaterial({ color: this.axisBaseColors.z, depthTest: false, transparent: true, opacity: 0.95 });
         const yMaterial = new THREE.MeshBasicMaterial({ color: this.axisBaseColors.yaw, depthTest: false, transparent: true, opacity: 0.95 });
         const xyMaterial = new THREE.MeshBasicMaterial({ color: this.axisBaseColors.xz, depthTest: false, transparent: true, opacity: 0.95 });
+        const roadEndMaterial = new THREE.MeshBasicMaterial({ color: this.axisBaseColors.roadEnd, depthTest: false, transparent: true, opacity: 0.95 });
 
         this.axisMaterials.x = xMaterial;
         this.axisMaterials.z = zMaterial;
         this.axisMaterials.yaw = yMaterial;
         this.axisMaterials.xz = xyMaterial;
+        this.axisMaterials.roadEnd = roadEndMaterial;
 
         const headGeom = new THREE.ConeGeometry(0.25, 0.8, 8);
 
@@ -509,8 +593,14 @@ export class CustomGizmo {
         yRing.rotation.x = Math.PI / 2;
         yRing.userData.axis = 'yaw';
 
+        this.roadEndHandle = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), roadEndMaterial);
+        this.roadEndHandle.userData.axis = 'roadEnd';
+        this.roadEndHandle.visible = false;
+        this.roadEndHandle.renderOrder = 1001;
+
         this.root.add(centerHandle, xGroup, zGroup, yRing);
         this.scene.add(this.root);
+        this.scene.add(this.roadEndHandle);
         this.domElement.style.touchAction = 'none';
         this.#applyAxisColors();
     }

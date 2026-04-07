@@ -10,6 +10,15 @@ import { Page } from './Page';
 import { CustomGizmo, type ISelectedInstance } from './editor/CustomGizmo';
 import { IFloorSize, UIProps } from './GameUIComponent';
 
+export type ILeftPointerGesture = {
+    downX: number;
+    downY: number;
+    moved: boolean;
+    consumedByGizmo: boolean;
+    currentX: number;
+    currentY: number;
+};
+
 export class GameScene3D {
     assetManager: AssetManager = new AssetManager(this)
     worldMap3D!: WorldMap3D;
@@ -50,6 +59,10 @@ export class GameScene3D {
     leftPointerDownConsumedByGizmo = false;
     leftPointerDownX = 0;
     leftPointerDownY = 0;
+    onLeftPointerDown?: (event: PointerEvent, gesture: ILeftPointerGesture) => void;
+    onLeftPointerMove?: (event: PointerEvent, gesture: ILeftPointerGesture) => void;
+    onLeftPointerUp?: (event: PointerEvent, gesture: ILeftPointerGesture) => void;
+    onLeftPointerCancel?: () => void;
     size: IFloorSize;
 
     constructor(readonly uiProps: UIProps) {
@@ -249,8 +262,16 @@ export class GameScene3D {
                 this.leftPointerDownConsumedByGizmo = true;
                 event.stopPropagation();
                 event.preventDefault();
-                return;
             }
+
+            this.onLeftPointerDown?.(event, {
+                downX: this.leftPointerDownX,
+                downY: this.leftPointerDownY,
+                moved: this.leftPointerDownMoved,
+                consumedByGizmo: this.leftPointerDownConsumedByGizmo,
+                currentX: event.clientX,
+                currentY: event.clientY,
+            });
         });
 
         this.renderDom?.addEventListener('pointermove', (event) => {
@@ -265,12 +286,32 @@ export class GameScene3D {
             if (this.customGizmo?.onPointerMove(event)) {
                 //this.#onTransformChanged();
             }
+
+            if (this.isLeftPointerDown) {
+                this.onLeftPointerMove?.(event, {
+                    downX: this.leftPointerDownX,
+                    downY: this.leftPointerDownY,
+                    moved: this.leftPointerDownMoved,
+                    consumedByGizmo: this.leftPointerDownConsumedByGizmo,
+                    currentX: event.clientX,
+                    currentY: event.clientY,
+                });
+            }
         });
 
         this.renderDom?.addEventListener('pointerup', (event) => {
             this.customGizmo?.onPointerUp();
 
             if (event.button === 0) {
+                const gesture: ILeftPointerGesture = {
+                    downX: this.leftPointerDownX,
+                    downY: this.leftPointerDownY,
+                    moved: this.leftPointerDownMoved,
+                    consumedByGizmo: this.leftPointerDownConsumedByGizmo,
+                    currentX: event.clientX,
+                    currentY: event.clientY,
+                };
+
                 const shouldHandleAsClick = this.isLeftPointerDown
                     && !this.leftPointerDownMoved
                     && !this.leftPointerDownConsumedByGizmo;
@@ -310,9 +351,15 @@ export class GameScene3D {
                     this.uiProps.selectedInstance.set(selected);
                     this.uiProps.selectedCustomObject.set(undefined);
                     this.lastTransformValid = true;
-                    this.customGizmo?.syncSelectionFromSelectedInstance();
+                    if (selected) {
+                        this.customGizmo?.syncSelectionFromSelectedInstance();
+                    } else {
+                        this.customGizmo?.clearSelection();
+                    }
                     this.#updateSelectionHalo();
                 }
+
+                this.onLeftPointerUp?.(event, gesture);
 
                 this.isLeftPointerDown = false;
                 this.leftPointerDownMoved = false;
@@ -322,6 +369,7 @@ export class GameScene3D {
 
         this.renderDom?.addEventListener('pointercancel', () => {
             this.customGizmo?.onPointerUp();
+            this.onLeftPointerCancel?.();
             this.isLeftPointerDown = false;
             this.leftPointerDownMoved = false;
             this.leftPointerDownConsumedByGizmo = false;
@@ -355,7 +403,10 @@ export class GameScene3D {
                     return;
                 }
 
+                this.selectedInstance = undefined;
+                this.uiProps.selectedInstance.set(undefined);
                 this.uiProps.selectedCustomObject.set(obj);
+                this.#updateSelectionHalo();
                 this.onCustomGizmoObjectSelected?.(obj);
             },
             onDraggingChanged: (dragging) => {

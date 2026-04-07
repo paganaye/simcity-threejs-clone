@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { RoadSegment } from './RoadSegment';
-import { RoadType } from './RoadBuilder';
 
 export class RoadNetwork {
     readonly segments: RoadSegment[] = [];
@@ -11,9 +10,8 @@ export class RoadNetwork {
         startZ: number,
         angle: number,
         length: number,
-        roadType: RoadType = 'l1',
     ): RoadSegment {
-        const segment = new RoadSegment(scene, startX, startZ, angle, length, roadType);
+        const segment = new RoadSegment(scene, startX, startZ, angle, length);
         this.segments.push(segment);
         return segment;
     }

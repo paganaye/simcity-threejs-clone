@@ -53,7 +53,6 @@ export class RoadToolController extends ToolController {
                 this.potentialRoadStart.snappedZ,
                 0,
                 MIN_ROAD_LENGTH,
-                'l1'
             );
             this.scene3D.selectRoadSegment(this.newRoadSegment);
             this.scene3D.roadGizmo.beginEndDrag(event);

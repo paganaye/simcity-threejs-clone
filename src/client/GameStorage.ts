@@ -1,8 +1,8 @@
 import { GameScene3D } from "./GameScene3D";
 import type { ModelName } from "./AssetManager";
 import type { Population } from "./Population";
-import type { RoadType } from "./RoadBuilder";
 import type { IRoad } from "./roads/IRoad";
+import { roadTypeToIRoad } from "./roads/RoadTypeAdapter";
 import * as THREE from 'three';
 
 
@@ -26,7 +26,6 @@ export interface ISerializedRoad {
     startZ: number;
     angle: number;
     length: number;
-    roadType: RoadType;
     iRoad?: IRoad;
     endX?: number;
     endZ?: number;
@@ -154,7 +153,6 @@ export class GameStorage {
             startZ: segment.startZ,
             angle: segment.angle,
             length: segment.length,
-            roadType: segment.roadType,
             iRoad: segment.getIRoad(),
             endX: segment.endX,
             endZ: segment.endZ,
@@ -238,11 +236,11 @@ export class GameStorage {
                 road.startZ,
                 road.angle,
                 road.length,
-                road.roadType,
             );
-            if (road.iRoad) {
-                segment.setIRoad(road.iRoad);
-            }
+            // Prefer iRoad; fall back to legacy roadType field from old saves
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const legacyType = (road as any).roadType;
+            segment.setIRoad(road.iRoad ?? roadTypeToIRoad(legacyType ?? 'l1'));
             if (road.arcMidX !== undefined && road.arcMidZ !== undefined) {
                 segment.setArc(road.arcMidX, road.arcMidZ, road.endX, road.endZ);
             }

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RoadBuilder, type RoadType, iRoadToLegacyRoadType, roadTypeToIRoad } from './RoadBuilder';
+import { RoadBuilder } from './RoadBuilder';
 import type { IRoad } from './roads/IRoad';
 
 /**
@@ -11,7 +11,12 @@ import type { IRoad } from './roads/IRoad';
  */
 export class RoadSegment {
     readonly group = new THREE.Group();
-    private iRoad: IRoad;
+    private iRoad: IRoad = {
+        type: 'TwoWayRoad',
+        forwardWay: { roadColor: 'old', lanes: 1, shoulder: 'none', sidewalk: 'small' },
+        otherWay:   { roadColor: 'old', lanes: 1, shoulder: 'none', sidewalk: 'small' },
+        dividing: 'none',
+    };
 
     // Arc control point (world space). When set, road is rebuilt as a curve.
     private _arcMidX?: number;
@@ -26,9 +31,7 @@ export class RoadSegment {
         public startZ: number,
         public angle: number,
         public length: number,
-        public roadType: RoadType = 'l1',
     ) {
-        this.iRoad = roadTypeToIRoad(roadType);
         this.group.userData.selectableType = 'road';
         this.group.userData.roadSegment = this;
         this.group.userData.iRoad = this.iRoad;
@@ -65,17 +68,6 @@ export class RoadSegment {
                 otherWay: { ...nextRoad.otherWay },
                 dividing: nextRoad.dividing,
             };
-        this.group.userData.iRoad = this.iRoad;
-        this.roadType = iRoadToLegacyRoadType(this.iRoad);
-        this.rebuild();
-    }
-
-    setRoadType(nextType: RoadType): void {
-        if (this.roadType === nextType) {
-            return;
-        }
-        this.roadType = nextType;
-        this.iRoad = roadTypeToIRoad(nextType);
         this.group.userData.iRoad = this.iRoad;
         this.rebuild();
     }

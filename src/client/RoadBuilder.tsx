@@ -43,7 +43,29 @@ export class RoadBuilder implements IOrientation2D {
     static PERPENDICULAR_PARKING_WIDTH = 20;
 
     static TURNING_SEGMENTS_MULTIPLIER = 3;
-    static TEXTURE_WIDTH = 92;
+
+    static computeTextureWidth(options: RoadRenderOptions): number {
+        let width = 0;
+        switch (options.dividing) {
+            case 'yellowLineSolid': case 'yellowLineDashed': case 'gap':
+                width += this.YELLOW_LINE_WIDTH; break;
+        }
+        const lanes = Math.max(0, options.lanes);
+        width += lanes * this.ROAD_WIDTH;
+        if (lanes > 1) width += (lanes - 1) * this.YELLOW_LINE_WIDTH;
+        switch (options.shoulder) {
+            case 'parallelParking':      width += this.PARALLEL_PARKING_WIDTH; break;
+            case 'perpendicularParking': width += this.PERPENDICULAR_PARKING_WIDTH; break;
+            case 'emergencyLane':        width += this.YELLOW_LINE_WIDTH + this.EMERGENCY_LANE_WIDTH; break;
+            case 'line':                 width += this.YELLOW_LINE_WIDTH + this.YELLOW_LINE_WIDTH; break;
+            case 'gap':                  width += this.YELLOW_LINE_WIDTH; break;
+        }
+        switch (options.sidewalk) {
+            case 'small': width += this.SMALL_SIDEWALK; break;
+            case 'large': width += this.LARGE_SIDEWALK; break;
+        }
+        return Math.max(1, width);
+    }
 
 
     constructor(startPosition: IOrientation2D, readonly scene: THREE.Object3D) {
@@ -83,7 +105,7 @@ export class RoadBuilder implements IOrientation2D {
     static createRoadTexture(options: RoadRenderOptions) {
 
         const canvas = document.createElement('canvas');
-        const textureWidth = this.TEXTURE_WIDTH;
+        const textureWidth = this.computeTextureWidth(options);
         canvas.width = textureWidth;
         canvas.height = this.TEXTURE_HEIGHT;
         const ctx = canvas.getContext('2d')!;

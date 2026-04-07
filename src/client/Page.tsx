@@ -93,9 +93,9 @@ export abstract class Page {
         this.controls = new SimpleCameraControls(this.camera, this.renderer.domElement, this.scene);
         this.controls.zoomSpeed = 2.5;
         this.controls.mouseButtons = {
-            LEFT: THREE.MOUSE.PAN,
+            LEFT: undefined,
             MIDDLE: THREE.MOUSE.ROTATE,
-            RIGHT: undefined,
+            RIGHT: THREE.MOUSE.PAN,
         };
 
         this.cameraRotateGizmo = new CameraRotateGizmo(this.scene);

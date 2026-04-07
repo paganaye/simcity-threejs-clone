@@ -250,7 +250,12 @@ export class GameScene3D {
     #setupSelectionInput() {
         this.renderDom?.addEventListener('pointerdown', (event) => {
             if (!this.renderDom) return;
-            if (event.button !== 0) return;
+
+            const controls = this.pageContext?.controls;
+            if (event.button !== 0) {
+                controls?.handlePointerDown(event);
+                return;
+            }
 
             this.isLeftPointerDown = true;
             this.leftPointerDownMoved = false;
@@ -272,9 +277,12 @@ export class GameScene3D {
                 currentX: event.clientX,
                 currentY: event.clientY,
             });
+
+            controls?.handlePointerDown(event);
         });
 
         this.renderDom?.addEventListener('pointermove', (event) => {
+            const controls = this.pageContext?.controls;
             if (this.isLeftPointerDown) {
                 const dx = event.clientX - this.leftPointerDownX;
                 const dy = event.clientY - this.leftPointerDownY;
@@ -297,9 +305,12 @@ export class GameScene3D {
                     currentY: event.clientY,
                 });
             }
+
+            controls?.handlePointerMove(event);
         });
 
         this.renderDom?.addEventListener('pointerup', (event) => {
+            const controls = this.pageContext?.controls;
             this.customGizmo?.onPointerUp();
 
             if (event.button === 0) {
@@ -365,14 +376,34 @@ export class GameScene3D {
                 this.leftPointerDownMoved = false;
                 this.leftPointerDownConsumedByGizmo = false;
             }
+
+            controls?.handlePointerUp();
         });
 
         this.renderDom?.addEventListener('pointercancel', () => {
+            const controls = this.pageContext?.controls;
             this.customGizmo?.onPointerUp();
             this.onLeftPointerCancel?.();
             this.isLeftPointerDown = false;
             this.leftPointerDownMoved = false;
             this.leftPointerDownConsumedByGizmo = false;
+            controls?.handlePointerUp();
+        });
+
+        this.renderDom?.addEventListener('pointerleave', () => {
+            this.pageContext?.controls?.handlePointerUp();
+        });
+
+        this.renderDom?.addEventListener('wheel', (event) => {
+            this.pageContext?.controls?.handleWheel(event);
+        }, { passive: false });
+
+        this.renderDom?.addEventListener('contextmenu', (event) => {
+            this.pageContext?.controls?.handleContextMenu(event);
+        });
+
+        window.addEventListener('pointerup', () => {
+            this.pageContext?.controls?.handleWindowPointerUp();
         });
     }
 

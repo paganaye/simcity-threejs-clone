@@ -16,9 +16,9 @@ export class SimpleCameraControls {
     zoomSpeed = 2.5;
     useMiddlePivotPanForRotate = true;
     mouseButtons: { LEFT: MouseAction; MIDDLE: MouseAction; RIGHT: MouseAction } = {
-        LEFT: THREE.MOUSE.PAN,
+        LEFT: undefined,
         MIDDLE: THREE.MOUSE.ROTATE,
-        RIGHT: undefined,
+        RIGHT: THREE.MOUSE.PAN,
     };
     onRotateAnchorChanged?: (position: THREE.Vector3) => void;
     onRotateAnchorEnded?: () => void;
@@ -45,13 +45,6 @@ export class SimpleCameraControls {
         readonly scene?: THREE.Scene,
     ) {
         this.updateSphericalFromCamera();
-        this.domElement.addEventListener('pointerdown', this.#onPointerDown);
-        this.domElement.addEventListener('pointermove', this.#onPointerMove);
-        this.domElement.addEventListener('pointerup', this.#onPointerUp);
-        this.domElement.addEventListener('pointercancel', this.#onPointerUp);
-        this.domElement.addEventListener('pointerleave', this.#onPointerUp);
-        this.domElement.addEventListener('wheel', this.#onWheel, { passive: false });
-        window.addEventListener('pointerup', this.#onWindowPointerUp);
         this.update();
     }
 
@@ -84,13 +77,31 @@ export class SimpleCameraControls {
     }
 
     dispose() {
-        this.domElement.removeEventListener('pointerdown', this.#onPointerDown);
-        this.domElement.removeEventListener('pointermove', this.#onPointerMove);
-        this.domElement.removeEventListener('pointerup', this.#onPointerUp);
-        this.domElement.removeEventListener('pointercancel', this.#onPointerUp);
-        this.domElement.removeEventListener('pointerleave', this.#onPointerUp);
-        this.domElement.removeEventListener('wheel', this.#onWheel);
-        window.removeEventListener('pointerup', this.#onWindowPointerUp);
+        this.#endInteraction();
+    }
+
+    handlePointerDown(event: PointerEvent) {
+        this.#onPointerDown(event);
+    }
+
+    handlePointerMove(event: PointerEvent) {
+        this.#onPointerMove(event);
+    }
+
+    handlePointerUp() {
+        this.#onPointerUp();
+    }
+
+    handleWindowPointerUp() {
+        this.#onWindowPointerUp();
+    }
+
+    handleWheel(event: WheelEvent) {
+        this.#onWheel(event);
+    }
+
+    handleContextMenu(event: MouseEvent) {
+        this.#onContextMenu(event);
     }
 
     updateSphericalFromCamera() {
@@ -256,5 +267,9 @@ export class SimpleCameraControls {
             MAX_RADIUS
         );
         this.update();
+    };
+
+    #onContextMenu = (event: MouseEvent) => {
+        event.preventDefault();
     };
 }

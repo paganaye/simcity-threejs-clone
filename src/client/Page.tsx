@@ -16,7 +16,7 @@ export abstract class Page {
     renderer!: THREE.WebGLRenderer;
     camera!: THREE.PerspectiveCamera;
 
-    controls?: SimpleCameraControls;
+    cameraControls?: SimpleCameraControls;
     cameraRotateGizmo?: CameraRotateGizmo;
     gui?: GUI;
     statsFPS?: Stats;
@@ -90,19 +90,19 @@ export abstract class Page {
     }
 
     protected createMouseControls() {
-        this.controls = new SimpleCameraControls(this.camera, this.renderer.domElement, this.scene);
-        this.controls.zoomSpeed = 2.5;
-        this.controls.mouseButtons = {
+        this.cameraControls = new SimpleCameraControls(this.camera, this.renderer.domElement, this.scene);
+        this.cameraControls.zoomSpeed = 2.5;
+        this.cameraControls.mouseButtons = {
             LEFT: undefined,
             MIDDLE: THREE.MOUSE.ROTATE,
             RIGHT: THREE.MOUSE.PAN,
         };
 
         this.cameraRotateGizmo = new CameraRotateGizmo(this.scene);
-        this.controls.onRotateAnchorChanged = (position) => {
+        this.cameraControls.onRotateAnchorChanged = (position) => {
             this.cameraRotateGizmo?.setTarget(position);
         };
-        this.controls.onRotateAnchorEnded = () => {
+        this.cameraControls.onRotateAnchorEnded = () => {
             this.cameraRotateGizmo?.hide();
         };
     }
@@ -193,9 +193,9 @@ export abstract class Page {
 
 
     cleanup() {
-        this.controls?.dispose();
+        this.cameraControls?.dispose();
         this.cameraRotateGizmo?.dispose();
-        this.controls = undefined;
+        this.cameraControls = undefined;
         this.cameraRotateGizmo = undefined;
     }
 

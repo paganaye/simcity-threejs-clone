@@ -1,5 +1,5 @@
 import { GameScene3D } from '../GameScene3D';
-import { Signal } from '../Signal';
+import { type ILeftPointerGesture } from '../GameScene3D';
 import { ActiveTool } from './ToolTypes';
 
 
@@ -7,7 +7,10 @@ export abstract class ToolController {
     constructor(readonly scene3D: GameScene3D) {
     }
 
-    abstract bind(activeTool: Signal<ActiveTool>): void;
-    abstract onToolChanged(activeTool: Signal<ActiveTool>, tool: ActiveTool): void;
+    abstract onToolChanged(tool: ActiveTool): void;
 
+    onPointerDown(_event: PointerEvent, _gesture: ILeftPointerGesture): void {}
+    onPointerMove(_event: PointerEvent, _gesture: ILeftPointerGesture): void {}
+    onPointerUp(_event: PointerEvent, _gesture: ILeftPointerGesture): void {}
+    onPointerCancel(): void {}
 }

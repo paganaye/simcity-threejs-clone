@@ -1,32 +1,24 @@
 import * as THREE from 'three';
-import { RoadNetwork } from '../RoadNetwork';
+import { type ILeftPointerGesture } from '../GameScene3D';
 import { RoadSegment } from '../RoadSegment';
-import { Signal } from '../Signal';
 import { ToolController } from './ToolController';
 import { ActiveTool } from './ToolTypes';
 
 export class BulldozerToolController extends ToolController {
     private readonly pointerNdc = new THREE.Vector2();
 
-    constructor(scene3D: ToolController['scene3D'], private readonly roadNetwork: RoadNetwork) {
-        super(scene3D);
-    }
-
-    bind(_activeTool: Signal<ActiveTool>): void {
-    }
-
-    onToolChanged(_activeTool: Signal<ActiveTool>, tool: ActiveTool): void {
+    onToolChanged(tool: ActiveTool): void {
         if (tool === 'bulldoze') {
             this.scene3D.clearSelection();
         }
     }
 
-    handlePointerUp(event: PointerEvent, activeTool: ActiveTool): void {
-        if (activeTool !== 'bulldoze') return;
+    override onPointerUp(event: PointerEvent, gesture: ILeftPointerGesture): void {
+        if (event.button !== 0 || gesture.moved) return;
 
         const hitRoad = this.#pickRoadSegment(event);
         if (hitRoad) {
-            this.roadNetwork.removeSegment(hitRoad);
+            this.scene3D.roadNetwork.removeSegment(hitRoad);
             if (this.scene3D.uiProps.selectedCustomObject.get()?.userData?.roadSegment === hitRoad) {
                 this.scene3D.clearSelection();
             }
@@ -35,7 +27,7 @@ export class BulldozerToolController extends ToolController {
 
     #pickRoadSegment(event: PointerEvent): RoadSegment | undefined {
         const renderDom = this.scene3D.renderDom;
-        if (!renderDom || this.roadNetwork.segments.length === 0) return undefined;
+        if (!renderDom || this.scene3D.roadNetwork.segments.length === 0) return undefined;
 
         const rect = renderDom.getBoundingClientRect();
         this.pointerNdc.set(
@@ -44,7 +36,10 @@ export class BulldozerToolController extends ToolController {
         );
         this.scene3D.raycaster.setFromCamera(this.pointerNdc, this.scene3D.camera);
 
-        const hits = this.scene3D.raycaster.intersectObjects(this.roadNetwork.segments.map((segment) => segment.group), true);
+        const hits = this.scene3D.raycaster.intersectObjects(
+            this.scene3D.roadNetwork.segments.map((s) => s.group),
+            true,
+        );
         return hits[0]?.object.userData.roadSegment as RoadSegment | undefined;
     }
 }

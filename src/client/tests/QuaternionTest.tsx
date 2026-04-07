@@ -39,9 +39,9 @@ export default class QuaternionTest extends Page {
     this.scene.background = new THREE.Color(0x0f1622);
 
     this.camera.position.set(8, 6, 10);
-    if (this.controls) {
-      this.controls.target.set(0, 1.2, 0);
-      this.controls.update();
+    if (this.cameraControls) {
+      this.cameraControls.target.set(0, 1.2, 0);
+      this.cameraControls.update();
     }
 
     this.createDemoScene();

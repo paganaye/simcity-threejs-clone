@@ -31,9 +31,9 @@ export default class Path2 extends Page {
     this.crowd3D.population.setupQuadTree(this.crowd3D.population.mapWidth, this.crowd3D.population.mapHeight);
 
     this.camera.position.set(10, 20, -5);
-    if (this.controls) {
-      this.controls.target.set(10, 0, 15);
-      this.controls.update();
+    if (this.cameraControls) {
+      this.cameraControls.target.set(10, 0, 15);
+      this.cameraControls.update();
     }
 
     const assetManager = new AssetManager({ scene: this.scene } as any);

@@ -20,7 +20,6 @@ export interface UIProps {
     activeTool: Signal<ActiveTool>;
     selectedInstance: Signal<ISelectedInstance | undefined>;
     selectedCustomObject: Signal<THREE.Object3D | undefined>;
-    selectionFilter?: (selected: ISelectedInstance) => boolean;
     simMoney: Signal<number>;
     population: Signal<number>;
     simTime: Signal<number>;
@@ -51,7 +50,6 @@ export function GameUIComponent(props: {
         activeTool,
         selectedInstance,
         selectedCustomObject,
-        selectionFilter: () => true,
         simMoney,
         population,
         simTime,

@@ -62,7 +62,7 @@ export default class ThreeEditor extends Page {
         setupEditorUI(this)
 
 
-        this.controls!.mouseButtons = {
+        this.cameraControls!.mouseButtons = {
             LEFT: undefined,
             MIDDLE: THREE.MOUSE.ROTATE,
             RIGHT: THREE.MOUSE.PAN

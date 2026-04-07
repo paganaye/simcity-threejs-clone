@@ -73,8 +73,8 @@ export default class GizmoTest extends Page {
       domElement: this.renderer.domElement,
       isSelectable: (obj) => this.selectableSet.has(obj),
       onDraggingChanged: (dragging) => {
-        if (this.controls) {
-          this.controls.enabled = !dragging;
+        if (this.cameraControls) {
+          this.cameraControls.enabled = !dragging;
         }
       }
     });
@@ -114,8 +114,8 @@ export default class GizmoTest extends Page {
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove, true);
     window.removeEventListener('pointerup', this.onPointerUp, true);
     this.gizmo?.clearSelection();
-    if (this.controls) {
-      this.controls.enabled = true;
+    if (this.cameraControls) {
+      this.cameraControls.enabled = true;
     }
   }
 }

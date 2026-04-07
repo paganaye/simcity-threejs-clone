@@ -14,8 +14,10 @@ import { ISelectedInstance, ObjectGizmo } from './editor/ObjectGizmo';
 import { RoadSegment } from './RoadSegment';
 import { ToolController } from './tools/ToolController';
 import { RoadToolController } from './tools/RoadToolController';
+import { BulldozerToolController } from './tools/BulldozerToolController';
 import { SelectToolController } from './tools/SelectToolController';
 import { ActiveTool } from './tools/ToolTypes';
+import { RoadNetwork } from './RoadNetwork';
 
 export type ILeftPointerGesture = {
     downX: number;
@@ -48,11 +50,12 @@ export class GameScene3D {
     readonly tempPosition = new THREE.Vector3();
     readonly tempQuaternion = new THREE.Quaternion();
     readonly tempScale = new THREE.Vector3();
-    pageContext?: Page;
+    page?: Page;
     objectGizmo!: ObjectGizmo;
     roadGizmo!: RoadGizmo;
     currentGizmo?: CustomGizmo;
     readonly transformProxy = new THREE.Object3D();
+    selectionFilter?: (selected: ISelectedInstance) => boolean;
     selectionHalo?: THREE.Group;
     readonly selectionHaloLayers: THREE.LineSegments<THREE.EdgesGeometry, THREE.LineBasicMaterial>[] = [];
     lastTransformValid = true;
@@ -68,15 +71,12 @@ export class GameScene3D {
     leftPointerDownConsumedByGizmo = false;
     leftPointerDownX = 0;
     leftPointerDownY = 0;
-    onLeftPointerDown?: (event: PointerEvent, gesture: ILeftPointerGesture) => void;
-    onLeftPointerMove?: (event: PointerEvent, gesture: ILeftPointerGesture) => void;
-    onLeftPointerUp?: (event: PointerEvent, gesture: ILeftPointerGesture) => void;
-    onLeftPointerCancel?: () => void;
     /** Called by the road gizmo after each resize (drag of end handle). */
     onRoadSegmentResized?: (segment: RoadSegment) => void;
-    /** Called by the road gizmo when a drag ends (pointer up). */
-    onRoadDragEnded?: () => void;
-    readonly toolControllers: ToolController[] = [];
+    readonly roadNetwork = new RoadNetwork();
+    private currentToolController?: ToolController;
+    private currentTool: ActiveTool = 'select';
+    private readonly toolMap = new Map<ActiveTool, ToolController>();
     size: IFloorSize;
 
     constructor(readonly uiProps: UIProps) {
@@ -84,7 +84,7 @@ export class GameScene3D {
     }
 
     async init(context: Page) {
-        this.pageContext = context;
+        this.page = context;
         this.scene = context.scene;
         this.renderer = context.renderer;
         this.gui = context.gui!;
@@ -129,23 +129,34 @@ export class GameScene3D {
         const centerX = cityChanged.width / 2 - 0.5;
         const centerZ = cityChanged.height / 2 - 0.5;
         this.camera.lookAt(centerX, 0, centerZ);
-        if (this.pageContext?.controls) {
-            this.pageContext.controls.target.set(centerX, 0, centerZ);
-            this.pageContext.controls.update();
+        if (this.page?.cameraControls) {
+            this.page.cameraControls.target.set(centerX, 0, centerZ);
+            this.page.cameraControls.update();
         }
 
     }
 
     setActiveTool(tool: ActiveTool): void {
         this.uiProps.activeTool.set(tool);
-        this.toolControllers.forEach((controller) => controller.onToolChanged(this.uiProps.activeTool, tool));
+        this.currentTool = tool;
+        this.currentToolController = this.toolMap.get(tool);
+        this.currentToolController?.onToolChanged(tool);
     }
 
     #setupToolControllers(): void {
-        this.toolControllers.length = 0;
-        this.toolControllers.push(new RoadToolController(this));
-        this.toolControllers.push(new SelectToolController(this));
-        this.toolControllers.forEach((controller) => controller.bind(this.uiProps.activeTool));
+        const roadController = new RoadToolController(this);
+        const bulldozeController = new BulldozerToolController(this);
+        const selectController = new SelectToolController(this);
+
+        this.toolMap.set('road', roadController);
+        this.toolMap.set('bulldoze', bulldozeController);
+        this.toolMap.set('select', selectController);
+
+        this.isCustomGizmoSelectableObject = (obj) =>
+            this.currentTool !== 'bulldoze' && obj.userData?.selectableType === 'road';
+
+        this.onRoadSegmentResized = (seg) => roadController.onRoadSegmentResized(seg);
+
         this.setActiveTool(this.uiProps.activeTool.get());
     }
 
@@ -185,6 +196,42 @@ export class GameScene3D {
             midZ: segment.arcMidZ,
         });
         this.#updateSelectionHalo();
+    }
+
+    selectAtScreenPoint(clientX: number, clientY: number): void {
+        if (!this.renderDom) return;
+        const rect = this.renderDom.getBoundingClientRect();
+        const mouse = new THREE.Vector2(
+            ((clientX - rect.left) / rect.width) * 2 - 1,
+            -((clientY - rect.top) / rect.height) * 2 + 1
+        );
+        this.raycaster.setFromCamera(mouse, this.camera);
+        const hits = this.raycaster.intersectObjects(this.scene.children, true);
+
+        let selected: ISelectedInstance | undefined;
+        let selectedObject3D: THREE.Object3D | undefined;
+        for (const hit of hits) {
+            if (hit.object === this.transformProxy) continue;
+            const selectableType = hit.object.userData?.selectableType as ('building' | 'character' | 'road' | undefined);
+            if (!selectableType) continue;
+            if (selectableType === 'road') {
+                selectedObject3D = hit.object.userData?.roadSegment?.group as THREE.Object3D | undefined;
+                if (selectedObject3D) break;
+                continue;
+            }
+            if (hit.instanceId == null) continue;
+            const obj = hit.object as THREE.InstancedMesh;
+            selected = { mesh: obj, instanceId: hit.instanceId, selectableType };
+            if (this.selectionFilter && !this.selectionFilter(selected)) {
+                selected = undefined;
+            } else break;
+        }
+
+        if (selectedObject3D?.userData?.roadSegment) {
+            this.selectRoadSegment(selectedObject3D.userData.roadSegment as RoadSegment);
+        } else {
+            this.#selectInstance(selected);
+        }
     }
 
     #selectInstance(selected: ISelectedInstance | undefined): void {
@@ -244,9 +291,6 @@ export class GameScene3D {
 
     drawFrame(_elapsedTime: number) {
         let now = performance.now();
-        //if (this.inputManager.isLeftMouseDown) {
-        //this.useTool();
-        //}
         this.cars3D?.drawFrame(now)
         this.worldMap3D?.drawFrame(now)
         this.currentGizmo?.update();
@@ -334,7 +378,7 @@ export class GameScene3D {
         this.renderDom?.addEventListener('pointerdown', (event) => {
             if (!this.renderDom) return;
 
-            const controls = this.pageContext?.controls;
+            const controls = this.page?.cameraControls;
             if (event.button !== 0) {
                 controls?.handlePointerDown(event);
                 return;
@@ -351,7 +395,7 @@ export class GameScene3D {
                 event.stopPropagation();
                 event.preventDefault();
             } else {
-                this.onLeftPointerDown?.(event, {
+                this.currentToolController?.onPointerDown(event, {
                     downX: this.leftPointerDownX,
                     downY: this.leftPointerDownY,
                     moved: this.leftPointerDownMoved,
@@ -364,7 +408,7 @@ export class GameScene3D {
         });
 
         this.renderDom?.addEventListener('pointermove', (event) => {
-            const controls = this.pageContext?.controls;
+            const controls = this.page?.cameraControls;
             if (this.isLeftPointerDown) {
                 const dx = event.clientX - this.leftPointerDownX;
                 const dy = event.clientY - this.leftPointerDownY;
@@ -380,7 +424,7 @@ export class GameScene3D {
             } else {
 
                 if (this.isLeftPointerDown) {
-                    this.onLeftPointerMove?.(event, {
+                    this.currentToolController?.onPointerMove(event, {
                         downX: this.leftPointerDownX,
                         downY: this.leftPointerDownY,
                         moved: this.leftPointerDownMoved,
@@ -394,7 +438,7 @@ export class GameScene3D {
         });
 
         this.renderDom?.addEventListener('pointerup', (event) => {
-            const controls = this.pageContext?.controls;
+            const controls = this.page?.cameraControls;
             this.currentGizmo?.onPointerUp(event);
 
             if (event.button === 0) {
@@ -407,58 +451,7 @@ export class GameScene3D {
                     currentY: event.clientY,
                 };
 
-                const shouldHandleAsClick = this.isLeftPointerDown
-                    && !this.leftPointerDownMoved
-                    && !this.leftPointerDownConsumedByGizmo;
-
-                if (shouldHandleAsClick) {
-                    if (!this.renderDom) return;
-                    const rect = this.renderDom.getBoundingClientRect();
-                    const mouse = new THREE.Vector2(
-                        ((event.clientX - rect.left) / rect.width) * 2 - 1,
-                        -((event.clientY - rect.top) / rect.height) * 2 + 1
-                    );
-
-                    this.raycaster.setFromCamera(mouse, this.camera);
-                    const hits = this.raycaster.intersectObjects(this.scene.children, true);
-
-                    let selected: ISelectedInstance | undefined;
-                    let selectedObject3D: THREE.Object3D | undefined;
-                    for (const hit of hits) {
-                        // Skip the proxy itself
-                        if (hit.object === this.transformProxy) continue;
-
-                        const selectableType = hit.object.userData?.selectableType as ('building' | 'character' | 'road' | undefined);
-                        if (!selectableType) continue;
-
-                        if (selectableType === 'road') {
-                            selectedObject3D = hit.object.userData?.roadSegment?.group as THREE.Object3D | undefined;
-                            if (selectedObject3D) break;
-                            continue;
-                        }
-
-                        if (hit.instanceId == null) continue;
-
-                        const obj = hit.object as THREE.InstancedMesh;
-
-                        selected = {
-                            mesh: obj,
-                            instanceId: hit.instanceId,
-                            selectableType,
-                        };
-                        if (this.uiProps.selectionFilter && !this.uiProps.selectionFilter(selected)) {
-                            selected = undefined;
-                        } else break;
-                    }
-
-                    if (selectedObject3D?.userData?.roadSegment) {
-                        this.selectRoadSegment(selectedObject3D.userData.roadSegment as RoadSegment);
-                    } else {
-                        this.#selectInstance(selected);
-                    }
-                }
-
-                this.onLeftPointerUp?.(event, gesture);
+                this.currentToolController?.onPointerUp(event, gesture);
                 this.isLeftPointerDown = false;
                 this.leftPointerDownMoved = false;
                 this.leftPointerDownConsumedByGizmo = false;
@@ -468,9 +461,9 @@ export class GameScene3D {
         });
 
         this.renderDom?.addEventListener('pointercancel', () => {
-            const controls = this.pageContext?.controls;
+            const controls = this.page?.cameraControls;
             this.currentGizmo?.onPointerUp();
-            this.onLeftPointerCancel?.();
+            this.currentToolController?.onPointerCancel();
             this.isLeftPointerDown = false;
             this.leftPointerDownMoved = false;
             this.leftPointerDownConsumedByGizmo = false;
@@ -478,19 +471,19 @@ export class GameScene3D {
         });
 
         this.renderDom?.addEventListener('pointerleave', () => {
-            this.pageContext?.controls?.handlePointerUp();
+            this.page?.cameraControls?.handlePointerUp();
         });
 
         this.renderDom?.addEventListener('wheel', (event) => {
-            this.pageContext?.controls?.handleWheel(event);
+            this.page?.cameraControls?.handleWheel(event);
         }, { passive: false });
 
         this.renderDom?.addEventListener('contextmenu', (event) => {
-            this.pageContext?.controls?.handleContextMenu(event);
+            this.page?.cameraControls?.handleContextMenu(event);
         });
 
         window.addEventListener('pointerup', () => {
-            this.pageContext?.controls?.handleWindowPointerUp();
+            this.page?.cameraControls?.handleWindowPointerUp();
         });
     }
 
@@ -540,7 +533,7 @@ export class GameScene3D {
                 this.onCustomGizmoObjectSelected?.(obj);
             },
             onDraggingChanged: (dragging) => {
-                if (context.controls) context.controls.enabled = !dragging;
+                if (context.cameraControls) context.cameraControls.enabled = !dragging;
             },
         });
 
@@ -550,7 +543,7 @@ export class GameScene3D {
             raycaster: this.raycaster,
             domElement: context.renderer.domElement,
             onDraggingChanged: (dragging) => {
-                if (context.controls) context.controls.enabled = !dragging;
+                if (context.cameraControls) context.cameraControls.enabled = !dragging;
             },
         });
 
@@ -589,7 +582,7 @@ export class GameScene3D {
             this.#updateSelectionHalo();
         };
         this.roadGizmo.onDragEnded = () => {
-            this.onRoadDragEnded?.();
+            (this.toolMap.get('road') as RoadToolController | undefined)?.onRoadDragEnded();
         };
     }
 

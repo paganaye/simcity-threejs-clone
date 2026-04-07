@@ -268,11 +268,10 @@ export default class TestBuildings extends Page {
 
     async run() {
         const handleUILoaded = async (uiProps: UIProps): Promise<void> => {
-            uiProps.selectionFilter = (selected) => {
-                return selected.selectableType !== "building";
-            }
-
             this.scene3DInstance = new GameScene3D(uiProps);
+            this.scene3DInstance.selectionFilter = (selected) => {
+                return selected.selectableType !== "building";
+            };
             this.scene3DInstance.isCustomGizmoSelectableObject = (obj) => {
                 return this.accessHandles.some((handle) => handle.pickMesh === obj || handle.root === obj);
             };

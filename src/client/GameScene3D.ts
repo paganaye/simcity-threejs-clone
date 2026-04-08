@@ -190,12 +190,12 @@ export class GameScene3D {
     }
 
     deleteCurrentSelection(): boolean {
-        const selectedRoad = this.selectedCustomObject.get()?.userData?.roadSegment as RoadSegment | undefined;
-        if (selectedRoad) {
-            this.roadNetwork.removeSegment(selectedRoad);
-            this.clearSelection();
-            return true;
-        }
+        //const selectedRoad = this.selectedCustomObject.get()?.userData?.roadSegment as RoadSegment | undefined;
+        // if (selectedRoad) {
+        //     this.roadNetwork.removeSegment(selectedRoad);
+        //     this.clearSelection();
+        //     return true;
+        // }
 
         const selected = this.selectedInstance.get();
         if (selected?.selectableType === 'building') {

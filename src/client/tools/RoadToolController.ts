@@ -85,7 +85,7 @@ export class RoadToolController extends ToolController {
             this.scene3D.clearSelection();
             return;
         }
-        this.scene3D.roadNetwork.registerSegment(seg);
+        //this.scene3D.roadNetwork.registerSegment(seg);
     }
 
     #eventToGroundPoint(event: PointerEvent): THREE.Vector3 | undefined {

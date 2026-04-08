@@ -4,12 +4,6 @@ import type { Population } from "./Population";
 import type { IRoad } from "./roads/IRoad";
 import * as THREE from 'three';
 
-const DEFAULT_IROAD: IRoad = {
-    forward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
-    backward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
-    gapSize: 0,
-};
-
 
 export interface IStoreGameData<TGameData> {
     loadGameData(data: TGameData): void;
@@ -216,9 +210,9 @@ export class GameStorage {
         this.scene.clearSelection();
         world.clearCity();
 
-        for (const existing of [...this.scene.roadNetwork.segments]) {
-            this.scene.roadNetwork.removeSegment(existing);
-        }
+        // for (const existing of [...this.scene.roadNetwork.segments]) {
+        //     this.scene.roadNetwork.removeSegment(existing);
+        // }
 
         for (const building of save.buildings) {
             try {
@@ -252,19 +246,19 @@ export class GameStorage {
 
         }
 
-        for (const road of save.roads) {
-            const segment = this.scene.roadNetwork.addSegment(
-                this.scene.scene,
-                road.startX,
-                road.startZ,
-                road.angle,
-                road.length,
-            );
-            segment.setIRoad(road.iRoad ?? DEFAULT_IROAD);
-            if (road.arcMidX !== undefined && road.arcMidZ !== undefined) {
-                segment.setArc(road.arcMidX, road.arcMidZ, road.endX, road.endZ);
-            }
-        }
+        // for (const road of save.roads) {
+        //     const segment = this.scene.roadNetwork.addSegment(
+        //         this.scene.scene,
+        //         road.startX,
+        //         road.startZ,
+        //         road.angle,
+        //         road.length,
+        //     );
+        //     segment.setIRoad(road.iRoad ?? DEFAULT_IROAD);
+        //     if (road.arcMidX !== undefined && road.arcMidZ !== undefined) {
+        //         segment.setArc(road.arcMidX, road.arcMidZ, road.endX, road.endZ);
+        //     }
+        // }
 
         const population = this.getPopulation();
         if (population) {

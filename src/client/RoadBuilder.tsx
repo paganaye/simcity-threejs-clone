@@ -1,15 +1,9 @@
 import * as THREE from "three";
 import { IOrientation2D } from "../sim/IPoint";
+import { BandPainter, type BandType, type IRoadBand } from "./BandPainter";
 import { IFloorPos } from "./GameUIComponent";
+import { buildRoadCrossSection, IRoadCrossSection, IRoadLayoutMetrics } from "./RoadLayout";
 import type { IRoad, IRoadOptions, LaneWidth } from "./roads/IRoad";
-
-type BandType = 'solid' | 'laneDivider' | 'parallelParking' | 'perpendicularParking';
-
-interface IRoadBand {
-    type: BandType;
-    width: number;
-    color: string;
-}
 
 interface IRoadBands {
     bands: IRoadBand[];
@@ -54,6 +48,27 @@ export class RoadBuilder implements IOrientation2D {
 
     static TURNING_SEGMENTS_MULTIPLIER = 12;
 
+    static getLayoutMetrics(): IRoadLayoutMetrics {
+        return {
+            oldRoadColor: this.OLD_ROAD_COLOR,
+            newRoadColor: this.NEW_ROAD_COLOR,
+            sidewalkColor: this.SIDEWALK_COLOR,
+            grassColor: this.GRASS_COLOR,
+            yellowLineColor: this.YELLOW_LINE,
+            whiteLineColor: this.WHITE_LINE,
+            yellowLineWidthM: this.YELLOW_LINE_WIDTH_M,
+            emergencyLaneWidthM: this.EMERGENCY_LANE_WIDTH_M,
+            parallelParkingWidthM: this.PARALLEL_PARKING_WIDTH_M,
+            perpendicularParkingWidthM: this.PERPENDICULAR_PARKING_WIDTH_M,
+            smallSidewalkM: this.SMALL_SIDEWALK_M,
+            largeSidewalkM: this.LARGE_SIDEWALK_M,
+            grassWidthM: this.GRASS_WIDTH_M,
+            narrowLaneWidthM: this.NARROW_LANE_WIDTH_M,
+            normalLaneWidthM: this.NORMAL_LANE_WIDTH_M,
+            wideLaneWidthM: this.WIDE_LANE_WIDTH_M,
+        };
+    }
+
     static metersToPixels(meters: number): number {
         return Math.round(meters * this.TEXTURE_PPM);
     }
@@ -96,91 +111,45 @@ export class RoadBuilder implements IOrientation2D {
 
 
     static buildRoadBands(options: IRoadOptions): IRoadBands {
+        const crossSection = buildRoadCrossSection(options, this.getLayoutMetrics());
         const bands = this.buildBands(options);
-        const widthM = bands.reduce((acc, band) => acc + band.width, 0);
-        const widthPx = Math.max(1, bands.reduce((acc, band) => acc + this.metersToPixels(band.width), 0));
+        const widthM = crossSection.totalWidthM;
+        const widthPx = Math.max(1, this.metersToPixels(widthM));
         return { bands, widthM, widthPx };
     }
 
     static buildBands(options: IRoadOptions): IRoadBand[] {
-        const roadColor = options.roadColor === 'new' ? this.NEW_ROAD_COLOR : this.OLD_ROAD_COLOR;
-        const laneWidth = this.getLaneWidthMeters(options.laneWidth);
-        const lanes = Math.max(0, options.lanes);
+        const crossSection = buildRoadCrossSection(options, this.getLayoutMetrics());
+        return this.toRoadBands(crossSection);
+    }
+
+    static toRoadBands(crossSection: IRoadCrossSection): IRoadBand[] {
         const bands: IRoadBand[] = [];
 
-        const addSolid = (width: number, color: string) => {
+        const pushBand = (type: BandType, width: number, color: string) => {
             if (width <= 0) return;
-            bands.push({ type: 'solid', width, color });
+            bands.push({ type, width, color });
         };
 
-        const addSidewalk = (sidewalk: IRoadOptions['rightSidewalk']) => {
-            switch (sidewalk) {
-                case 'small':
-                    addSolid(this.SMALL_SIDEWALK_M, this.SIDEWALK_COLOR);
-                    break;
-                case 'large':
-                    addSolid(this.LARGE_SIDEWALK_M, this.SIDEWALK_COLOR);
-                    break;
+        for (const band of crossSection.bands) {
+            switch (band.kind) {
+                case 'asphalt':
+                case 'sidewalk':
                 case 'grass':
-                    addSolid(this.GRASS_WIDTH_M, this.GRASS_COLOR);
+                case 'gap':
+                    pushBand('solid', band.widthM, band.color);
                     break;
-                case 'none':
-                case undefined:
+                case 'laneDivider':
+                    pushBand('laneDivider', band.widthM, band.color);
                     break;
-                default:
-                    throw Error("sidewalk not implemented yet");
-            }
-        };
-
-        const addKerb = (kerb: IRoadOptions['rightKerb'], side: 'left' | 'right') => {
-            switch (kerb) {
                 case 'parallelParking':
-                    bands.push({ type: 'parallelParking', width: this.PARALLEL_PARKING_WIDTH_M, color: roadColor });
+                    pushBand('parallelParking', band.widthM, band.color);
                     break;
                 case 'perpendicularParking':
-                    bands.push({ type: 'perpendicularParking', width: this.PERPENDICULAR_PARKING_WIDTH_M, color: roadColor });
+                    pushBand('perpendicularParking', band.widthM, band.color);
                     break;
-                case 'emergencyLane':
-                    if (side === 'left') {
-                        addSolid(this.EMERGENCY_LANE_WIDTH_M, roadColor);
-                        addSolid(this.YELLOW_LINE_WIDTH_M, this.YELLOW_LINE);
-                    } else {
-                        addSolid(this.YELLOW_LINE_WIDTH_M, this.YELLOW_LINE);
-                        addSolid(this.EMERGENCY_LANE_WIDTH_M, roadColor);
-                    }
-                    break;
-                case 'line':
-                    if (side === 'left') {
-                        addSolid(this.YELLOW_LINE_WIDTH_M, roadColor);
-                        addSolid(this.YELLOW_LINE_WIDTH_M, this.YELLOW_LINE);
-                    } else {
-                        addSolid(this.YELLOW_LINE_WIDTH_M, this.YELLOW_LINE);
-                        addSolid(this.YELLOW_LINE_WIDTH_M, roadColor);
-                    }
-                    break;
-                case 'gap':
-                    addSolid(this.YELLOW_LINE_WIDTH_M, roadColor);
-                    break;
-                case 'none':
-                case undefined:
-                    break;
-                default:
-                    console.warn(`kerb "${kerb}" not implemented yet.`);
-            }
-        };
-
-        addSidewalk(options.leftSidewalk);
-        addKerb(options.leftKerb, 'left');
-
-        for (let i = 0; i < lanes; i++) {
-            addSolid(laneWidth, roadColor);
-            if (i < lanes - 1) {
-                bands.push({ type: 'laneDivider', width: this.YELLOW_LINE_WIDTH_M, color: this.YELLOW_LINE });
             }
         }
-
-        addKerb(options.rightKerb, 'right');
-        addSidewalk(options.rightSidewalk);
 
         return bands;
     }
@@ -230,58 +199,19 @@ export class RoadBuilder implements IOrientation2D {
         canvas.width = textureWidthPx;
         canvas.height = textureHeightPx;
         const ctx = canvas.getContext('2d')!;
+        const painter = new BandPainter(ctx);
 
-        ctx.fillStyle = this.TRANSPARENT;
-        ctx.fillRect(0, 0, textureWidthPx, textureHeightPx);
+        painter.rect(this.TRANSPARENT, 0, 0, textureWidthPx, textureHeightPx);
 
         const roadColor = options.roadColor === 'new' ? RoadBuilder.NEW_ROAD_COLOR : RoadBuilder.OLD_ROAD_COLOR;
         const bands = layout.bands;
         let currentX = 0;
 
-        const drawLine = (
-            width: number,
-            y: number,
-            height: number,
-            color: string
-        ) => {
-            ctx.fillStyle = color;
-            ctx.fillRect(currentX, y * textureHeightPx, width, height * textureHeightPx);
-        };
-
-        const drawBand = (band: IRoadBand) => {
-            const widthPx = this.metersToPixels(band.width);
-            if (widthPx <= 0) return;
-
-            switch (band.type) {
-                case 'solid':
-                    drawLine(widthPx, 0, 1, band.color);
-                    break;
-                case 'laneDivider':
-                    drawLine(widthPx, 0, 0.5, band.color);
-                    drawLine(widthPx, 0.5, 0.5, roadColor);
-                    break;
-                case 'parallelParking':
-                    drawLine(widthPx, 0, 1, band.color);
-                    drawLine(widthPx, 0, 1 / 32, this.WHITE_LINE);
-                    drawLine(widthPx, 1 / 2, 1 / 32, this.WHITE_LINE);
-                    drawLine(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), 0, 0.1, this.WHITE_LINE);
-                    drawLine(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), 0.4, 0.2, this.WHITE_LINE);
-                    drawLine(this.metersToPixels(this.YELLOW_LINE_WIDTH_M), 1 - 0.1, 0.1, this.WHITE_LINE);
-                    break;
-                case 'perpendicularParking':
-                    drawLine(widthPx, 0, 1, band.color);
-                    drawLine(widthPx, 0, 1 / 32, this.WHITE_LINE);
-                    drawLine(widthPx, 1 / 4, 1 / 32, this.WHITE_LINE);
-                    drawLine(widthPx, 2 / 4, 1 / 32, this.WHITE_LINE);
-                    drawLine(widthPx, 3 / 4, 1 / 32, this.WHITE_LINE);
-                    break;
-            }
-
-            currentX += widthPx;
-        };
-
+        const yellowLinePx = this.metersToPixels(this.YELLOW_LINE_WIDTH_M);
         for (const band of bands) {
-            drawBand(band);
+            const widthPx = this.metersToPixels(band.width);
+            painter.roadBand(band, currentX, widthPx, textureHeightPx, roadColor, RoadBuilder.WHITE_LINE, yellowLinePx);
+            currentX += widthPx;
         }
 
         const imageData = ctx.getImageData(0, 0, textureWidthPx, textureHeightPx);

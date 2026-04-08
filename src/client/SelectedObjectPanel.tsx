@@ -65,6 +65,7 @@ function RoadOptionsInput(props: {
 export function SelectedObjectPanel(props: {
     selectedInstance: Accessor<ISelectedInstance | undefined>;
     selectedCustomObject: Accessor<THREE.Object3D | undefined>;
+    onSelectedRoadChanged?: (road: RoadSegment) => void;
 }) {
     type CharacterResolver = (instanceId: number) => Character | undefined;
     const customObject = () => props.selectedCustomObject();
@@ -121,6 +122,7 @@ export function SelectedObjectPanel(props: {
         const road = selectedRoad();
         if (!road) return;
         road.setIRoad(next);
+        props.onSelectedRoadChanged?.(road);
     };
 
     const setRoadKind = (kind: "one-way" | "two-way"): void => {

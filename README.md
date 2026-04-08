@@ -42,40 +42,7 @@ At runtime, the engine can compile this list into smaller internal segments to:
 
 The editable/savable format remains the same: a list of `IRoad`.
 
-Current domain contract (independent from 3D rendering):
 
-```ts
-type IRoadOptions = {
-        roadColor: 'old' | 'new';
-        lanes: number;
-        shoulder: ShoulderType;
-        sidewalk: SideWalkType;
-};
-
-type IRoad = OneWayRoad | TwoWayRoad;
-
-type OneWayRoad = {
-        type: 'OneWayRoad';
-        options: IRoadOptions;
-};
-
-type TwoWayRoad = {
-        type: 'TwoWayRoad';
-        forwardWay: IRoadOptions;
-        otherWay: IRoadOptions;
-        dividing: DividingType;
-};
-
-type IRoadInstruction = {
-        id: string;
-        shape: LineShape | ArcShape;
-        road: IRoad;
-};
-
-type IRoadNetwork = {
-        roads: IRoadInstruction[];
-};
-```
 
 ## How did you make this?
 

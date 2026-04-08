@@ -13,20 +13,11 @@ export interface IRoadOptions {
     leftSidewalk: SideWalkType;
 }
 
-export type OneWayRoad = {
-    type: 'OneWayRoad';
-    options: IRoadOptions;
+export type IRoad = {
+    forward: IRoadOptions;
+    backward?: IRoadOptions;
     gapSize: number; // metre
 };
-
-export type TwoWayRoad = {
-    type: 'TwoWayRoad';
-    forwardWay: IRoadOptions;
-    otherWay: IRoadOptions;
-    gapSize: number; // metre
-};
-
-export type IRoad = OneWayRoad | TwoWayRoad;
 
 export type IRoadShape =
     | {

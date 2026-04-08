@@ -3,7 +3,64 @@ import type * as THREE from "three";
 import type { ISelectedInstance } from "./editor/ObjectGizmo";
 import type { Character, CharacterSelectionInfo } from "./Character";
 import type { RoadSegment } from "./RoadSegment";
-import type { IRoad, IRoadOptions, OneWayRoad, KerbType, SideWalkType, TwoWayRoad } from "./roads/IRoad";
+import type { IRoad, IRoadOptions, KerbType, SideWalkType } from "./roads/IRoad";
+
+function RoadOptionsInput(props: {
+    title: string;
+    options: IRoadOptions;
+    shoulderOptions: KerbType[];
+    sidewalkOptions: SideWalkType[];
+    laneWidthOptions: readonly string[];
+    idPrefix: string;
+    onOptionsChange: (patch: Partial<IRoadOptions>) => void;
+}) {
+    return (
+        <>
+            <div class="info-heading">{props.title}</div>
+            <div class="road-form-row">
+                <label class="info-label" for={`${props.idPrefix}-color`}>Color</label>
+                <select id={`${props.idPrefix}-color`} class="road-input" value={props.options.roadColor} onChange={(ev) => props.onOptionsChange({ roadColor: ev.currentTarget.value as "old" | "new" })}>
+                    <option value="old">old</option>
+                    <option value="new">new</option>
+                </select>
+            </div>
+            <div class="road-form-row">
+                <label class="info-label" for={`${props.idPrefix}-lanes`}>Lanes</label>
+                <input id={`${props.idPrefix}-lanes`} class="road-input" type="number" min="0" step="1" value={String(props.options.lanes)} onChange={(ev) => props.onOptionsChange({ lanes: Math.max(0, Number(ev.currentTarget.value) || 0) })} />
+            </div>
+            <div class="road-form-row">
+                <label class="info-label" for={`${props.idPrefix}-right-kerb`}>Right kerb</label>
+                <select id={`${props.idPrefix}-right-kerb`} class="road-input" value={props.options.rightKerb} onChange={(ev) => props.onOptionsChange({ rightKerb: ev.currentTarget.value as KerbType })}>
+                    {props.shoulderOptions.map((value) => <option value={value}>{value}</option>)}
+                </select>
+            </div>
+            <div class="road-form-row">
+                <label class="info-label" for={`${props.idPrefix}-right-shoulder`}>Right shoulder</label>
+                <select id={`${props.idPrefix}-right-shoulder`} class="road-input" value={props.options.rightSidewalk} onChange={(ev) => props.onOptionsChange({ rightSidewalk: ev.currentTarget.value as SideWalkType })}>
+                    {props.sidewalkOptions.map((value) => <option value={value}>{value}</option>)}
+                </select>
+            </div>
+            <div class="road-form-row">
+                <label class="info-label" for={`${props.idPrefix}-left-kerb`}>Left kerb</label>
+                <select id={`${props.idPrefix}-left-kerb`} class="road-input" value={props.options.leftKerb} onChange={(ev) => props.onOptionsChange({ leftKerb: ev.currentTarget.value as KerbType })}>
+                    {props.shoulderOptions.map((value) => <option value={value}>{value}</option>)}
+                </select>
+            </div>
+            <div class="road-form-row">
+                <label class="info-label" for={`${props.idPrefix}-left-shoulder`}>Left shoulder</label>
+                <select id={`${props.idPrefix}-left-shoulder`} class="road-input" value={props.options.leftSidewalk} onChange={(ev) => props.onOptionsChange({ leftSidewalk: ev.currentTarget.value as SideWalkType })}>
+                    {props.sidewalkOptions.map((value) => <option value={value}>{value}</option>)}
+                </select>
+            </div>
+            <div class="road-form-row">
+                <label class="info-label" for={`${props.idPrefix}-road-width`}>Lane width</label>
+                <select id={`${props.idPrefix}-road-width`} class="road-input" value={props.options.laneWidth} onChange={(ev) => props.onOptionsChange({ laneWidth: ev.currentTarget.value as "narrow" | "normal" | "wide" })}>
+                    {props.laneWidthOptions.map((value) => <option value={value}>{value}</option>)}
+                </select>
+            </div>
+        </>
+    );
+}
 
 export function SelectedObjectPanel(props: {
     selectedInstance: Accessor<ISelectedInstance | undefined>;
@@ -34,36 +91,29 @@ export function SelectedObjectPanel(props: {
     const sidewalkOptions: SideWalkType[] = ["small", "large", "grass", "none"];
     const laneWidthOptions = ["narrow", "normal", "wide"] as const;
     const [roadDraft, setRoadDraft] = createSignal<IRoad>({
-        type: "TwoWayRoad",
-        forwardWay: { roadColor: "old", lanes: 1, rightKerb: "none", rightSidewalk: "small", laneWidth: "normal", leftKerb: "none", leftSidewalk: "none" },
-        otherWay: { roadColor: "old", lanes: 1, rightKerb: "none", rightSidewalk: "small", laneWidth: "normal", leftKerb: "none", leftSidewalk: "none" },
+        forward: { roadColor: "old", lanes: 1, rightKerb: "none", rightSidewalk: "small", laneWidth: "normal", leftKerb: "none", leftSidewalk: "none" },
+        backward: { roadColor: "old", lanes: 1, rightKerb: "none", rightSidewalk: "small", laneWidth: "normal", leftKerb: "none", leftSidewalk: "none" },
         gapSize: 0,
     });
-    const oneWayDraft = (): OneWayRoad | undefined => {
+    const oneWayDraft = (): IRoad | undefined => {
         const draft = roadDraft();
-        return draft.type === "OneWayRoad" ? draft : undefined;
+        return draft.backward ? undefined : draft;
     };
-    const twoWayDraft = (): TwoWayRoad | undefined => {
+
+    const twoWayDraft = (): IRoad | undefined => {
         const draft = roadDraft();
-        return draft.type === "TwoWayRoad" ? draft : undefined;
+        return draft.backward ? draft : undefined;
     };
 
     createEffect(() => {
         const road = selectedRoad();
         if (!road) return;
         const current = road.getIRoad();
-        setRoadDraft(current.type === "OneWayRoad"
-            ? {
-                type: "OneWayRoad",
-                options: { ...current.options },
-                gapSize: current.gapSize,
-            }
-            : {
-                type: "TwoWayRoad",
-                forwardWay: { ...current.forwardWay },
-                otherWay: { ...current.otherWay },
-                gapSize: current.gapSize,
-            });
+        setRoadDraft({
+            forward: { ...current.forward },
+            backward: current.backward ? { ...current.backward } : undefined,
+            gapSize: current.gapSize,
+        });
     });
 
     const commitRoadDraft = (next: IRoad): void => {
@@ -73,58 +123,50 @@ export function SelectedObjectPanel(props: {
         road.setIRoad(next);
     };
 
-    const setRoadKind = (kind: "OneWayRoad" | "TwoWayRoad"): void => {
+    const setRoadKind = (kind: "one-way" | "two-way"): void => {
         const current = roadDraft();
-        if (kind === "OneWayRoad") {
-            const base = current.type === "OneWayRoad" ? current.options : current.forwardWay;
-            commitRoadDraft({ type: "OneWayRoad", options: { ...base }, gapSize: 0 });
+        if (kind === "one-way") {
+            commitRoadDraft({
+                forward: { ...current.forward },
+                backward: undefined,
+                gapSize: 0,
+            });
             return;
         }
-        const base = current.type === "TwoWayRoad" ? current.forwardWay : current.options;
+        const base = current.forward;
         commitRoadDraft({
-            type: "TwoWayRoad",
-            forwardWay: { ...base },
-            otherWay: { ...base },
+            forward: { ...base },
+            backward: current.backward ? { ...current.backward } : { ...base },
             gapSize: 0,
         });
     };
 
-    const patchOneWay = (patch: Partial<IRoadOptions>): void => {
+    const updateForwardOptions = (patch: Partial<IRoadOptions>): void => {
         const current = roadDraft();
-        if (current.type !== "OneWayRoad") return;
-        commitRoadDraft({ type: "OneWayRoad", options: { ...current.options, ...patch }, gapSize: current.gapSize });
-    };
-
-    const patchTwoWayForward = (patch: Partial<IRoadOptions>): void => {
-        const current = roadDraft();
-        if (current.type !== "TwoWayRoad") return;
         commitRoadDraft({
-            type: "TwoWayRoad",
-            forwardWay: { ...current.forwardWay, ...patch },
-            otherWay: { ...current.otherWay },
+            forward: { ...current.forward, ...patch },
+            backward: current.backward ? { ...current.backward } : undefined,
             gapSize: current.gapSize,
         });
     };
 
-    const patchTwoWayOther = (patch: Partial<IRoadOptions>): void => {
+    const updateBackwardOptions = (patch: Partial<IRoadOptions>): void => {
         const current = roadDraft();
-        if (current.type !== "TwoWayRoad") return;
+        if (!current.backward) return;
         commitRoadDraft({
-            type: "TwoWayRoad",
-            forwardWay: { ...current.forwardWay },
-            otherWay: { ...current.otherWay, ...patch },
+            forward: { ...current.forward },
+            backward: { ...current.backward, ...patch },
             gapSize: current.gapSize,
         });
     };
 
-    const patchTwoWayGapSize = (gapSize: number): void => {
+    const updateGapSize = (rawValue: string): void => {
         const current = roadDraft();
-        if (current.type !== "TwoWayRoad") return;
+        if (!current.backward) return;
         commitRoadDraft({
-            type: "TwoWayRoad",
-            forwardWay: { ...current.forwardWay },
-            otherWay: { ...current.otherWay },
-            gapSize,
+            forward: { ...current.forward },
+            backward: { ...current.backward },
+            gapSize: Math.max(0, Number(rawValue) || 0),
         });
     };
 
@@ -182,149 +224,49 @@ export function SelectedObjectPanel(props: {
                                 <select
                                     id="road-kind-select"
                                     class="road-input"
-                                    value={roadDraft().type}
-                                    onChange={(ev) => setRoadKind(ev.currentTarget.value as "OneWayRoad" | "TwoWayRoad")}
+                                    value={!roadDraft().backward ? "one-way" : "two-way"}
+                                    onChange={(ev) => setRoadKind(ev.currentTarget.value as "one-way" | "two-way")}
                                 >
-                                    <option value="OneWayRoad">OneWayRoad</option>
-                                    <option value="TwoWayRoad">TwoWayRoad</option>
+                                    <option value="one-way">OneWayRoad</option>
+                                    <option value="two-way">TwoWayRoad</option>
                                 </select>
                             </div>
                             <Show when={true}>
                                 <div class="road-form-row">
                                     <label class="info-label" for="tw-gap-size">Gap (m)</label>
-                                    <input id="tw-gap-size" class="road-input" type="number" min="0" step="0.1" value={String(twoWayDraft()?.gapSize ?? 0)} onChange={(ev) => patchTwoWayGapSize(Math.max(0, Number(ev.currentTarget.value) || 0))} />
+                                    <input id="tw-gap-size" class="road-input" type="number" min="0" step="0.1" value={String(twoWayDraft()?.gapSize ?? 0)} onChange={(ev) => updateGapSize(ev.currentTarget.value)} />
                                 </div>
                             </Show>
-                            <Show when={roadDraft().type === "OneWayRoad"}>
-                                <div class="info-heading">Options</div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="ow-road-color">Color</label>
-                                    <select id="ow-road-color" class="road-input" value={oneWayDraft()?.options.roadColor ?? "old"} onChange={(ev) => patchOneWay({ roadColor: ev.currentTarget.value as "old" | "new" })}>
-                                        <option value="old">old</option>
-                                        <option value="new">new</option>
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="ow-lanes">Lanes</label>
-                                    <input id="ow-lanes" class="road-input" type="number" min="0" step="1" value={String(oneWayDraft()?.options.lanes ?? 1)} onChange={(ev) => patchOneWay({ lanes: Math.max(0, Number(ev.currentTarget.value) || 0) })} />
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="ow-right-kerb">Right kerb</label>
-                                    <select id="ow-right-kerb" class="road-input" value={oneWayDraft()?.options.rightKerb ?? "none"} onChange={(ev) => patchOneWay({ rightKerb: ev.currentTarget.value as KerbType })}>
-                                        {shoulderOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="ow-right-shoulder">Right shoulder</label>
-                                    <select id="ow-right-shoulder" class="road-input" value={oneWayDraft()?.options.rightSidewalk ?? "small"}
-                                        onChange={(ev) => patchOneWay({ rightSidewalk: ev.currentTarget.value as SideWalkType })}>
-                                        {sidewalkOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="ow-left-kerb">Left kerb</label>
-                                    <select id="ow-left-kerb" class="road-input" value={oneWayDraft()?.options.leftKerb ?? "none"} onChange={(ev) => patchOneWay({ leftKerb: ev.currentTarget.value as KerbType })}>
-                                        {shoulderOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="ow-left-shoulder">Left shoulder</label>
-                                    <select id="ow-left-shoulder" class="road-input" value={oneWayDraft()?.options.leftSidewalk ?? "none"} onChange={(ev) => patchOneWay({ leftSidewalk: ev.currentTarget.value as SideWalkType })}>
-                                        {sidewalkOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="ow-road-width">Lane width</label>
-                                    <select id="ow-road-width" class="road-input" value={oneWayDraft()?.options.laneWidth ?? "normal"} onChange={(ev) => patchOneWay({ laneWidth: ev.currentTarget.value as "narrow" | "normal" | "wide" })}>
-                                        {laneWidthOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
+                            <Show when={!roadDraft().backward}>
+                                <RoadOptionsInput
+                                    title="Options"
+                                    options={oneWayDraft()!.forward}
+                                    shoulderOptions={shoulderOptions}
+                                    sidewalkOptions={sidewalkOptions}
+                                    laneWidthOptions={laneWidthOptions}
+                                    idPrefix="ow"
+                                    onOptionsChange={updateForwardOptions}
+                                />
                             </Show>
-                            <Show when={roadDraft().type === "TwoWayRoad"}>
-                                <div class="info-heading">Forward Way</div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-forward-color">Color</label>
-                                    <select id="tw-forward-color" class="road-input" value={twoWayDraft()?.forwardWay.roadColor ?? "old"} onChange={(ev) => patchTwoWayForward({ roadColor: ev.currentTarget.value as "old" | "new" })}>
-                                        <option value="old">old</option>
-                                        <option value="new">new</option>
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-forward-lanes">Lanes</label>
-                                    <input id="tw-forward-lanes" class="road-input" type="number" min="0" step="1" value={String(twoWayDraft()?.forwardWay.lanes ?? 1)} onChange={(ev) => patchTwoWayForward({ lanes: Math.max(0, Number(ev.currentTarget.value) || 0) })} />
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-forward-right-kerb">Right kerb</label>
-                                    <select id="tw-forward-right-kerb" class="road-input" value={twoWayDraft()?.forwardWay.rightKerb ?? "none"} onChange={(ev) => patchTwoWayForward({ rightKerb: ev.currentTarget.value as KerbType })}>
-                                        {shoulderOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-forward-right-shoulder">Right shoulder</label>
-                                    <select id="tw-forward-right-shoulder" class="road-input" value={twoWayDraft()?.forwardWay.rightSidewalk ?? "small"} onChange={(ev) => patchTwoWayForward({ rightSidewalk: ev.currentTarget.value as SideWalkType })}>
-                                        {sidewalkOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-forward-left-kerb">Left kerb</label>
-                                    <select id="tw-forward-left-kerb" class="road-input" value={twoWayDraft()?.forwardWay.leftKerb ?? "none"} onChange={(ev) => patchTwoWayForward({ leftKerb: ev.currentTarget.value as KerbType })}>
-                                        {shoulderOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-forward-left-shoulder">Left shoulder</label>
-                                    <select id="tw-forward-left-shoulder" class="road-input" value={twoWayDraft()?.forwardWay.leftSidewalk ?? "none"} onChange={(ev) => patchTwoWayForward({ leftSidewalk: ev.currentTarget.value as SideWalkType })}>
-                                        {sidewalkOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-forward-road-width">Lane width</label>
-                                    <select id="tw-forward-road-width" class="road-input" value={twoWayDraft()?.forwardWay.laneWidth ?? "normal"} onChange={(ev) => patchTwoWayForward({ laneWidth: ev.currentTarget.value as "narrow" | "normal" | "wide" })}>
-                                        {laneWidthOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="info-heading">Other Way</div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-other-color">Color</label>
-                                    <select id="tw-other-color" class="road-input" value={twoWayDraft()?.otherWay.roadColor ?? "old"} onChange={(ev) => patchTwoWayOther({ roadColor: ev.currentTarget.value as "old" | "new" })}>
-                                        <option value="old">old</option>
-                                        <option value="new">new</option>
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-other-lanes">Lanes</label>
-                                    <input id="tw-other-lanes" class="road-input" type="number" min="0" step="1" value={String(twoWayDraft()?.otherWay.lanes ?? 1)} onChange={(ev) => patchTwoWayOther({ lanes: Math.max(0, Number(ev.currentTarget.value) || 0) })} />
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-other-right-kerb">Right kerb</label>
-                                    <select id="tw-other-right-kerb" class="road-input" value={twoWayDraft()?.otherWay.rightKerb ?? "none"} onChange={(ev) => patchTwoWayOther({ rightKerb: ev.currentTarget.value as KerbType })}>
-                                        {shoulderOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-other-right-shoulder">Right shoulder</label>
-                                    <select id="tw-other-right-shoulder" class="road-input" value={twoWayDraft()?.otherWay.rightSidewalk ?? "small"} onChange={(ev) => patchTwoWayOther({ rightSidewalk: ev.currentTarget.value as SideWalkType })}>
-                                        {sidewalkOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-other-left-kerb">Left kerb</label>
-                                    <select id="tw-other-left-kerb" class="road-input" value={twoWayDraft()?.otherWay.leftKerb ?? "none"} onChange={(ev) => patchTwoWayOther({ leftKerb: ev.currentTarget.value as KerbType })}>
-                                        {shoulderOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-other-left-shoulder">Left shoulder</label>
-                                    <select id="tw-other-left-shoulder" class="road-input" value={twoWayDraft()?.otherWay.leftSidewalk ?? "none"} onChange={(ev) => patchTwoWayOther({ leftSidewalk: ev.currentTarget.value as SideWalkType })}>
-                                        {sidewalkOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
-                                <div class="road-form-row">
-                                    <label class="info-label" for="tw-other-road-width">Lane width</label>
-                                    <select id="tw-other-road-width" class="road-input" value={twoWayDraft()?.otherWay.laneWidth ?? "normal"} onChange={(ev) => patchTwoWayOther({ laneWidth: ev.currentTarget.value as "narrow" | "normal" | "wide" })}>
-                                        {laneWidthOptions.map((value) => <option value={value}>{value}</option>)}
-                                    </select>
-                                </div>
+                            <Show when={roadDraft().backward}>
+                                <RoadOptionsInput
+                                    title="Forward Way"
+                                    options={twoWayDraft()!.forward}
+                                    shoulderOptions={shoulderOptions}
+                                    sidewalkOptions={sidewalkOptions}
+                                    laneWidthOptions={laneWidthOptions}
+                                    idPrefix="tw-forward"
+                                    onOptionsChange={updateForwardOptions}
+                                />
+                                <RoadOptionsInput
+                                    title="Other Way"
+                                    options={twoWayDraft()!.backward!}
+                                    shoulderOptions={shoulderOptions}
+                                    sidewalkOptions={sidewalkOptions}
+                                    laneWidthOptions={laneWidthOptions}
+                                    idPrefix="tw-other"
+                                    onOptionsChange={updateBackwardOptions}
+                                />
                             </Show>
                         </Show>
                     </div>

@@ -14,10 +14,9 @@ const DEBUG_ROAD_ARC = true;
 export class RoadSegment {
     readonly group = new THREE.Group();
     private iRoad: IRoad = {
-        type: 'TwoWayRoad',
-        forwardWay: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
-        otherWay:   { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
-        gapSize: 0,
+        forward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
+        backward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
+        gapSize: 0
     };
 
     // Arc control point (world space). When set, road is rebuilt as a curve.
@@ -36,18 +35,11 @@ export class RoadSegment {
         initialRoad?: IRoad,
     ) {
         if (initialRoad) {
-            this.iRoad = initialRoad.type === 'OneWayRoad'
-                ? {
-                    type: 'OneWayRoad',
-                    options: { ...initialRoad.options },
-                    gapSize: initialRoad.gapSize,
-                }
-                : {
-                    type: 'TwoWayRoad',
-                    forwardWay: { ...initialRoad.forwardWay },
-                    otherWay: { ...initialRoad.otherWay },
-                    gapSize: initialRoad.gapSize,
-                };
+            this.iRoad = {
+                forward: { ...initialRoad.forward },
+                backward: initialRoad.backward ? { ...initialRoad.backward } : undefined,
+                gapSize: Number.isFinite(initialRoad.gapSize) ? initialRoad.gapSize : 0
+            };
         }
         this.group.userData.selectableType = 'road';
         this.group.userData.roadSegment = this;
@@ -74,18 +66,11 @@ export class RoadSegment {
     }
 
     setIRoad(nextRoad: IRoad): void {
-        this.iRoad = nextRoad.type === 'OneWayRoad'
-            ? {
-                type: 'OneWayRoad',
-                options: { ...nextRoad.options },
-                gapSize: Number.isFinite(nextRoad.gapSize) ? nextRoad.gapSize : 0,
-            }
-            : {
-                type: 'TwoWayRoad',
-                forwardWay: { ...nextRoad.forwardWay },
-                otherWay: { ...nextRoad.otherWay },
-                gapSize: Number.isFinite(nextRoad.gapSize) ? nextRoad.gapSize : 0,
-            };
+        this.iRoad = {
+            forward: { ...nextRoad.forward },
+            backward: nextRoad.backward ? { ...nextRoad.backward } : undefined,
+            gapSize: Number.isFinite(nextRoad.gapSize) ? nextRoad.gapSize : 0,
+        };
         this.group.userData.iRoad = this.iRoad;
         this.rebuild();
     }
@@ -178,7 +163,7 @@ export class RoadSegment {
         if (DEBUG_ROAD_ARC) {
             console.log('[RoadArc] input', {
                 segmentId: this.group.id,
-                roadType: this.iRoad.type,
+                roadType: this.iRoad.backward ? 'two-way' : 'one-way',
                 start: { x: p1x, z: p1z },
                 mid: { x: p2x, z: p2z },
                 end: { x: p3x, z: p3z },

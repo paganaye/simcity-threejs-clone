@@ -19,49 +19,51 @@ export default class RoadTest extends Page {
         const handleUILoaded = async (): Promise<void> => {
             await scene3D.init(this);
 
-            const road1: IRoad = {
-                forward: {
-                    roadColor: 'old',
-                    lanes: 3,
-                    rightKerb: 'line',
-                    rightSidewalk: 'small',
-                    laneWidth: 'normal',
-                    leftKerb: 'line',
-                    leftSidewalk: 'small',
-                },
-                gapSize: 0,
-            };
+            // const road1: IRoad = {
+            //     forward: {
+            //         roadColor: 'old',
+            //         lanes: 3,
+            //         rightKerb: 'line',
+            //         rightSidewalk: 'small',
+            //         laneWidth: 'normal',
+            //         leftKerb: 'line',
+            //         leftSidewalk: 'small',
+            //     },
+            //     gapSize: 0,
+            // };
+
+
+
+            // RoadBuilder.createStraightRoad({
+            //     start: { x: 0, y: 0, z: 0, angle: 0 },
+            //     scene: scene3D.scene,
+            //     length: 35,
+            //     options: road1.forward,
+            //     gapSize: road1.gapSize,
+            //     cuts: {
+            //         rightCuts: [
+            //             {
+            //                 from: 10,
+            //                 roadFrom: 15,
+            //                 roadTo: 35,
+            //                 to: 40
+            //             }
+            //         ]
+            //     }
+            // });
 
             const road2: IRoad = {
                 forward: {
                     roadColor: 'new',
-                    lanes: 3,
-                    rightKerb: 'line',
-                    rightSidewalk: 'small',
+                    lanes: 1,
+                    rightKerb: 'none',
+                    rightSidewalk: 'grass',
                     laneWidth: 'normal',
-                    leftKerb: 'line',
-                    leftSidewalk: 'small',
+                    leftKerb: 'none',
+                    leftSidewalk: 'grass',
                 },
                 gapSize: 0,
             };
-
-            RoadBuilder.createStraightRoad({
-                start: { x: 0, y: 0, z: 0, angle: 0 },
-                scene: scene3D.scene,
-                length: 35,
-                options: road1.forward,
-                gapSize: road1.gapSize,
-                cuts: {
-                    rightCuts: [
-                        {
-                            from: 10,
-                            roadFrom: 15,
-                            roadTo: 35,
-                            to: 40
-                        }
-                    ]
-                }
-            });
 
             RoadBuilder.createStraightRoad({
                 start: { x: 0, y: 0, z: 30, angle: degToRad(45) },

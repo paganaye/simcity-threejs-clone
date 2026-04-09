@@ -19,8 +19,8 @@ function RoadOptionsInput(props: {
             <div class="info-heading">{props.title}</div>
             <div class="road-form-row">
                 <label class="info-label" for={`${props.idPrefix}-color`}>Color</label>
-                <select id={`${props.idPrefix}-color`} class="road-input" value={props.options.roadColor} onChange={(ev) => props.onOptionsChange({ roadColor: ev.currentTarget.value as "old" | "new" })}>
-                    <option value="old">old</option>
+                <select id={`${props.idPrefix}-color`} class="road-input" value={props.options.roadColor} onChange={(ev) => props.onOptionsChange({ roadColor: ev.currentTarget.value as 'old' | "new" })}>
+                    <option value='old'>old</option>
                     <option value="new">new</option>
                 </select>
             </div>
@@ -92,8 +92,8 @@ export function SelectedObjectPanel(props: {
     const sidewalkOptions: SideWalkType[] = ["small", "large", "grass", "none"];
     const laneWidthOptions = ["narrow", "normal", "wide"] as const;
     const [roadDraft, setRoadDraft] = createSignal<IRoad>({
-        forward: { roadColor: "old", lanes: 1, rightKerb: "none", rightSidewalk: "small", laneWidth: "normal", leftKerb: "none", leftSidewalk: "none" },
-        backward: { roadColor: "old", lanes: 1, rightKerb: "none", rightSidewalk: "small", laneWidth: "normal", leftKerb: "none", leftSidewalk: "none" },
+        forward: { roadColor: 'old', lanes: 1, rightKerb: "none", rightSidewalk: "small", laneWidth: "normal", leftKerb: "none", leftSidewalk: "none" },
+        backward: { roadColor: 'old', lanes: 1, rightKerb: "none", rightSidewalk: "small", laneWidth: "normal", leftKerb: "none", leftSidewalk: "none" },
         gapSize: 0,
     });
     const oneWayDraft = (): IRoad | undefined => {

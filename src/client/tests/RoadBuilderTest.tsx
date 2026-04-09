@@ -4,6 +4,7 @@ import { GameUIComponent } from '../GameUIComponent';
 import { JunctionBuilder } from '../JunctionBuilder';
 import { Page } from '../Page';
 import type { IRoad } from '../roads/IRoad';
+import { degToRad } from 'three/src/math/MathUtils.js';
 
 export default class RoadBuildTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -63,14 +64,24 @@ export default class RoadBuildTest extends Page {
             };
 
             const junctionBuilder = new JunctionBuilder(scene3D.scene);
-            junctionBuilder.addCrossJunction({ x: 20, z: 20, angle: 0 },
-                road1,
-                road2,
+            junctionBuilder.addCrossJunction2(
+                { x: 20, z: 20, angle: 0 },
+                [
+                    { type: 'road-out', angle: degToRad(0), widthM: 15, roadOptions: road1.forward },
+                    { type: 'road-in', angle: degToRad(90), widthM: 15, roadOptions: road2.backward },
+                    { type: 'grass', angle: degToRad(90), widthM: 3 },
+                    { type: 'road-out', angle: degToRad(90), widthM: 15, roadOptions: road2.forward },
+                    { type: 'road-in', angle: degToRad(170), widthM: 15, roadOptions: road1.forward },
+                    { type: 'road-out', angle: degToRad(190), widthM: 15, roadOptions: road1.backward },
+                    { type: 'road-in', angle: degToRad(270), widthM: 15, roadOptions: road2.forward },
+                    { type: 'road-out', angle: degToRad(270), widthM: 15, roadOptions: road2.backward },
+                    { type: 'road-in', angle: degToRad(360), widthM: 15, roadOptions: road1.backward },
+                ],
                 {
                     centerMarking: 'box',
                     crosswalks: 'zebra',
-
-                });
+                },
+            );
 
             console.log("GameUI: Scene3D initialized after UI loaded.");
 

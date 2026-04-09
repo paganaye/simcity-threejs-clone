@@ -1,10 +1,7 @@
-export type KerbType = 'parallelParking' | 'perpendicularParking' | 'emergencyLane' | 'line' | 'line-hidden' | 'gap' | 'none';
-export type SideWalkType = 'small' | 'small-hidden' | 'large' | 'grass' | 'none';
-
-export type LaneWidth = 'narrow' | 'normal' | 'wide';
+import { RoadType, KerbType, SideWalkType, LaneWidth } from "../IRoadBand";
 
 export interface IRoadOptions {
-    roadColor: 'old' | 'new';
+    roadColor: RoadType;
     lanes: number;
     rightKerb: KerbType;
     rightSidewalk: SideWalkType;
@@ -12,6 +9,15 @@ export interface IRoadOptions {
     leftKerb: KerbType;
     leftSidewalk: SideWalkType;
 }
+
+// static OLD_ROAD_COLOR = 'hsl(0, 2%, 7%)';
+// static NEW_ROAD_COLOR = 'hsl(0, 2%, 3.5%)';
+// oldRoadColor: this.OLD_ROAD_COLOR,
+// newRoadColor: this.NEW_ROAD_COLOR,
+// static NARROW_LANE_WIDTH_M = 3.0;
+// static NORMAL_LANE_WIDTH_M = 3.5;
+// static WIDE_LANE_WIDTH_M = 4.25;
+
 
 export type IRoad = {
     forward: IRoadOptions;

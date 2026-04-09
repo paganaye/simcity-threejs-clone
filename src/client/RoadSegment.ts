@@ -157,8 +157,8 @@ export class RoadSegment {
      */
     #rebuildArc(midX: number, midZ: number, endX: number, endZ: number): void {
         const p1x = this.startX, p1z = this.startZ;
-        const p2x = midX,        p2z = midZ;
-        const p3x = endX,        p3z = endZ;
+        const p2x = midX, p2z = midZ;
+        const p3x = endX, p3z = endZ;
 
         if (DEBUG_ROAD_ARC) {
             console.log('[RoadArc] input', {
@@ -267,7 +267,7 @@ export class RoadSegment {
         this.group.rotation.set(0, 0, 0);
 
         const builder = new TwoWayRoadBuilder({ x: p1x, y: 0.015, z: p1z, angle: startAngle }, this.group);
-        builder.addCurvedRoad(turnAngle, radius, this.iRoad);
+        builder.addCurvedRoad(turnAngle, radius, this.iRoad, {});
 
         // Keep stored state consistent with the arc geometry.
         this.angle = startAngle;

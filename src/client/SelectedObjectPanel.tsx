@@ -3,7 +3,8 @@ import type * as THREE from "three";
 import type { ISelectedInstance } from "./editor/ObjectGizmo";
 import type { Character, CharacterSelectionInfo } from "./Character";
 import type { RoadSegment } from "./RoadSegment";
-import type { IRoad, IRoadOptions, KerbType, SideWalkType } from "./roads/IRoad";
+import type { IRoad, IRoadOptions } from "./roads/IRoad";
+import { KerbType, SideWalkType } from "./IRoadBand";
 
 function RoadOptionsInput(props: {
     title: string;
@@ -88,7 +89,7 @@ export function SelectedObjectPanel(props: {
         }
         return selected.userData?.roadSegment as RoadSegment | undefined;
     };
-    const shoulderOptions: KerbType[] = ["parallelParking", "perpendicularParking", "emergencyLane", "line", "gap", "none"];
+    const shoulderOptions: KerbType[] = ["parallelParking", "perpendicularParking", "emergencyLane", "line", "none"];
     const sidewalkOptions: SideWalkType[] = ["small", "large", "grass", "none"];
     const laneWidthOptions = ["narrow", "normal", "wide"] as const;
     const [roadDraft, setRoadDraft] = createSignal<IRoad>({

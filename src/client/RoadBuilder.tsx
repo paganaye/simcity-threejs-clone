@@ -1,14 +1,9 @@
 import * as THREE from "three";
-import { BandPainter, type BandType, type IRoadBand } from "./BandPainter";
-import { buildRoadCrossSection, IRoadCrossSection, IRoadLayoutMetrics } from "./RoadLayout";
-import type { IRoadOptions, LaneWidth } from "./roads/IRoad";
+import { BandPainter } from "./BandPainter";
+import { getBands, IRoadBands } from "./RoadLayout";
+import type { IRoadOptions } from "./roads/IRoad";
 import type { IOrientation2D, IPoint2D, IPoint3D } from "../sim/IPoint";
-
-export interface IRoadBands {
-    bands: IRoadBand[];
-    widthM: number;
-    widthPx: number;
-}
+import { LaneWidth } from "./IRoadBand";
 
 export interface ISideCuts {
     from: number; // sidewalk start cut
@@ -39,7 +34,7 @@ export class RoadBuilder {
     static LINE_LENGTH = 8; // every 8 metres, which is a common length for dashed lines and also works well for solid lines.
     static OLD_ROAD_COLOR = 'hsl(0, 2%, 7%)';
     static NEW_ROAD_COLOR = 'hsl(0, 2%, 3.5%)';
-    static TEXTURE_PPM = 10; // to be refined
+    static TEXTURE_PPM = 10; // 1 pixel = 0.1m = 10 cm
     static SIDEWALK_COLOR = 'hsl(230, 3%, 40.0%)';
     static GRASS_COLOR = 'hsl(120, 40%, 40%)';
     static YELLOW_LINE = 'hsl(66, 38.70%, 46.70%)';
@@ -62,30 +57,11 @@ export class RoadBuilder {
     static LARGE_SIDEWALK_M = 2; // metre
 
     static TURNING_SEGMENTS_MULTIPLIER = 12;
+    static currentX: number;
 
-    static getLayoutMetrics(): IRoadLayoutMetrics {
-        return {
-            oldRoadColor: this.OLD_ROAD_COLOR,
-            newRoadColor: this.NEW_ROAD_COLOR,
-            sidewalkColor: this.SIDEWALK_COLOR,
-            grassColor: this.GRASS_COLOR,
-            yellowLineColor: this.YELLOW_LINE,
-            whiteLineColor: this.WHITE_LINE,
-            yellowLineWidthM: this.YELLOW_LINE_WIDTH_M,
-            emergencyLaneWidthM: this.EMERGENCY_LANE_WIDTH_M,
-            parallelParkingWidthM: this.PARALLEL_PARKING_WIDTH_M,
-            perpendicularParkingWidthM: this.PERPENDICULAR_PARKING_WIDTH_M,
-            smallSidewalkM: this.SMALL_SIDEWALK_M,
-            largeSidewalkM: this.LARGE_SIDEWALK_M,
-            grassWidthM: this.GRASS_WIDTH_M,
-            narrowLaneWidthM: this.NARROW_LANE_WIDTH_M,
-            normalLaneWidthM: this.NORMAL_LANE_WIDTH_M,
-            wideLaneWidthM: this.WIDE_LANE_WIDTH_M,
-        };
-    }
 
     static metersToPixels(meters: number): number {
-        return Math.round(meters * this.TEXTURE_PPM);
+        return meters * this.TEXTURE_PPM;
     }
 
     static getLaneWidthMeters(laneWidth: 'narrow' | 'normal' | 'wide'): number {
@@ -110,7 +86,6 @@ export class RoadBuilder {
             case 'perpendicularParking': return this.PERPENDICULAR_PARKING_WIDTH_M;
             case 'emergencyLane': return this.YELLOW_LINE_WIDTH_M + this.EMERGENCY_LANE_WIDTH_M;
             case 'line': return this.YELLOW_LINE_WIDTH_M + this.YELLOW_LINE_WIDTH_M;
-            case 'gap': return this.YELLOW_LINE_WIDTH_M;
             default: return 0;
         }
     }
@@ -118,56 +93,9 @@ export class RoadBuilder {
     static getSidewalkWidthMeters(sidewalk: IRoadOptions['rightSidewalk']): number {
         switch (sidewalk) {
             case 'small':
-            case 'small-hidden': return this.SMALL_SIDEWALK_M;
             case 'large': return this.LARGE_SIDEWALK_M;
             default: return 0;
         }
-    }
-
-
-
-    static buildRoadBands(options: IRoadOptions): IRoadBands {
-        const crossSection = buildRoadCrossSection(options, this.getLayoutMetrics());
-        const bands = this.buildBands(options);
-        const widthM = crossSection.totalWidthM;
-        const widthPx = Math.max(1, this.metersToPixels(widthM));
-        return { bands, widthM, widthPx };
-    }
-
-    static buildBands(options: IRoadOptions): IRoadBand[] {
-        const crossSection = buildRoadCrossSection(options, this.getLayoutMetrics());
-        return this.toRoadBands(crossSection);
-    }
-
-    static toRoadBands(crossSection: IRoadCrossSection): IRoadBand[] {
-        const bands: IRoadBand[] = [];
-
-        const pushBand = (type: BandType, width: number, color: string) => {
-            if (width <= 0) return;
-            bands.push({ type, width, color });
-        };
-
-        for (const band of crossSection.bands) {
-            switch (band.kind) {
-                case 'asphalt':
-                case 'sidewalk':
-                case 'grass':
-                case 'gap':
-                    pushBand('solid', band.widthM, band.color);
-                    break;
-                case 'laneDivider':
-                    pushBand('laneDivider', band.widthM, band.color);
-                    break;
-                case 'parallelParking':
-                    pushBand('parallelParking', band.widthM, band.color);
-                    break;
-                case 'perpendicularParking':
-                    pushBand('perpendicularParking', band.widthM, band.color);
-                    break;
-            }
-        }
-
-        return bands;
     }
 
     private constructor() { }
@@ -224,6 +152,43 @@ export class RoadBuilder {
         ];
     }
 
+    private static pushUniquePoint(points: IPoint2D[], point: IPoint2D): void {
+        const previous = points[points.length - 1];
+        if (previous && Math.abs(previous.x - point.x) < 1e-6 && Math.abs(previous.z - point.z) < 1e-6) {
+            return;
+        }
+        points.push(point);
+    }
+
+    private static getSideCutSegments(params: {
+        cuts: ISideCuts[] | undefined;
+        length: number;
+        overlapStartX: number;
+        overlapEndX: number;
+    }): ISideCuts[] {
+        const { cuts, length, overlapStartX, overlapEndX } = params;
+        if (!cuts?.length || overlapEndX <= overlapStartX) return [];
+
+        const toLocalX = (value: number): number => -length / 2 + this.clampExtremityValue(value, length);
+        const normalizedCuts = [...cuts].sort((left, right) => left.from - right.from);
+        const segments: ISideCuts[] = [];
+        let currentX = overlapStartX;
+
+        for (const cut of normalizedCuts) {
+            const from = Math.max(currentX, THREE.MathUtils.clamp(toLocalX(cut.from), overlapStartX, overlapEndX));
+            const roadFrom = Math.max(from, THREE.MathUtils.clamp(toLocalX(cut.roadFrom), overlapStartX, overlapEndX));
+            const roadTo = Math.max(roadFrom, THREE.MathUtils.clamp(toLocalX(cut.roadTo), overlapStartX, overlapEndX));
+            const to = Math.max(roadTo, THREE.MathUtils.clamp(toLocalX(cut.to), overlapStartX, overlapEndX));
+
+            if (to <= from) continue;
+
+            segments.push({ from, roadFrom, roadTo, to });
+            currentX = to;
+        }
+
+        return segments;
+    }
+
     private static createStraightCutGeometry(params: {
         length: number;
         widthM: number;
@@ -232,6 +197,8 @@ export class RoadBuilder {
         startV: number;
         endV: number;
         side: 'left' | 'right';
+        rightCuts?: ISideCuts[];
+        leftCuts?: ISideCuts[];
         startCut?: IExtremityCut;
         endCut?: IExtremityCut;
     }): THREE.BufferGeometry {
@@ -243,6 +210,8 @@ export class RoadBuilder {
             startV,
             endV,
             side,
+            rightCuts,
+            leftCuts,
             startCut,
             endCut,
         } = params;
@@ -257,33 +226,96 @@ export class RoadBuilder {
         const endCuts = this.getExtremityValues(endCut, length);
         const repeat = endV - startV;
 
+        const startX = lateral.map((_, index) => -halfLength + startCuts[index]);
+        const endX = lateral.map((_, index) => halfLength - endCuts[index]);
+
+        const rightSegments = this.getSideCutSegments({
+            cuts: rightCuts,
+            length,
+            overlapStartX: Math.max(startX[2], startX[3]),
+            overlapEndX: Math.min(endX[2], endX[3]),
+        });
+        const leftSegments = this.getSideCutSegments({
+            cuts: leftCuts,
+            length,
+            overlapStartX: Math.max(startX[0], startX[1]),
+            overlapEndX: Math.min(endX[0], endX[1]),
+        });
+
+        const outline: IPoint2D[] = [];
+        const startEdge: IPoint2D[] = [
+            { x: startX[0], z: leftOuter },
+            { x: startX[1], z: roadLeft },
+            { x: startX[2], z: roadRight },
+            { x: startX[3], z: rightOuter },
+        ];
+        const endEdge: IPoint2D[] = [
+            { x: endX[3], z: rightOuter },
+            { x: endX[2], z: roadRight },
+            { x: endX[1], z: roadLeft },
+            { x: endX[0], z: leftOuter },
+        ];
+
+        for (const point of startEdge) {
+            this.pushUniquePoint(outline, point);
+        }
+
+        let rightBoundaryX = startX[3];
+        for (const cut of rightSegments) {
+            if (cut.from > rightBoundaryX) {
+                this.pushUniquePoint(outline, { x: cut.from, z: rightOuter });
+            }
+            this.pushUniquePoint(outline, { x: cut.roadFrom, z: roadRight });
+            this.pushUniquePoint(outline, { x: cut.roadTo, z: roadRight });
+            this.pushUniquePoint(outline, { x: cut.to, z: rightOuter });
+            rightBoundaryX = cut.to;
+        }
+        this.pushUniquePoint(outline, { x: endX[3], z: rightOuter });
+
+        for (const point of endEdge) {
+            this.pushUniquePoint(outline, point);
+        }
+
+        let leftBoundaryX = endX[0];
+        for (let index = leftSegments.length - 1; index >= 0; index--) {
+            const cut = leftSegments[index];
+            if (cut.to < leftBoundaryX) {
+                this.pushUniquePoint(outline, { x: cut.to, z: leftOuter });
+            }
+            this.pushUniquePoint(outline, { x: cut.roadTo, z: roadLeft });
+            this.pushUniquePoint(outline, { x: cut.roadFrom, z: roadLeft });
+            this.pushUniquePoint(outline, { x: cut.from, z: leftOuter });
+            leftBoundaryX = cut.from;
+        }
+        this.pushUniquePoint(outline, { x: startX[0], z: leftOuter });
+
+        if (outline.length > 1) {
+            const first = outline[0];
+            const last = outline[outline.length - 1];
+            if (Math.abs(first.x - last.x) < 1e-6 && Math.abs(first.z - last.z) < 1e-6) {
+                outline.pop();
+            }
+        }
+
+        const contour = outline.map((point) => new THREE.Vector2(point.x, point.z));
+        if (THREE.ShapeUtils.isClockWise(contour)) {
+            contour.reverse();
+        }
+
+        const faces = THREE.ShapeUtils.triangulateShape(contour, []);
         const vertices: number[] = [];
         const uvs: number[] = [];
-
-        for (let i = 0; i < lateral.length; i++) {
-            const y = lateral[i];
-            const xStart = -halfLength + startCuts[i];
-            const xEnd = halfLength - endCuts[i];
-            const tStart = THREE.MathUtils.clamp((xStart + halfLength) / length, 0, 1);
-            const tEnd = THREE.MathUtils.clamp((xEnd + halfLength) / length, 0, 1);
-            const baseU = THREE.MathUtils.clamp((y - leftOuter) / widthM, 0, 1);
+        for (const point of contour) {
+            const t = THREE.MathUtils.clamp((point.x + halfLength) / length, 0, 1);
+            const baseU = THREE.MathUtils.clamp((point.y - leftOuter) / widthM, 0, 1);
             const u = side === 'left' ? 1 - baseU : baseU;
-
-            vertices.push(xStart, y, 0);
-            vertices.push(xEnd, y, 0);
-
-            uvs.push(u, startV + repeat * tStart);
-            uvs.push(u, startV + repeat * tEnd);
+            vertices.push(point.x, point.y, 0);
+            uvs.push(u, startV + repeat * t);
         }
 
         const indices: number[] = [];
-        for (let i = 0; i < lateral.length - 1; i++) {
-            const a = i * 2;
-            const b = a + 1;
-            const c = a + 2;
-            const d = a + 3;
-            indices.push(a, b, d);
-            indices.push(a, d, c);
+        for (const face of faces) {
+            indices.push(face[0], face[1], face[2]);
         }
 
         const geometry = new THREE.BufferGeometry();
@@ -313,9 +345,8 @@ export class RoadBuilder {
 
         if (length <= 0) return;
 
-        const bands = RoadBuilder.buildRoadBands(options);
-        const crossSection = buildRoadCrossSection(options, this.getLayoutMetrics());
-        const widthM = bands.widthM;
+        const bands = getBands(options);
+        const widthM = bands.totalWidthM;
         const sideSign = side === 'left' ? -1 : 1;
         const halfOffsetM = sideSign * (safeHalfGap + widthM / 2);
         const dx = Math.cos(start.angle) * length;
@@ -338,8 +369,8 @@ export class RoadBuilder {
             scene,
         };
 
-        const hasExtremityCuts = Boolean(cuts?.startCut || cuts?.endCut);
-        if (!hasExtremityCuts) {
+        const hasCustomCuts = Boolean(cuts?.startCut || cuts?.endCut || cuts?.rightCuts?.length || cuts?.leftCuts?.length);
+        if (!hasCustomCuts) {
             RoadBuilder.createStraightRoadMesh({
                 ...sharedParams,
                 halfOffsetM,
@@ -353,11 +384,13 @@ export class RoadBuilder {
         const geometry = this.createStraightCutGeometry({
             length,
             widthM,
-            carriagewayStartM: crossSection.carriagewayStartM,
-            carriagewayEndM: crossSection.carriagewayEndM,
+            carriagewayStartM: bands.carriagewayStartM,
+            carriagewayEndM: bands.carriagewayEndM,
             startV,
             endV,
             side,
+            rightCuts: cuts?.rightCuts,
+            leftCuts: cuts?.leftCuts,
             startCut: cuts?.startCut,
             endCut: cuts?.endCut,
         });
@@ -388,7 +421,7 @@ export class RoadBuilder {
         scene: THREE.Object3D;
     }): void {
         const { side, options, bands, gap, turnAngle, segments, radius, totalCurveAngle, startV, arcCenter, initialRoadAngle, geomAngleOffset, scene } = params;
-        const widthM = bands.widthM;
+        const widthM = bands.totalWidthM;
         if (widthM <= 0) return;
         const halfGapM = gap / 2;
         const turnSideSign = turnAngle >= 0 ? 1 : -1;
@@ -462,26 +495,16 @@ export class RoadBuilder {
     static createRoadTexture(options: IRoadOptions) {
 
         const canvas = document.createElement('canvas');
-        const layout = this.buildRoadBands(options);
-        const textureWidthPx = layout.widthPx;
+        const layout = getBands(options);
+        const textureWidthPx = this.metersToPixels(layout.totalWidthM);
         const textureHeightPx = this.metersToPixels(this.TEXTURE_HEIGHT_M);
         canvas.width = textureWidthPx;
         canvas.height = textureHeightPx;
         const ctx = canvas.getContext('2d')!;
-        const painter = new BandPainter(ctx);
+        const painter = new BandPainter(ctx, options);
 
-        painter.rect(this.TRANSPARENT, 0, 0, textureWidthPx, textureHeightPx);
 
-        const roadColor = options.roadColor === 'new' ? RoadBuilder.NEW_ROAD_COLOR : RoadBuilder.OLD_ROAD_COLOR;
-        const bands = layout.bands;
-        let currentX = 0;
-
-        const yellowLinePx = this.metersToPixels(this.YELLOW_LINE_WIDTH_M);
-        for (const band of bands) {
-            const widthPx = this.metersToPixels(band.width);
-            painter.roadBand(band, currentX, widthPx, textureHeightPx, roadColor, RoadBuilder.WHITE_LINE, yellowLinePx);
-            currentX += widthPx;
-        }
+        painter.drawBands(layout.bands);
 
         const imageData = ctx.getImageData(0, 0, textureWidthPx, textureHeightPx);
         const data = new Uint8Array(imageData.data);

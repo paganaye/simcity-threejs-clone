@@ -1,71 +1,72 @@
-import type { IRoadBandLayout } from './RoadLayout';
+import { IRoadBand, RoadConstants } from './IRoadBand';
+import { RoadBuilder } from './RoadBuilder';
+import { IRoadOptions } from './roads/IRoad';
 
-export type BandType = 'solid' | 'laneDivider' | 'parallelParking' | 'perpendicularParking';
-
-export interface IRoadBand {
-    type: BandType;
-    width: number;
-    color: string;
-}
 
 export class BandPainter {
-    constructor(private readonly ctx: CanvasRenderingContext2D) {}
+    roadColor: string = "";
+    currentX: number = 0;
+    textureWidth!: number;
+    textureHeight!: number;
 
-    rect(color: string, x: number, y: number, w: number, h: number): void {
-        if (w <= 0 || h <= 0) return;
+    constructor(private readonly ctx: CanvasRenderingContext2D, readonly road: IRoadOptions) {
+        this.roadColor = road.roadColor === 'new' ? RoadBuilder.NEW_ROAD_COLOR : RoadBuilder.OLD_ROAD_COLOR;
+    }
+
+    drawBands(bands: IRoadBand[]) {
+        this.textureWidth = this.ctx.canvas.width;
+        this.textureHeight = this.ctx.canvas.height;
+        this.drawRect('transparent', 0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+
+
+        for (const band of bands) {
+            this.drawBand(band);
+        }
+
+
+    }
+
+    drawRect(color: string, x: number, y: number, w: number, h: number): void {
+        if (w <= 0 || h <= 0 || !color) return;
         this.ctx.fillStyle = color;
-        this.ctx.fillRect(x, y, w, h);
+        this.ctx.fillRect(this.currentX + x, y, w, h);
     }
 
-    bandH(band: IRoadBandLayout, asphaltColor: string, x0: number, x1: number, y: number, h: number): void {
-        if (x1 <= x0 || band.kind === 'gap') return;
-        const w = x1 - x0;
-        if (band.kind === 'laneDivider') {
-            this.rect(asphaltColor, x0, y, w, h);
-            this.rect(band.color, x0, y, Math.max(1, Math.round(w / 2)), h);
-            return;
-        }
-        this.rect(band.color, x0, y, w, h);
-    }
 
-    bandV(band: IRoadBandLayout, asphaltColor: string, x: number, w: number, y0: number, y1: number): void {
-        if (y1 <= y0 || band.kind === 'gap') return;
-        const h = y1 - y0;
-        if (band.kind === 'laneDivider') {
-            this.rect(asphaltColor, x, y0, w, h);
-            this.rect(band.color, x, y0, w, Math.max(1, Math.round(h / 2)));
-            return;
-        }
-        this.rect(band.color, x, y0, w, h);
-    }
-
-    roadBand(band: IRoadBand, x: number, widthPx: number, heightPx: number, roadColor: string, whiteLine: string, yellowLinePx: number): void {
+    drawBand(band: IRoadBand): void {
+        let widthPx = RoadBuilder.metersToPixels(band.widthM);
         if (widthPx <= 0) return;
-        const line = (w: number, y: number, h: number, color: string) =>
-            this.rect(color, x, y * heightPx, w, h * heightPx);
+
+        let drawRectPc = (color: string, x: number, y: number, w: number, h: number) => {
+            if (color === 'asphalt') color = this.roadColor;
+            this.drawRect(color, x * widthPx, y * this.textureHeight, w * widthPx, h * this.textureHeight);
+        }
+
         switch (band.type) {
-            case 'solid':
-                line(widthPx, 0, 1, band.color);
-                break;
-            case 'laneDivider':
-                line(widthPx, 0, 0.5, band.color);
-                line(widthPx, 0.5, 0.5, roadColor);
+            case 'line':
+                drawRectPc(this.roadColor, 0, 0, 1, 1);
+                drawRectPc(band.color, 1 / 4, 0.25, 1 / 2, 0.5);
                 break;
             case 'parallelParking':
-                line(widthPx, 0, 1, band.color);
-                line(widthPx, 0, 1 / 32, whiteLine);
-                line(widthPx, 1 / 2, 1 / 32, whiteLine);
-                line(yellowLinePx, 0, 0.1, whiteLine);
-                line(yellowLinePx, 0.4, 0.2, whiteLine);
-                line(yellowLinePx, 1 - 0.1, 0.1, whiteLine);
+                drawRectPc(band.color, 0, 0, 1, 1);
+                drawRectPc(RoadConstants.whiteLine, 0, 0, 1, (1 / 32));
+                drawRectPc(RoadConstants.whiteLine, 0, (1 / 2), 1, (1 / 32));
+                drawRectPc(RoadConstants.whiteLine, 0, 0, RoadConstants.yellowLinePx, 0.1);
+                drawRectPc(RoadConstants.whiteLine, 0, 0.4, RoadConstants.yellowLinePx, 0.2);
+                drawRectPc(RoadConstants.whiteLine, 0, (1 - 0.1), RoadConstants.yellowLinePx, 0.1);
                 break;
             case 'perpendicularParking':
-                line(widthPx, 0, 1, band.color);
-                line(widthPx, 0, 1 / 32, whiteLine);
-                line(widthPx, 1 / 4, 1 / 32, whiteLine);
-                line(widthPx, 2 / 4, 1 / 32, whiteLine);
-                line(widthPx, 3 / 4, 1 / 32, whiteLine);
+                drawRectPc(band.color, 0, 0, 1, 1);
+                drawRectPc(RoadConstants.whiteLine, 0, 0, 1, (1 / 32));
+                drawRectPc(RoadConstants.whiteLine, 0, (1 / 4), 1, (1 / 32));
+                drawRectPc(RoadConstants.whiteLine, 0, (2 / 4), 1, (1 / 32));
+                drawRectPc(RoadConstants.whiteLine, 0, (3 / 4), 1, (1 / 32));
                 break;
+            default:
+                let color = band.color = band.color;
+                if (color) drawRectPc(color, 0, 0, 1, 1);
         }
+
+        this.currentX += widthPx;
     }
 }

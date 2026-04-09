@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { IOrientation2D } from "../sim/IPoint";
 import type { IRoad, IRoadOptions } from "./roads/IRoad";
 import { RoadBuilder } from "./RoadBuilder";
+import { getBands } from "./RoadLayout";
 
 
 export class TwoWayRoadBuilder implements IOrientation2D {
@@ -20,7 +21,7 @@ export class TwoWayRoadBuilder implements IOrientation2D {
         this.angle = startPosition.angle;
     }
 
-    addStraightRoad(length: number, road: IRoad, _cuts: any) {
+    addStraightRoad(length: number, road: IRoad, _cuts: any = {}) {
         let left: IRoadOptions | null;
         let right: IRoadOptions;
 
@@ -29,11 +30,11 @@ export class TwoWayRoadBuilder implements IOrientation2D {
         left = road.backward ?? null;
 
         if (length <= 0) return;
-        const leftBands = left ? RoadBuilder.buildRoadBands(left) : null;
-        const rightBands = RoadBuilder.buildRoadBands(right);
+        const leftBands = left ? getBands(left) : null;
+        const rightBands = getBands(right);
 
-        const rightWidthM = rightBands.widthM;
-        const leftWidthM = leftBands ? leftBands.widthM : 0;
+        const rightWidthM = rightBands.totalWidthM;
+        const leftWidthM = leftBands ? leftBands.totalWidthM : 0;
         const halfGapM = left ? safeGap / 2 : 0;
         const dx = Math.cos(this.angle) * length;
         const dz = -Math.sin(this.angle) * length;
@@ -62,8 +63,8 @@ export class TwoWayRoadBuilder implements IOrientation2D {
     }
 
     addCurvedRoad(turnAngle: number, radius: number, road: IRoad, _cuts: any) {
-        const leftBands = road.backward ? RoadBuilder.buildRoadBands(road.backward) : null;
-        const rightBands = RoadBuilder.buildRoadBands(road.forward);
+        const rightBands = getBands(road.forward);
+        const leftBands = road.backward ? getBands(road.backward) : null;
 
         let left: IRoadOptions | null;
         let right: IRoadOptions;
@@ -103,12 +104,12 @@ export class TwoWayRoadBuilder implements IOrientation2D {
         const sharedCurveParams = { gap, turnAngle, segments, radius, totalCurveAngle, startV, arcCenter: { x: cx, y: this.y, z: cz }, initialRoadAngle, geomAngleOffset, scene: this.scene };
 
         if (DEBUG_ROAD_ARC) {
-            console.log('[RoadBuilder.turn] side right', { widthM: rightBands.widthM, lanes: right.lanes });
-            if (left && leftBands) console.log('[RoadBuilder.turn] side left', { widthM: leftBands.widthM, lanes: left.lanes });
+            console.log('[RoadBuilder.turn] side right', { widthM: rightBands.totalWidthM, lanes: right.lanes });
+            if (left && leftBands) console.log('[RoadBuilder.turn] side left', { widthM: leftBands.totalWidthM, lanes: left.lanes });
         }
 
-        if (left && leftBands) RoadBuilder.createCurvedRoadMesh({ ...sharedCurveParams, side: 'left', options: left, bands: leftBands });
-        RoadBuilder.createCurvedRoadMesh({ ...sharedCurveParams, side: 'right', options: right, bands: rightBands });
+        if (left && leftBands) RoadBuilder.createCurvedRoadMesh({ ...sharedCurveParams, side: 'left', options: left, bands: leftBands! });
+        RoadBuilder.createCurvedRoadMesh({ ...sharedCurveParams, side: 'right', options: right, bands: rightBands! });
 
         this.angle = finalRoadAngle;
         const finalGeometryRayAngle = finalRoadAngle + geomAngleOffset;

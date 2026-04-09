@@ -19,47 +19,67 @@ export default class RoadTest extends Page {
         const handleUILoaded = async (): Promise<void> => {
             await scene3D.init(this);
 
-            // const road1: IRoad = {
-            //     forward: {
-            //         roadColor: 'old',
-            //         lanes: 3,
-            //         rightKerb: 'line',
-            //         rightSidewalk: 'small',
-            //         laneWidth: 'normal',
-            //         leftKerb: 'line',
-            //         leftSidewalk: 'small',
-            //     },
-            //     gapSize: 0,
-            // };
+            const road1: IRoad = {
+                forward: {
+                    roadColor: 'old',
+                    lanes: 3,
+                    rightKerb: 'line',
+                    rightSidewalk: 'small',
+                    laneWidth: 'normal',
+                    leftKerb: 'line',
+                    leftSidewalk: 'small',
+                },
+                gapSize: 0,
+            };
 
 
 
-            // RoadBuilder.createStraightRoad({
-            //     start: { x: 0, y: 0, z: 0, angle: 0 },
-            //     scene: scene3D.scene,
-            //     length: 35,
-            //     options: road1.forward,
-            //     gapSize: road1.gapSize,
-            //     cuts: {
-            //         rightCuts: [
-            //             {
-            //                 from: 10,
-            //                 roadFrom: 15,
-            //                 roadTo: 35,
-            //                 to: 40
-            //             }
-            //         ]
-            //     }
-            // });
+            RoadBuilder.createStraightRoad({
+                start: { x: 0, y: 0, z: 0, angle: 0 },
+                scene: scene3D.scene,
+                length: 30,
+                options: road1.forward,
+                gapSize: road1.gapSize,
+                cuts: {
+                    startCut: {
+                        left: 4,
+                        roadLeft: 2,
+                        roadRight: 0,
+                        right: 1,
+                    },
+                    endCut: {
+                        left: 4,
+                        roadLeft: 2,
+                        roadRight: 0,
+                        right: 1,
+                    },
+                    rightCuts: [
+                        {
+                            from: 7,
+                            roadFrom: 10,
+                            roadTo: 17,
+                            to: 20,
+                        }
+                    ],
+                    leftCuts: [
+                        {
+                            from: 12,
+                            roadFrom: 15,
+                            roadTo: 22,
+                            to: 25,
+                        }
+                    ],
+                }
+            });
 
             const road2: IRoad = {
                 forward: {
                     roadColor: 'new',
-                    lanes: 1,
-                    rightKerb: 'none',
+                    lanes: 2,
+                    rightKerb: 'line',
                     rightSidewalk: 'grass',
                     laneWidth: 'normal',
-                    leftKerb: 'none',
+                    leftKerb: 'line',
                     leftSidewalk: 'grass',
                 },
                 gapSize: 0,
@@ -68,21 +88,21 @@ export default class RoadTest extends Page {
             RoadBuilder.createStraightRoad({
                 start: { x: 0, y: 0, z: 30, angle: degToRad(45) },
                 scene: scene3D.scene,
-                length: 20.5,
+                length: 15,
                 options: road2.forward,
                 gapSize: road2.gapSize,
                 cuts: {
                     startCut: {
-                        left: 6,
-                        roadLeft: 5,
+                        left: 4,
+                        roadLeft: 2,
                         roadRight: 0,
                         right: 1,
                     },
                     endCut: {
-                        left: 3,
+                        left: 4,
                         roadLeft: 2,
                         roadRight: 0,
-                        right: 4,
+                        right: 1,
                     }
                 }
             });

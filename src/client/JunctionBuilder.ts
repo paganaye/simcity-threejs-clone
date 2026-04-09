@@ -8,6 +8,10 @@ import { IOrientation2D } from '../sim/IPoint';
 export class JunctionBuilder {
 
     static materialByStyle = new Map<string, THREE.MeshStandardMaterial>();
+    private static readonly ZEBRA_BAND_WIDTH_M = 3.0;
+    private static readonly ZEBRA_MARGIN_M = 0.4;
+    private static readonly ZEBRA_STRIPE_SIZE_M = 0.5;
+    private static readonly ZEBRA_STRIPE_GAP_M = 0.5;
 
     constructor(readonly scene: THREE.Object3D) {
     }
@@ -59,10 +63,11 @@ export class JunctionBuilder {
             : RoadBuilder.OLD_ROAD_COLOR;
         const painter = new BandPainter(ctx);
         painter.rect(centerRoadColor, intersectionLeftPx, intersectionTopPx, intersectionWidthPx, intersectionHeightPx);
-        this.drawCenterMarking(ctx, geometry, options);
 
         this.drawHorizontalArm(painter, geometry, mainRoad, ppm, intersectionLeftPx, intersectionWidthPx);
         this.drawVerticalArm(painter, geometry, crossingRoad, ppm, intersectionTopPx, intersectionHeightPx);
+        this.drawCrosswalks(ctx, geometry, options);
+        this.drawCenterMarking(ctx, geometry, options);
 
         const imageData = ctx.getImageData(0, 0, widthPx, heightPx);
         const texture = new THREE.DataTexture(
@@ -156,6 +161,109 @@ export class JunctionBuilder {
         ctx.strokeStyle = RoadBuilder.YELLOW_LINE;
         ctx.lineWidth = strokePx;
         ctx.strokeRect(leftPx, topPx, widthPx, heightPx);
+    }
+
+    private static drawCrosswalks(
+        ctx: CanvasRenderingContext2D,
+        geometry: IJunctionGeometry,
+        options?: IJunctionTextureOptions,
+    ): void {
+        if ((options?.crosswalks ?? 'none') !== 'zebra') {
+            return;
+        }
+
+        const ppm = Math.max(1, RoadBuilder.TEXTURE_PPM);
+        const centerLeftPx = Math.round((geometry.textureWidthM / 2 - geometry.intersectionWidthM / 2) * ppm);
+        const centerTopPx = Math.round((geometry.textureHeightM / 2 - geometry.intersectionHeightM / 2) * ppm);
+        const centerWidthPx = Math.max(1, Math.round(geometry.intersectionWidthM * ppm));
+        const centerHeightPx = Math.max(1, Math.round(geometry.intersectionHeightM * ppm));
+
+        const crosswalkBandPx = this.metersToPixels(this.ZEBRA_BAND_WIDTH_M, ppm, 4);
+        const marginPx = this.metersToPixels(this.ZEBRA_MARGIN_M, ppm, 2);
+        const stripeSizePx = this.metersToPixels(this.ZEBRA_STRIPE_SIZE_M, ppm, 3);
+        const stripeGapPx = this.metersToPixels(this.ZEBRA_STRIPE_GAP_M, ppm, 2);
+
+        ctx.fillStyle = RoadBuilder.WHITE_LINE;
+
+        this.drawHorizontalZebra(
+            ctx,
+            centerLeftPx + marginPx,
+            centerTopPx - crosswalkBandPx,
+            Math.max(1, centerWidthPx - marginPx * 2),
+            crosswalkBandPx,
+            stripeSizePx,
+            stripeGapPx,
+        );
+
+        this.drawHorizontalZebra(
+            ctx,
+            centerLeftPx + marginPx,
+            centerTopPx + centerHeightPx,
+            Math.max(1, centerWidthPx - marginPx * 2),
+            crosswalkBandPx,
+            stripeSizePx,
+            stripeGapPx,
+        );
+
+        this.drawVerticalZebra(
+            ctx,
+            centerLeftPx - crosswalkBandPx,
+            centerTopPx + marginPx,
+            crosswalkBandPx,
+            Math.max(1, centerHeightPx - marginPx * 2),
+            stripeSizePx,
+            stripeGapPx,
+        );
+
+        this.drawVerticalZebra(
+            ctx,
+            centerLeftPx + centerWidthPx,
+            centerTopPx + marginPx,
+            crosswalkBandPx,
+            Math.max(1, centerHeightPx - marginPx * 2),
+            stripeSizePx,
+            stripeGapPx,
+        );
+    }
+
+    private static drawHorizontalZebra(
+        ctx: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        stripeWidth: number,
+        stripeGap: number,
+    ): void {
+        const step = Math.max(1, stripeWidth + stripeGap);
+        for (let stripeX = x; stripeX < x + width; stripeX += step) {
+            const rectWidth = Math.min(stripeWidth, x + width - stripeX);
+            if (rectWidth > 0) {
+                ctx.fillRect(stripeX, y, rectWidth, height);
+            }
+        }
+    }
+
+    private static drawVerticalZebra(
+        ctx: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        stripeHeight: number,
+        stripeGap: number,
+    ): void {
+        const step = Math.max(1, stripeHeight + stripeGap);
+        for (let stripeY = y; stripeY < y + height; stripeY += step) {
+            const rectHeight = Math.min(stripeHeight, y + height - stripeY);
+            if (rectHeight > 0) {
+                ctx.fillRect(x, stripeY, width, rectHeight);
+            }
+        }
+    }
+
+    private static metersToPixels(meters: number, ppm: number, minPx = 1): number {
+        return Math.max(minPx, Math.round(meters * ppm));
     }
 
     private static isNewRoad(road: IRoad): boolean {

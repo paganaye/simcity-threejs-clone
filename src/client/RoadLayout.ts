@@ -55,6 +55,7 @@ export interface IJunctionGeometry {
 export interface IJunctionTextureOptions {
     approachLengthM?: number;
     centerMarking?: 'none' | 'box';
+    crosswalks?: 'none' | 'zebra';
 }
 
 export interface IJunctionTextureResult {

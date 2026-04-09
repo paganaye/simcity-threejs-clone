@@ -107,6 +107,27 @@ export abstract class Page {
         };
     }
 
+    protected setCameraView(
+        positionX: number,
+        positionY: number,
+        positionZ: number,
+        targetX: number,
+        targetY: number,
+        targetZ: number,
+    ): void {
+        if (this.cameraControls) {
+            this.cameraControls.target.set(targetX, targetY, targetZ);
+            this.camera.position.set(positionX, positionY, positionZ);
+            this.cameraControls.updateSphericalFromCamera();
+            this.cameraControls.update();
+            return;
+        }
+
+        this.camera.position.set(positionX, positionY, positionZ);
+        this.camera.lookAt(targetX, targetY, targetZ);
+        this.camera.updateMatrixWorld();
+    }
+
     protected addStats() {
         this.statsFPS = new Stats();
         this.statsFPS.showPanel(0);

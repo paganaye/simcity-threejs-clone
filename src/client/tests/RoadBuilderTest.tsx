@@ -66,13 +66,16 @@ export default class RoadBuildTest extends Page {
             junctionBuilder.addCrossJunction({ x: 20, z: 20, angle: 0 },
                 road1,
                 road2,
-                { centerMarking: 'box' });
+                {
+                    centerMarking: 'box',
+                    crosswalks: 'zebra',
+
+                });
 
             console.log("GameUI: Scene3D initialized after UI loaded.");
 
             scene3D.isLoading.set(false);
-            this.camera?.position.set(20, 40, 40);  
-            this.camera?.lookAt(20,0,20);
+            this.setCameraView(20, 40, 40, 20, 0, 20);
         };
 
 

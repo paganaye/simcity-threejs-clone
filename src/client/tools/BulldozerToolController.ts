@@ -24,7 +24,7 @@ export class BulldozerToolController extends ToolController {
         if (!picked) return;
 
         if (picked.type === 'road') {
-            //this.scene3D.roadNetwork.removeSegment(picked.roadSegment);
+            this.scene3D.roadNetwork.removeSegment(picked.roadSegment);
             if (this.scene3D.selectedCustomObject.get()?.userData?.roadSegment === picked.roadSegment) {
                 this.scene3D.clearSelection();
             }

@@ -1,5 +1,5 @@
-export type KerbType = 'parallelParking' | 'perpendicularParking' | 'emergencyLane' | 'line' | 'gap' | 'none';
-export type SideWalkType = 'small' | 'large' | 'grass' | 'none';
+export type KerbType = 'parallelParking' | 'perpendicularParking' | 'emergencyLane' | 'line' | 'line-hidden' | 'gap' | 'none';
+export type SideWalkType = 'small' | 'small-hidden' | 'large' | 'grass' | 'none';
 
 export type LaneWidth = 'narrow' | 'normal' | 'wide';
 

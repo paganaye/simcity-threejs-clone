@@ -3,6 +3,28 @@ import { RoadSegment } from './RoadSegment';
 export class RoadNetwork {
     readonly segments: RoadSegment[] = [];
 
+    registerSegment(segment: RoadSegment): RoadSegment {
+        if (!this.segments.includes(segment)) {
+            this.segments.push(segment);
+        }
+        return segment;
+    }
+
+    removeSegment(segment: RoadSegment): boolean {
+        const index = this.segments.indexOf(segment);
+        if (index < 0) return false;
+        this.segments.splice(index, 1);
+        segment.dispose();
+        return true;
+    }
+
+    clear(): void {
+        for (const segment of [...this.segments]) {
+            segment.dispose();
+        }
+        this.segments.length = 0;
+    }
+
     
     static findCrossJunction(
         first: RoadSegment,

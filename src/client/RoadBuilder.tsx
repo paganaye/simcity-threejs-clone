@@ -11,6 +11,26 @@ interface IRoadBands {
     widthPx: number;
 }
 
+interface ISideCuts {
+    from: number; // sidewalk start cut
+    roadFrom: number;
+    roadTo: number; 
+    to: number; // sidewalk end cut
+}
+
+interface IExtremityCut {
+    left: number;
+    roadLeft: number;
+    roadRight: number;
+    right: number;
+}
+
+interface IRoadCuts {
+    rightCuts?: ISideCuts[];
+    leftCuts?: ISideCuts[];
+    startCut?: IExtremityCut;
+    endCut?: IExtremityCut;
+}
 
 export class RoadBuilder implements IOrientation2D {
     x: number;
@@ -102,7 +122,8 @@ export class RoadBuilder implements IOrientation2D {
 
     static getSidewalkWidthMeters(sidewalk: IRoadOptions['rightSidewalk']): number {
         switch (sidewalk) {
-            case 'small': return this.SMALL_SIDEWALK_M;
+            case 'small':
+            case 'small-hidden': return this.SMALL_SIDEWALK_M;
             case 'large': return this.LARGE_SIDEWALK_M;
             default: return 0;
         }
@@ -270,7 +291,7 @@ export class RoadBuilder implements IOrientation2D {
     //         this.scene.add(sphere);
     //     }
 
-    addStraightRoadFromIRoad(length: number, road: IRoad) {
+    addStraightRoad(length: number, road: IRoad, cuts?: IRoadCuts) {
         let left: IRoadOptions | null;
         let right: IRoadOptions;
 
@@ -322,7 +343,7 @@ export class RoadBuilder implements IOrientation2D {
         this.textureProgressV = endV;
     }
 
-    addTurningRoadFromIRoad(turnAngle: number, radius: number, road: IRoad) {
+    addCurvedRoad(turnAngle: number, radius: number, road: IRoad) {
         const leftBands = road.backward ? RoadBuilder.buildRoadBands(road.backward) : null;
         const rightBands = RoadBuilder.buildRoadBands(road.forward);
 

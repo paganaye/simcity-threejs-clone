@@ -2,6 +2,7 @@ import { GameScene3D } from "./GameScene3D";
 import type { ModelName } from "./AssetManager";
 import type { Population } from "./Population";
 import type { IRoad } from "./roads/IRoad";
+import { RoadSegment } from "./RoadSegment";
 import * as THREE from 'three';
 
 
@@ -152,7 +153,7 @@ export class GameStorage {
             };
         });
 
-        const roads = this.scene.roadNetwork.segments.map((segment) => ({
+        const roads = this.#collectRoadSegments().map((segment) => ({
             startX: segment.startX,
             startZ: segment.startZ,
             angle: segment.angle,
@@ -209,10 +210,7 @@ export class GameStorage {
 
         this.scene.clearSelection();
         world.clearCity();
-
-        // for (const existing of [...this.scene.roadNetwork.segments]) {
-        //     this.scene.roadNetwork.removeSegment(existing);
-        // }
+        this.#clearRoadSegments();
 
         for (const building of save.buildings) {
             try {
@@ -245,20 +243,24 @@ export class GameStorage {
             }
 
         }
-
-        // for (const road of save.roads) {
-        //     const segment = this.scene.roadNetwork.addSegment(
-        //         this.scene.scene,
-        //         road.startX,
-        //         road.startZ,
-        //         road.angle,
-        //         road.length,
-        //     );
-        //     segment.setIRoad(road.iRoad ?? DEFAULT_IROAD);
-        //     if (road.arcMidX !== undefined && road.arcMidZ !== undefined) {
-        //         segment.setArc(road.arcMidX, road.arcMidZ, road.endX, road.endZ);
-        //     }
-        // }
+        for (const road of save.roads) {
+            const segment = this.scene.roadNetwork.registerSegment(new RoadSegment(
+                this.scene.scene,
+                road.startX,
+                road.startZ,
+                road.angle,
+                road.length,
+                road.iRoad,
+            ));
+            if (
+                road.arcMidX !== undefined
+                && road.arcMidZ !== undefined
+                && road.endX !== undefined
+                && road.endZ !== undefined
+            ) {
+                segment.setArc(road.arcMidX, road.arcMidZ, road.endX, road.endZ);
+            }
+        }
 
         const population = this.getPopulation();
         if (population) {
@@ -327,6 +329,25 @@ export class GameStorage {
             && Array.isArray(value.buildings)
             && Array.isArray(value.roads)
             && Array.isArray(value.characters);
+    }
+
+    #collectRoadSegments(): RoadSegment[] {
+        const segments = new Set<RoadSegment>(this.scene.roadNetwork.segments);
+        this.scene.scene.traverse((obj) => {
+            const segment = obj.userData?.roadSegment as RoadSegment | undefined;
+            if (segment) {
+                segments.add(segment);
+            }
+        });
+        return [...segments];
+    }
+
+    #clearRoadSegments(): void {
+        const segments = this.#collectRoadSegments();
+        this.scene.roadNetwork.segments.length = 0;
+        for (const segment of segments) {
+            segment.dispose();
+        }
     }
 
 }

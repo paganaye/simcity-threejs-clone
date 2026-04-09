@@ -82,6 +82,8 @@ function getSidewalkBand(sidewalk: SideWalkType | undefined, metrics: IRoadLayou
     switch (sidewalk) {
         case 'small':
             return { kind: 'sidewalk', widthM: metrics.smallSidewalkM, color: metrics.sidewalkColor };
+        case 'small-hidden':
+            return { kind: 'sidewalk', widthM: metrics.smallSidewalkM, color: 'transparent' };
         case 'large':
             return { kind: 'sidewalk', widthM: metrics.largeSidewalkM, color: metrics.sidewalkColor };
         case 'grass':
@@ -110,6 +112,9 @@ function getKerbBands(kerb: KerbType | undefined, side: 'left' | 'right', roadCo
                     { kind: 'laneDivider', widthM: metrics.yellowLineWidthM, color: metrics.yellowLineColor },
                     { kind: 'asphalt', widthM: metrics.emergencyLaneWidthM, color: roadColor },
                 ];
+        case 'line-hidden':
+            return [{ kind: 'laneDivider', widthM: metrics.yellowLineWidthM * 2, color: 'transparent' }];
+            break;
         case 'line':
             return side === 'left'
                 ? [

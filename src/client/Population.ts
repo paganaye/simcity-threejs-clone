@@ -47,7 +47,7 @@ export class Population {
     init(mapWidth: number, mapHeight: number, options: CrowdOptions = {}): void {
         if (!this.scene) return;
 
-        const count = options.count ?? 1500;
+        const count = Math.min(10, options.count ?? 10);
         const childRatio = options.childRatio ?? 0.18;
         const worldUnitsPerMeter = 1 / appConstants.WorldUnitInMetre;
 
@@ -71,6 +71,7 @@ export class Population {
 
         this.mapWidth = mapWidth;
         this.mapHeight = mapHeight;
+
 
         for (let i = 0; i < count; i++) {
             const character = this.newCharacter();

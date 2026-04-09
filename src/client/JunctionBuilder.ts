@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BandPainter } from './BandPainter';
 import { buildCrossJunctionGeometry, type IJunctionGeometry, type IJunctionTextureOptions } from './RoadLayout';
-import { RoadBuilder } from './RoadBuilder';
+import { TwoWayRoadBuilder } from './TwoWayRoadBuilder';
 import type { IRoad, IRoadOptions } from './roads/IRoad';
 import { IOrientation2D } from '../sim/IPoint';
 
@@ -78,7 +78,7 @@ export class JunctionBuilder {
     }
 
     static createGeometry(mainRoad: IRoad, crossingRoad: IRoad, options?: IJunctionTextureOptions): IJunctionGeometry {
-        return buildCrossJunctionGeometry(mainRoad, crossingRoad, RoadBuilder.getLayoutMetrics(), options);
+        return buildCrossJunctionGeometry(mainRoad, crossingRoad, TwoWayRoadBuilder.getLayoutMetrics(), options);
     }
 
     static getMaterial(mainRoad: IRoad, crossingRoad: IRoad, options?: IJunctionTextureOptions): THREE.MeshStandardMaterial {
@@ -99,7 +99,7 @@ export class JunctionBuilder {
 
     static createTexture(mainRoad: IRoad, crossingRoad: IRoad, options?: IJunctionTextureOptions): THREE.DataTexture {
         const geometry = this.createGeometry(mainRoad, crossingRoad, options);
-        const ppm = Math.max(1, RoadBuilder.TEXTURE_PPM);
+        const ppm = Math.max(1, TwoWayRoadBuilder.TEXTURE_PPM);
         const widthPx = Math.max(1, Math.round(geometry.textureWidthM * ppm));
         const heightPx = Math.max(1, Math.round(geometry.textureHeightM * ppm));
         const canvas = document.createElement('canvas');
@@ -120,8 +120,8 @@ export class JunctionBuilder {
 
         // If either incoming road style is "new", center asphalt uses new color.
         const centerRoadColor = this.isNewRoad(mainRoad) || this.isNewRoad(crossingRoad)
-            ? RoadBuilder.NEW_ROAD_COLOR
-            : RoadBuilder.OLD_ROAD_COLOR;
+            ? TwoWayRoadBuilder.NEW_ROAD_COLOR
+            : TwoWayRoadBuilder.OLD_ROAD_COLOR;
         const painter = new BandPainter(ctx);
         painter.rect(centerRoadColor, intersectionLeftPx, intersectionTopPx, intersectionWidthPx, intersectionHeightPx);
 
@@ -199,7 +199,7 @@ export class JunctionBuilder {
     }
 
     private static createTextureFromSections(layout: IPreparedJunction, options?: IJunctionTextureOptions): THREE.DataTexture {
-        const ppm = Math.max(1, RoadBuilder.TEXTURE_PPM);
+        const ppm = Math.max(1, TwoWayRoadBuilder.TEXTURE_PPM);
         const widthPx = Math.max(1, Math.round(layout.textureWidthM * ppm));
         const heightPx = Math.max(1, Math.round(layout.textureHeightM * ppm));
         const canvas = document.createElement('canvas');
@@ -296,7 +296,7 @@ export class JunctionBuilder {
         const hull = this.getPolygon(roadSections, centerXPx, centerYPx, ppm);
         if (hull.length < 3) return;
 
-        ctx.strokeStyle = RoadBuilder.YELLOW_LINE;
+        ctx.strokeStyle = TwoWayRoadBuilder.YELLOW_LINE;
         ctx.lineWidth = this.metersToPixels(0.15, ppm, 1);
         ctx.beginPath();
         ctx.moveTo(hull[0].x, hull[0].y);
@@ -346,7 +346,7 @@ export class JunctionBuilder {
         intersectionWidthPx: number,
     ): void {
         const arm = geometry.arms[0].crossSection;
-        const asphaltColor = this.isNewRoad(road) ? RoadBuilder.NEW_ROAD_COLOR : RoadBuilder.OLD_ROAD_COLOR;
+        const asphaltColor = this.isNewRoad(road) ? TwoWayRoadBuilder.NEW_ROAD_COLOR : TwoWayRoadBuilder.OLD_ROAD_COLOR;
         const totalWidthPx = Math.max(1, Math.round(geometry.textureWidthM * ppm));
         const centerYPx = Math.round((geometry.textureHeightM * ppm) / 2);
         let currentYPx = Math.round(centerYPx - (arm.totalWidthM * ppm) / 2);
@@ -369,7 +369,7 @@ export class JunctionBuilder {
         intersectionHeightPx: number,
     ): void {
         const arm = geometry.arms[1].crossSection;
-        const asphaltColor = this.isNewRoad(road) ? RoadBuilder.NEW_ROAD_COLOR : RoadBuilder.OLD_ROAD_COLOR;
+        const asphaltColor = this.isNewRoad(road) ? TwoWayRoadBuilder.NEW_ROAD_COLOR : TwoWayRoadBuilder.OLD_ROAD_COLOR;
         const totalHeightPx = Math.max(1, Math.round(geometry.textureHeightM * ppm));
         const centerXPx = Math.round((geometry.textureWidthM * ppm) / 2);
         let currentXPx = Math.round(centerXPx - (arm.totalWidthM * ppm) / 2);
@@ -392,7 +392,7 @@ export class JunctionBuilder {
             return;
         }
 
-        const ppm = Math.max(1, RoadBuilder.TEXTURE_PPM);
+        const ppm = Math.max(1, TwoWayRoadBuilder.TEXTURE_PPM);
         const insetPx = Math.max(3, Math.round(ppm * 0.75));
         const strokePx = Math.max(2, Math.round(ppm * 0.15));
         const leftPx = Math.round((geometry.textureWidthM / 2 - geometry.intersectionWidthM / 2) * ppm) + insetPx;
@@ -400,7 +400,7 @@ export class JunctionBuilder {
         const widthPx = Math.max(1, Math.round(geometry.intersectionWidthM * ppm) - insetPx * 2);
         const heightPx = Math.max(1, Math.round(geometry.intersectionHeightM * ppm) - insetPx * 2);
 
-        ctx.strokeStyle = RoadBuilder.YELLOW_LINE;
+        ctx.strokeStyle = TwoWayRoadBuilder.YELLOW_LINE;
         ctx.lineWidth = strokePx;
         ctx.strokeRect(leftPx, topPx, widthPx, heightPx);
     }
@@ -414,7 +414,7 @@ export class JunctionBuilder {
             return;
         }
 
-        const ppm = Math.max(1, RoadBuilder.TEXTURE_PPM);
+        const ppm = Math.max(1, TwoWayRoadBuilder.TEXTURE_PPM);
         const centerLeftPx = Math.round((geometry.textureWidthM / 2 - geometry.intersectionWidthM / 2) * ppm);
         const centerTopPx = Math.round((geometry.textureHeightM / 2 - geometry.intersectionHeightM / 2) * ppm);
         const centerWidthPx = Math.max(1, Math.round(geometry.intersectionWidthM * ppm));
@@ -425,7 +425,7 @@ export class JunctionBuilder {
         const stripeSizePx = this.metersToPixels(this.ZEBRA_STRIPE_SIZE_M, ppm, 3);
         const stripeGapPx = this.metersToPixels(this.ZEBRA_STRIPE_GAP_M, ppm, 2);
 
-        ctx.fillStyle = RoadBuilder.WHITE_LINE;
+        ctx.fillStyle = TwoWayRoadBuilder.WHITE_LINE;
 
         this.drawHorizontalZebra(
             ctx,

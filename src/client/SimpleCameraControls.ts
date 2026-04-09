@@ -2,8 +2,8 @@ import * as THREE from 'three';
 
 const MIN_RADIUS = 10;
 const MAX_RADIUS = 800;
-const MIN_POLAR_ANGLE = THREE.MathUtils.degToRad(30);
-const MAX_POLAR_ANGLE = THREE.MathUtils.degToRad(80);
+const MIN_POLAR_ANGLE = THREE.MathUtils.degToRad(0);
+const MAX_POLAR_ANGLE = THREE.MathUtils.degToRad(90);
 const ROTATE_SPEED = 0.008;
 const ZOOM_BASE = 0.0015;
 

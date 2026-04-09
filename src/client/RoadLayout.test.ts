@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RoadBuilder } from './RoadBuilder';
+import { TwoWayRoadBuilder } from './TwoWayRoadBuilder';
 import { buildCompositeRoadCrossSection, buildCrossJunctionGeometry, buildRoadCrossSection, IRoadLayoutMetrics } from './RoadLayout';
 import type { IRoad, IRoadOptions } from './roads/IRoad';
 
@@ -56,7 +56,7 @@ describe('RoadLayout', () => {
             gapSize: 2,
         };
 
-        const crossSection = buildCompositeRoadCrossSection(road, RoadBuilder.getLayoutMetrics());
+        const crossSection = buildCompositeRoadCrossSection(road, TwoWayRoadBuilder.getLayoutMetrics());
 
         expect(crossSection.bands.map((band) => band.kind)).toEqual([
             'grass',

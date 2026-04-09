@@ -2,8 +2,8 @@ import { render } from 'solid-js/web';
 import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
-import type { IRoad } from '../roads/IRoad';
 import { RoadBuilder } from '../RoadBuilder';
+import type { IRoad } from '../roads/IRoad';
 import { degToRad } from 'three/src/math/MathUtils.js';
 
 export default class RoadTest extends Page {
@@ -22,7 +22,7 @@ export default class RoadTest extends Page {
             const road1: IRoad = {
                 forward: {
                     roadColor: 'old',
-                    lanes: 1,
+                    lanes: 3,
                     rightKerb: 'line',
                     rightSidewalk: 'small',
                     laneWidth: 'normal',
@@ -35,7 +35,7 @@ export default class RoadTest extends Page {
             const road2: IRoad = {
                 forward: {
                     roadColor: 'new',
-                    lanes: 1,
+                    lanes: 3,
                     rightKerb: 'line',
                     rightSidewalk: 'small',
                     laneWidth: 'normal',
@@ -45,10 +45,13 @@ export default class RoadTest extends Page {
                 gapSize: 0,
             };
 
-
-            const roadBuilder1 = new RoadBuilder({ x: 0, y: 0, z: 10, angle: 0 }, scene3D.scene);
-            roadBuilder1.addStraightRoad(35, road1,
-                {
+            RoadBuilder.createStraightRoad({
+                start: { x: 0, y: 0, z: 0, angle: 0 },
+                scene: scene3D.scene,
+                length: 35,
+                options: road1.forward,
+                gapSize: road1.gapSize,
+                cuts: {
                     rightCuts: [
                         {
                             from: 10,
@@ -58,22 +61,27 @@ export default class RoadTest extends Page {
                         }
                     ]
                 }
-            );
-            //roadBuilder1.addStraightRoad(25, road1);
+            });
 
-            const roadBuilder2 = new RoadBuilder({ x: 0, y: 0, z: 30, angle: degToRad(45) }, scene3D.scene);
-            roadBuilder2.addStraightRoad(20.5, road2, {
-                startCut: {
-                    left: 10,
-                    roadLeft: 10,
-                    roadRight: 0,
-                    right: 20,
-                },
-                endCut: {
-                    left: 10,
-                    roadLeft: 10,
-                    roadRight: 0,
-                    right: 20,
+            RoadBuilder.createStraightRoad({
+                start: { x: 0, y: 0, z: 30, angle: degToRad(45) },
+                scene: scene3D.scene,
+                length: 20.5,
+                options: road2.forward,
+                gapSize: road2.gapSize,
+                cuts: {
+                    startCut: {
+                        left: 6,
+                        roadLeft: 5,
+                        roadRight: 0,
+                        right: 1,
+                    },
+                    endCut: {
+                        left: 3,
+                        roadLeft: 2,
+                        roadRight: 0,
+                        right: 4,
+                    }
                 }
             });
             scene3D.isLoading.set(false);

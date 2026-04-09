@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RoadBuilder } from './RoadBuilder';
+import { TwoWayRoadBuilder } from './TwoWayRoadBuilder';
 import type { IRoad } from './roads/IRoad';
 
 const DEBUG_ROAD_ARC = true;
@@ -122,7 +122,7 @@ export class RoadSegment {
         } else {
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
-            const builder = new RoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
+            const builder = new TwoWayRoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
             builder.addStraightRoad(this.length, this.iRoad);
         }
 
@@ -184,7 +184,7 @@ export class RoadSegment {
             // Points nearly collinear — fall back to straight road.
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
-            const b = new RoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
+            const b = new TwoWayRoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
             b.addStraightRoad(this.length, this.iRoad);
             return;
         }
@@ -266,7 +266,7 @@ export class RoadSegment {
         this.group.position.set(0, 0, 0);
         this.group.rotation.set(0, 0, 0);
 
-        const builder = new RoadBuilder({ x: p1x, y: 0.015, z: p1z, angle: startAngle }, this.group);
+        const builder = new TwoWayRoadBuilder({ x: p1x, y: 0.015, z: p1z, angle: startAngle }, this.group);
         builder.addCurvedRoad(turnAngle, radius, this.iRoad);
 
         // Keep stored state consistent with the arc geometry.

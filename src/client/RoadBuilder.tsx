@@ -1,42 +1,37 @@
 import * as THREE from "three";
-import { IOrientation2D } from "../sim/IPoint";
 import { BandPainter, type BandType, type IRoadBand } from "./BandPainter";
-import { IFloorPos } from "./GameUIComponent";
 import { buildRoadCrossSection, IRoadCrossSection, IRoadLayoutMetrics } from "./RoadLayout";
-import type { IRoad, IRoadOptions, LaneWidth } from "./roads/IRoad";
+import type { IRoadOptions, LaneWidth } from "./roads/IRoad";
+import type { IOrientation2D, IPoint2D, IPoint3D } from "../sim/IPoint";
 
-interface IRoadBands {
+export interface IRoadBands {
     bands: IRoadBand[];
     widthM: number;
     widthPx: number;
 }
 
-interface ISideCuts {
+export interface ISideCuts {
     from: number; // sidewalk start cut
     roadFrom: number;
-    roadTo: number; 
+    roadTo: number;
     to: number; // sidewalk end cut
 }
 
-interface IExtremityCut {
+export interface IExtremityCut {
     left: number;
     roadLeft: number;
     roadRight: number;
     right: number;
 }
 
-interface IRoadCuts {
+export interface IRoadCuts {
     rightCuts?: ISideCuts[];
     leftCuts?: ISideCuts[];
     startCut?: IExtremityCut;
     endCut?: IExtremityCut;
 }
 
-export class RoadBuilder implements IOrientation2D {
-    x: number;
-    y: number;
-    z: number;
-    angle: number;
+export class RoadBuilder {
     textureProgressV: number = 0;
 
     static materialByStyle = new Map<string, THREE.MeshStandardMaterial>();
@@ -175,12 +170,7 @@ export class RoadBuilder implements IOrientation2D {
         return bands;
     }
 
-    constructor(startPosition: IOrientation2D, readonly scene: THREE.Object3D) {
-        this.x = startPosition.x;
-        this.y = startPosition.y ?? 0;
-        this.z = startPosition.z;
-        this.angle = startPosition.angle;
-    }
+    private constructor() { }
 
     static styleKey(options: IRoadOptions): string {
         return [
@@ -192,6 +182,264 @@ export class RoadBuilder implements IOrientation2D {
             options.leftKerb,
             options.leftSidewalk
         ].join('|');
+    }
+
+    static createStraightRoadMesh(params: {
+        halfOffsetM: number;
+        widthM: number;
+        uvArray: number[];
+        length: number;
+        center: IOrientation2D;
+        normal: IPoint2D;
+        options: IRoadOptions;
+        scene: THREE.Object3D;
+    }): void {
+        const { halfOffsetM, widthM, uvArray, length, center, normal, options, scene } = params;
+        if (widthM <= 0) return;
+        const roadGeometry = new THREE.PlaneGeometry(length, widthM);
+        const road = new THREE.Mesh(roadGeometry, this.getRoadMaterial(options));
+        road.position.set(
+            center.x + normal.x * halfOffsetM,
+            center.y ?? 0,
+            center.z + normal.z * halfOffsetM
+        );
+        road.rotation.x = -Math.PI / 2;
+        road.rotation.z = center.angle;
+        roadGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvArray.slice(), 2));
+        scene.add(road);
+    }
+
+    private static clampExtremityValue(value: number, length: number): number {
+        if (!Number.isFinite(value)) return 0;
+        return THREE.MathUtils.clamp(value, 0, length);
+    }
+
+    private static getExtremityValues(cut: IExtremityCut | undefined, length: number): [number, number, number, number] {
+        if (!cut) return [0, 0, 0, 0];
+        return [
+            this.clampExtremityValue(cut.left, length),
+            this.clampExtremityValue(cut.roadLeft, length),
+            this.clampExtremityValue(cut.roadRight, length),
+            this.clampExtremityValue(cut.right, length),
+        ];
+    }
+
+    private static createStraightCutGeometry(params: {
+        length: number;
+        widthM: number;
+        carriagewayStartM: number;
+        carriagewayEndM: number;
+        startV: number;
+        endV: number;
+        side: 'left' | 'right';
+        startCut?: IExtremityCut;
+        endCut?: IExtremityCut;
+    }): THREE.BufferGeometry {
+        const {
+            length,
+            widthM,
+            carriagewayStartM,
+            carriagewayEndM,
+            startV,
+            endV,
+            side,
+            startCut,
+            endCut,
+        } = params;
+        const halfLength = length / 2;
+        const leftOuter = -widthM / 2;
+        const roadLeft = leftOuter + carriagewayStartM;
+        const roadRight = leftOuter + carriagewayEndM;
+        const rightOuter = widthM / 2;
+        const lateral = [leftOuter, roadLeft, roadRight, rightOuter];
+
+        const startCuts = this.getExtremityValues(startCut, length);
+        const endCuts = this.getExtremityValues(endCut, length);
+        const repeat = endV - startV;
+
+        const vertices: number[] = [];
+        const uvs: number[] = [];
+
+        for (let i = 0; i < lateral.length; i++) {
+            const y = lateral[i];
+            const xStart = -halfLength + startCuts[i];
+            const xEnd = halfLength - endCuts[i];
+            const tStart = THREE.MathUtils.clamp((xStart + halfLength) / length, 0, 1);
+            const tEnd = THREE.MathUtils.clamp((xEnd + halfLength) / length, 0, 1);
+            const baseU = THREE.MathUtils.clamp((y - leftOuter) / widthM, 0, 1);
+            const u = side === 'left' ? 1 - baseU : baseU;
+
+            vertices.push(xStart, y, 0);
+            vertices.push(xEnd, y, 0);
+
+            uvs.push(u, startV + repeat * tStart);
+            uvs.push(u, startV + repeat * tEnd);
+        }
+
+        const indices: number[] = [];
+        for (let i = 0; i < lateral.length - 1; i++) {
+            const a = i * 2;
+            const b = a + 1;
+            const c = a + 2;
+            const d = a + 3;
+            indices.push(a, b, d);
+            indices.push(a, d, c);
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+        return geometry;
+    }
+
+    static createStraightRoad(params: {
+        start: IOrientation2D;
+        scene: THREE.Object3D;
+        length: number;
+        options: IRoadOptions;
+        gapSize?: number;
+        halfGapSize?: number;
+        side?: 'left' | 'right';
+        textureProgressV?: number;
+        cuts?: IRoadCuts;
+    }): void {
+        const { start, scene, length, options, gapSize, halfGapSize, side = 'right', textureProgressV = 0, cuts } = params;
+
+        const y = start.y ?? 0;
+        const safeGap = Number.isFinite(gapSize ?? NaN) ? (gapSize as number) : 0;
+        const safeHalfGap = Number.isFinite(halfGapSize ?? NaN) ? (halfGapSize as number) : safeGap / 2;
+
+        if (length <= 0) return;
+
+        const bands = RoadBuilder.buildRoadBands(options);
+        const crossSection = buildRoadCrossSection(options, this.getLayoutMetrics());
+        const widthM = bands.widthM;
+        const sideSign = side === 'left' ? -1 : 1;
+        const halfOffsetM = sideSign * (safeHalfGap + widthM / 2);
+        const dx = Math.cos(start.angle) * length;
+        const dz = -Math.sin(start.angle) * length;
+        const normalX = Math.sin(start.angle);
+        const normalZ = Math.cos(start.angle);
+        const repeat = length / RoadBuilder.LINE_LENGTH;
+        const startV = textureProgressV;
+        const endV = startV + repeat;
+        const uvArray = side === 'left'
+            ? [1, startV, 1, endV, 0, startV, 0, endV]
+            : [0, startV, 0, endV, 1, startV, 1, endV];
+
+        const centerX = start.x + dx / 2;
+        const centerZ = start.z + dz / 2;
+        const sharedParams = {
+            length,
+            center: { x: centerX, y, z: centerZ, angle: start.angle },
+            normal: { x: normalX, z: normalZ },
+            scene,
+        };
+
+        const hasExtremityCuts = Boolean(cuts?.startCut || cuts?.endCut);
+        if (!hasExtremityCuts) {
+            RoadBuilder.createStraightRoadMesh({
+                ...sharedParams,
+                halfOffsetM,
+                widthM,
+                uvArray,
+                options,
+            });
+            return;
+        }
+
+        const geometry = this.createStraightCutGeometry({
+            length,
+            widthM,
+            carriagewayStartM: crossSection.carriagewayStartM,
+            carriagewayEndM: crossSection.carriagewayEndM,
+            startV,
+            endV,
+            side,
+            startCut: cuts?.startCut,
+            endCut: cuts?.endCut,
+        });
+        const mesh = new THREE.Mesh(geometry, this.getRoadMaterial(options));
+        mesh.position.set(
+            centerX + normalX * halfOffsetM,
+            y,
+            centerZ + normalZ * halfOffsetM
+        );
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.rotation.z = start.angle;
+        scene.add(mesh);
+    }
+
+    static createCurvedRoadMesh(params: {
+        side: 'left' | 'right';
+        options: IRoadOptions;
+        bands: IRoadBands;
+        gap: number;
+        turnAngle: number;
+        segments: number;
+        radius: number;
+        totalCurveAngle: number;
+        startV: number;
+        arcCenter: IPoint3D;
+        initialRoadAngle: number;
+        geomAngleOffset: number;
+        scene: THREE.Object3D;
+    }): void {
+        const { side, options, bands, gap, turnAngle, segments, radius, totalCurveAngle, startV, arcCenter, initialRoadAngle, geomAngleOffset, scene } = params;
+        const widthM = bands.widthM;
+        if (widthM <= 0) return;
+        const halfGapM = gap / 2;
+        const turnSideSign = turnAngle >= 0 ? 1 : -1;
+        const innerOffset = (side === 'right' ? halfGapM : -halfGapM) * turnSideSign;
+        const outerOffset = side === 'right'
+            ? (halfGapM + widthM) * turnSideSign
+            : -(halfGapM + widthM) * turnSideSign;
+
+        const getCurvePoint = (t: number, offsetRadius: number) => {
+            const currentTangentAngle = initialRoadAngle + t * turnAngle;
+            const geometryRayAngle = currentTangentAngle + geomAngleOffset;
+            const cosRay = Math.cos(geometryRayAngle);
+            const sinRay = Math.sin(geometryRayAngle);
+            return {
+                x: arcCenter.x + cosRay * (radius + offsetRadius),
+                z: arcCenter.z - sinRay * (radius + offsetRadius),
+            };
+        };
+
+        const vertices: number[] = [];
+        const uvsSide: number[] = [];
+        for (let i = 0; i <= segments; i++) {
+            const t = i / segments;
+            const innerPoint = getCurvePoint(t, innerOffset);
+            const outerPoint = getCurvePoint(t, outerOffset);
+            vertices.push(innerPoint.x, arcCenter.y, innerPoint.z);
+            vertices.push(outerPoint.x, arcCenter.y, outerPoint.z);
+            const v = (radius * totalCurveAngle * t) / RoadBuilder.LINE_LENGTH;
+            const vv = startV + v;
+            uvsSide.push(0, vv);
+            uvsSide.push(1, vv);
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvsSide, 2));
+
+        const indices: number[] = [];
+        for (let i = 0; i < segments; i++) {
+            const a = i * 2;
+            const b = a + 1;
+            const c = a + 2;
+            const d = a + 3;
+            indices.push(a, b, d);
+            indices.push(a, d, c);
+        }
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+
+        const mesh = new THREE.Mesh(geometry, this.getRoadMaterial(options));
+        scene.add(mesh);
     }
 
     static getRoadMaterial(options: IRoadOptions): THREE.MeshStandardMaterial {
@@ -272,210 +520,6 @@ export class RoadBuilder implements IOrientation2D {
         //document.body.innerHTML += `<img style="position:fixed; top:20px; left:80px;" src="${imageDataURL}" >`;
 
     }
-    //     static openTextureInNewWindow(canvas: HTMLCanvasElement) {
-    //         const newWindow = window.open('', '_blank');
-    //         const imageDataURL = canvas.toDataURL('image/png');
 
-    //         if (newWindow) {
-    //             newWindow.document.write(`<img src="${imageDataURL}">`);
-    //         } else {
-    //             console.error("La fenêtre popup n'a pas pu s'ouvrir. Veuillez vérifier les paramètres de votre navigateur.");
-    //         }
-    //     }
-
-    //     addSphere(x: number, z: number) {
-    //         const geometry = new THREE.SphereGeometry(0.05);
-    //         const material = new THREE.MeshStandardMaterial({ color: 0x333333, side: THREE.DoubleSide });
-    //         const sphere = new THREE.Mesh(geometry, material);
-    //         sphere.position.set(x, 0, z);
-    //         this.scene.add(sphere);
-    //     }
-
-    addStraightRoad(length: number, road: IRoad, cuts?: IRoadCuts) {
-        let left: IRoadOptions | null;
-        let right: IRoadOptions;
-
-        const safeGap = Number.isFinite(road.gapSize) ? road.gapSize : 0;
-        right = road.forward;
-        left = road.backward ?? null;
-
-        if (length <= 0) return;
-        const leftBands = left ? RoadBuilder.buildRoadBands(left) : null;
-        const rightBands = RoadBuilder.buildRoadBands(right);
-
-        const rightWidthM = rightBands.widthM;
-        const leftWidthM = leftBands ? leftBands.widthM : 0;
-        const halfGapM = left ? safeGap / 2 : 0;
-        const dx = Math.cos(this.angle) * length;
-        const dz = -Math.sin(this.angle) * length;
-        const normalX = Math.sin(this.angle);
-        const normalZ = Math.cos(this.angle);
-        const repeat = length / RoadBuilder.LINE_LENGTH;
-        const startV = this.textureProgressV;
-        const endV = startV + repeat;
-        // const rightShouldStretch = RoadBuilder.hasEntryExitKerb(right);
-        // const leftShouldStretch = RoadBuilder.hasEntryExitKerb(left);
-        const rightUvArray = [0, startV, 0, endV, 1, startV, 1, endV];
-        const leftUvArray = [1, startV, 1, endV, 0, startV, 0, endV];
-
-        const createRoad = (halfOffsetM: number, widthM: number, side: 'left' | 'right', options: IRoadOptions) => {
-            if (widthM <= 0) return;
-            const roadGeometry = new THREE.PlaneGeometry(length, widthM);
-            const road = new THREE.Mesh(roadGeometry, RoadBuilder.getRoadMaterial(options));
-            road.position.set(
-                this.x + dx / 2 + normalX * halfOffsetM,
-                this.y,
-                this.z + dz / 2 + normalZ * halfOffsetM
-            );
-            road.rotation.x = -Math.PI / 2;
-            road.rotation.z = this.angle;
-            const uvSrc = (side === 'right' ? rightUvArray : leftUvArray).slice();
-            roadGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvSrc, 2));
-            this.scene.add(road);
-        };
-
-        // Gap is geometric only: place each half-road away from center by halfGapM.
-        createRoad(halfGapM + rightWidthM / 2, rightWidthM, 'right', right);
-        if (left) createRoad(-(halfGapM + leftWidthM / 2), leftWidthM, 'left', left);
-
-        this.x += dx;
-        this.z += dz;
-        this.textureProgressV = endV;
-    }
-
-    addCurvedRoad(turnAngle: number, radius: number, road: IRoad) {
-        const leftBands = road.backward ? RoadBuilder.buildRoadBands(road.backward) : null;
-        const rightBands = RoadBuilder.buildRoadBands(road.forward);
-
-        let left: IRoadOptions | null;
-        let right: IRoadOptions;
-        let gap: number;
-        right = road.forward;
-        left = road.backward ?? null;
-        gap = left && Number.isFinite(road.gapSize) ? road.gapSize : 0;
-
-        if (Math.abs(turnAngle) < 0.001) return;
-
-        const DEBUG_ROAD_ARC = true;
-
-        if (DEBUG_ROAD_ARC) {
-            console.log('[RoadBuilder.turn] input', {
-                roadType: left ? 'two-way' : 'one-way',
-                turnAngle,
-                radius,
-                x: this.x,
-                z: this.z,
-                angle: this.angle,
-                gap,
-            });
-        }
-
-        const segments = Math.max(1, Math.round(Math.abs(RoadBuilder.TURNING_SEGMENTS_MULTIPLIER * turnAngle)));
-        const initialRoadAngle = this.angle;
-        const finalRoadAngle = initialRoadAngle + turnAngle;
-        const centerCalcDirection = turnAngle > 0 ? -1 : 1;
-        const cx = this.x + Math.sin(initialRoadAngle) * radius * centerCalcDirection;
-        const cz = this.z + Math.cos(initialRoadAngle) * radius * centerCalcDirection;
-        const geomAngleOffset = turnAngle > 0 ? -Math.PI / 2 : +Math.PI / 2;
-        const totalCurveAngle = Math.abs(turnAngle);
-        const curveLength = radius * totalCurveAngle;
-        const startV = this.textureProgressV;
-        const uvs: number[] = [];
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            const v = (radius * totalCurveAngle * t) / RoadBuilder.LINE_LENGTH;
-            uvs.push(0, startV + v);
-            uvs.push(1, startV + v);
-        }
-        this.textureProgressV = startV + curveLength / RoadBuilder.LINE_LENGTH;
-
-        const getCurvePoint = (t: number, offsetRadius: number): IFloorPos => {
-            const currentTangentAngle = initialRoadAngle + t * turnAngle;
-            const geometryRayAngle = currentTangentAngle + geomAngleOffset;
-            const cosRay = Math.cos(geometryRayAngle);
-            const sinRay = Math.sin(geometryRayAngle);
-            const x = cx + cosRay * (radius + offsetRadius);
-            const z = cz - sinRay * (radius + offsetRadius);
-            return { x, z };
-        };
-
-        const addHalfRoad = (side: 'left' | 'right', options: IRoadOptions, bands: IRoadBands) => {
-            const widthM = bands.widthM;
-            if (widthM <= 0) return;
-            const halfGapM = gap / 2;
-            const vertices: number[] = [];
-            const uvsSide: number[] = [];
-            const turnSideSign = turnAngle >= 0 ? 1 : -1;
-            // Gap is geometric only: inner edge starts at +/-halfGapM from the centerline.
-            const innerOffset = (side === 'right' ? halfGapM : -halfGapM) * turnSideSign;
-            const outerOffset = side === 'right'
-                ? (halfGapM + widthM) * turnSideSign
-                : -(halfGapM + widthM) * turnSideSign;
-
-            if (DEBUG_ROAD_ARC) {
-                console.log('[RoadBuilder.turn] side', {
-                    side,
-                    widthM,
-                    innerOffset,
-                    outerOffset,
-                    lanes: options.lanes,
-                });
-            }
-
-            for (let i = 0; i <= segments; i++) {
-                const t = i / segments;
-                const innerPoint = getCurvePoint(t, innerOffset);
-                const outerPoint = getCurvePoint(t, outerOffset);
-
-                vertices.push(innerPoint.x, this.y, innerPoint.z);
-                vertices.push(outerPoint.x, this.y, outerPoint.z);
-
-                const v = (radius * totalCurveAngle * t) / RoadBuilder.LINE_LENGTH;
-                // const stretchV = t;
-                // const useStretch = RoadBuilder.hasEntryExitKerb(options);
-                const vv = (startV + v);
-                uvsSide.push(0, vv);
-                uvsSide.push(1, vv);
-            }
-
-            const geometry = new THREE.BufferGeometry();
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvsSide, 2));
-
-            const indices: number[] = [];
-            for (let i = 0; i < segments; i++) {
-                const a = i * 2;
-                const b = a + 1;
-                const c = a + 2;
-                const d = a + 3;
-                indices.push(a, b, d);
-                indices.push(a, d, c);
-            }
-            geometry.setIndex(indices);
-            geometry.computeVertexNormals();
-
-            const mesh = new THREE.Mesh(geometry, RoadBuilder.getRoadMaterial(options));
-            this.scene.add(mesh);
-        };
-
-        if (left && leftBands) addHalfRoad("left", left, leftBands);
-        addHalfRoad("right", right, rightBands);
-
-        this.angle = finalRoadAngle;
-        const finalGeometryRayAngle = finalRoadAngle + geomAngleOffset;
-        this.x = cx + Math.cos(finalGeometryRayAngle) * radius;
-        this.z = cz - Math.sin(finalGeometryRayAngle) * radius;
-
-        if (DEBUG_ROAD_ARC) {
-            console.log('[RoadBuilder.turn] output', {
-                finalAngle: this.angle,
-                finalX: this.x,
-                finalZ: this.z,
-                centerX: cx,
-                centerZ: cz,
-                geomAngleOffset,
-            });
-        }
-    }
 
 }

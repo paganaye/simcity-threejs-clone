@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { BandPainter } from "./BandPainter";
 import { getBands } from "./RoadLayout";
-import type { IRoadOptions } from "./roads/IRoad";
+import type { IRoadType } from "./roads/IRoad";
 import type { IOrientation2D, IPoint2D } from "../sim/IPoint";
 import { Lane } from "./IRoadBand";
 
@@ -76,7 +76,7 @@ export class RoadBuilder {
         return this.getLaneWidthMeters(laneWidth) + this.YELLOW_LINE_WIDTH_M;
     }
 
-    static getKerbWidthMeters(kerb: IRoadOptions['rightKerb'], _laneWidth: Lane): number {
+    static getKerbWidthMeters(kerb: IRoadType['rightKerb'], _laneWidth: Lane): number {
         switch (kerb) {
             case 'parallelParking': return this.PARALLEL_PARKING_WIDTH_M;
             case 'perpendicularParking': return this.PERPENDICULAR_PARKING_WIDTH_M;
@@ -86,7 +86,7 @@ export class RoadBuilder {
         }
     }
 
-    static getSidewalkWidthMeters(sidewalk: IRoadOptions['rightSidewalk']): number {
+    static getSidewalkWidthMeters(sidewalk: IRoadType['rightSidewalk']): number {
         switch (sidewalk) {
             case 'small':
             case 'large': return this.LARGE_SIDEWALK_M;
@@ -96,7 +96,7 @@ export class RoadBuilder {
 
     private constructor() { }
 
-    static styleKey(options: IRoadOptions): string {
+    static styleKey(options: IRoadType): string {
         return [
             options.roadColor,
             options.lanes,
@@ -115,10 +115,10 @@ export class RoadBuilder {
         length: number;
         center: IOrientation2D;
         normal: IPoint2D;
-        options: IRoadOptions;
+        roadType: IRoadType;
         scene: THREE.Object3D;
     }): void {
-        const { halfOffsetM, widthM, uvArray, length, center, normal, options, scene } = params;
+        const { halfOffsetM, widthM, uvArray, length, center, normal, roadType: options, scene } = params;
         if (widthM <= 0) return;
         const roadGeometry = new THREE.PlaneGeometry(length, widthM);
         const road = new THREE.Mesh(roadGeometry, this.getRoadMaterial(options));
@@ -324,11 +324,11 @@ export class RoadBuilder {
         start: IOrientation2D;
         scene: THREE.Object3D;
         length: number;
-        options: IRoadOptions;
+        style: IRoadType;
         textureProgressV?: number;
         cuts?: IRoadCuts;
     }): void {
-        const { start, scene, length, options, textureProgressV = 0, cuts } = params;
+        const { start, scene, length, style: options, textureProgressV = 0, cuts } = params;
 
         const y = start.y ?? 0;
 
@@ -364,7 +364,7 @@ export class RoadBuilder {
                 halfOffsetM,
                 widthM,
                 uvArray,
-                options,
+                roadType: options,
             });
             return;
         }
@@ -397,7 +397,7 @@ export class RoadBuilder {
         radius: number;
         sweepAngle: number;
         scene: THREE.Object3D;
-        options: IRoadOptions;
+        roadType: IRoadType;
         cuts?: IRoadCuts;
         textureProgressV?: number;
         segments?: number;
@@ -408,7 +408,7 @@ export class RoadBuilder {
             radius,
             sweepAngle,
             scene,
-            options,
+            roadType: options,
             cuts: _cuts,
             textureProgressV = 0,
             segments,
@@ -559,7 +559,7 @@ export class RoadBuilder {
     //     scene.add(mesh);
     // }
 
-    static getRoadMaterial(options: IRoadOptions): THREE.MeshStandardMaterial {
+    static getRoadMaterial(options: IRoadType): THREE.MeshStandardMaterial {
         const key = this.styleKey(options);
         const existing = this.materialByStyle.get(key);
         if (existing) {
@@ -577,7 +577,7 @@ export class RoadBuilder {
         return material;
     }
 
-    static createRoadTexture(options: IRoadOptions) {
+    static createRoadTexture(options: IRoadType) {
 
         const canvas = document.createElement('canvas');
         const layout = getBands(options);

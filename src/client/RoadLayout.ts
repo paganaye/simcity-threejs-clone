@@ -1,5 +1,5 @@
 import { BandType, IRoadBand, laneSeparators, Lane, roadBands } from './IRoadBand';
-import type { IRoad, IRoadOptions } from './roads/IRoad';
+import type { IRoad, IRoadType } from './roads/IRoad';
 
 
 
@@ -45,7 +45,7 @@ export interface IJunctionTextureResult {
 
 
 
-export function getBands(options: IRoadOptions): IRoadBands {
+export function getBands(options: IRoadType): IRoadBands {
     const laneCount = Math.max(0, options.lanes);
     const laneType: Lane = 'normal';
 

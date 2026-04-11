@@ -3,7 +3,7 @@ import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
 import { RoadBuilder } from '../RoadBuilder';
-import type { IRoadOptions } from '../roads/IRoad';
+import type { IRoadType } from '../roads/IRoad';
 
 export default class JunctionTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -18,7 +18,7 @@ export default class JunctionTest extends Page {
         const handleUILoaded = async (): Promise<void> => {
             await scene3D.init(this);
 
-            const road1: IRoadOptions = {
+            const road1: IRoadType = {
                 roadColor: 'old',
                 lanes: 3,
                 rightKerb: 'line',
@@ -26,23 +26,43 @@ export default class JunctionTest extends Page {
                 laneWidth: 'normal',
                 leftKerb: 'line',
                 leftSidewalk: 'small',
-
             };
+
+
 
             RoadBuilder.createStraightRoad({
                 start: { x: 0, y: 0, z: 30, angle: 0 },
                 scene: scene3D.scene,
                 length: 39,
-                options: road1,
+                style: road1,
+                cuts: {
+                    leftCuts: [
+                        {
+                            from: 10,
+                            roadFrom: 12,
+                            roadTo: 32,
+                            to: 33
+                        }
+                    ]
+                }
             });
 
 
 
             RoadBuilder.createStraightRoad({
-                start: { x: 10, y: 0, z: 10, angle: -Math.PI/4 },
+                start: { x: 10, y: 0, z: 10, angle: -Math.PI / 4 },
                 scene: scene3D.scene,
-                length: 30,
-                options: road1,
+                length: 23,
+                style: road1,
+                cuts: {
+                    endCut: {
+                        left: 1,
+                        roadLeft: 0,
+                        roadRight: 11,
+                        right: 15,
+                    }
+
+                }
             });
 
 

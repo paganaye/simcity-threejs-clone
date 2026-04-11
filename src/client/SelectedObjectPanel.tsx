@@ -3,59 +3,59 @@ import type * as THREE from "three";
 import type { ISelectedInstance } from "./editor/ObjectGizmo";
 import type { Character, CharacterSelectionInfo } from "./Character";
 import type { RoadSegment } from "./RoadSegment";
-import type { IRoad, IRoadOptions } from "./roads/IRoad";
+import type { IRoad, IRoadType } from "./roads/IRoad";
 import { KerbType, SideWalkType } from "./IRoadBand";
 
 function RoadOptionsInput(props: {
     title: string;
-    options: IRoadOptions;
+    roadType: IRoadType;
     shoulderOptions: KerbType[];
     sidewalkOptions: SideWalkType[];
     laneWidthOptions: readonly string[];
     idPrefix: string;
-    onOptionsChange: (patch: Partial<IRoadOptions>) => void;
+    onOptionsChange: (patch: Partial<IRoadType>) => void;
 }) {
     return (
         <>
             <div class="info-heading">{props.title}</div>
             <div class="road-form-row">
                 <label class="info-label" for={`${props.idPrefix}-color`}>Color</label>
-                <select id={`${props.idPrefix}-color`} class="road-input" value={props.options.roadColor} onChange={(ev) => props.onOptionsChange({ roadColor: ev.currentTarget.value as 'old' | "new" })}>
+                <select id={`${props.idPrefix}-color`} class="road-input" value={props.roadType.roadColor} onChange={(ev) => props.onOptionsChange({ roadColor: ev.currentTarget.value as 'old' | "new" })}>
                     <option value='old'>old</option>
                     <option value="new">new</option>
                 </select>
             </div>
             <div class="road-form-row">
                 <label class="info-label" for={`${props.idPrefix}-lanes`}>Lanes</label>
-                <input id={`${props.idPrefix}-lanes`} class="road-input" type="number" min="0" step="1" value={String(props.options.lanes)} onChange={(ev) => props.onOptionsChange({ lanes: Math.max(0, Number(ev.currentTarget.value) || 0) })} />
+                <input id={`${props.idPrefix}-lanes`} class="road-input" type="number" min="0" step="1" value={String(props.roadType.lanes)} onChange={(ev) => props.onOptionsChange({ lanes: Math.max(0, Number(ev.currentTarget.value) || 0) })} />
             </div>
             <div class="road-form-row">
                 <label class="info-label" for={`${props.idPrefix}-right-kerb`}>Right kerb</label>
-                <select id={`${props.idPrefix}-right-kerb`} class="road-input" value={props.options.rightKerb} onChange={(ev) => props.onOptionsChange({ rightKerb: ev.currentTarget.value as KerbType })}>
+                <select id={`${props.idPrefix}-right-kerb`} class="road-input" value={props.roadType.rightKerb} onChange={(ev) => props.onOptionsChange({ rightKerb: ev.currentTarget.value as KerbType })}>
                     {props.shoulderOptions.map((value) => <option value={value}>{value}</option>)}
                 </select>
             </div>
             <div class="road-form-row">
                 <label class="info-label" for={`${props.idPrefix}-right-shoulder`}>Right shoulder</label>
-                <select id={`${props.idPrefix}-right-shoulder`} class="road-input" value={props.options.rightSidewalk} onChange={(ev) => props.onOptionsChange({ rightSidewalk: ev.currentTarget.value as SideWalkType })}>
+                <select id={`${props.idPrefix}-right-shoulder`} class="road-input" value={props.roadType.rightSidewalk} onChange={(ev) => props.onOptionsChange({ rightSidewalk: ev.currentTarget.value as SideWalkType })}>
                     {props.sidewalkOptions.map((value) => <option value={value}>{value}</option>)}
                 </select>
             </div>
             <div class="road-form-row">
                 <label class="info-label" for={`${props.idPrefix}-left-kerb`}>Left kerb</label>
-                <select id={`${props.idPrefix}-left-kerb`} class="road-input" value={props.options.leftKerb} onChange={(ev) => props.onOptionsChange({ leftKerb: ev.currentTarget.value as KerbType })}>
+                <select id={`${props.idPrefix}-left-kerb`} class="road-input" value={props.roadType.leftKerb} onChange={(ev) => props.onOptionsChange({ leftKerb: ev.currentTarget.value as KerbType })}>
                     {props.shoulderOptions.map((value) => <option value={value}>{value}</option>)}
                 </select>
             </div>
             <div class="road-form-row">
                 <label class="info-label" for={`${props.idPrefix}-left-shoulder`}>Left shoulder</label>
-                <select id={`${props.idPrefix}-left-shoulder`} class="road-input" value={props.options.leftSidewalk} onChange={(ev) => props.onOptionsChange({ leftSidewalk: ev.currentTarget.value as SideWalkType })}>
+                <select id={`${props.idPrefix}-left-shoulder`} class="road-input" value={props.roadType.leftSidewalk} onChange={(ev) => props.onOptionsChange({ leftSidewalk: ev.currentTarget.value as SideWalkType })}>
                     {props.sidewalkOptions.map((value) => <option value={value}>{value}</option>)}
                 </select>
             </div>
             <div class="road-form-row">
                 <label class="info-label" for={`${props.idPrefix}-road-width`}>Lane width</label>
-                <select id={`${props.idPrefix}-road-width`} class="road-input" value={props.options.laneWidth} onChange={(ev) => props.onOptionsChange({ laneWidth: ev.currentTarget.value as "narrow" | "normal" | "wide" })}>
+                <select id={`${props.idPrefix}-road-width`} class="road-input" value={props.roadType.laneWidth} onChange={(ev) => props.onOptionsChange({ laneWidth: ev.currentTarget.value as "narrow" | "normal" | "wide" })}>
                     {props.laneWidthOptions.map((value) => <option value={value}>{value}</option>)}
                 </select>
             </div>
@@ -144,7 +144,7 @@ export function SelectedObjectPanel(props: {
         });
     };
 
-    const updateForwardOptions = (patch: Partial<IRoadOptions>): void => {
+    const updateForwardOptions = (patch: Partial<IRoadType>): void => {
         const current = roadDraft();
         commitRoadDraft({
             forward: { ...current.forward, ...patch },
@@ -153,7 +153,7 @@ export function SelectedObjectPanel(props: {
         });
     };
 
-    const updateBackwardOptions = (patch: Partial<IRoadOptions>): void => {
+    const updateBackwardOptions = (patch: Partial<IRoadType>): void => {
         const current = roadDraft();
         if (!current.backward) return;
         commitRoadDraft({
@@ -243,7 +243,7 @@ export function SelectedObjectPanel(props: {
                             <Show when={!roadDraft().backward}>
                                 <RoadOptionsInput
                                     title="Options"
-                                    options={oneWayDraft()!.forward}
+                                    roadType={oneWayDraft()!.forward}
                                     shoulderOptions={shoulderOptions}
                                     sidewalkOptions={sidewalkOptions}
                                     laneWidthOptions={laneWidthOptions}
@@ -254,7 +254,7 @@ export function SelectedObjectPanel(props: {
                             <Show when={roadDraft().backward}>
                                 <RoadOptionsInput
                                     title="Forward Way"
-                                    options={twoWayDraft()!.forward}
+                                    roadType={twoWayDraft()!.forward}
                                     shoulderOptions={shoulderOptions}
                                     sidewalkOptions={sidewalkOptions}
                                     laneWidthOptions={laneWidthOptions}
@@ -263,7 +263,7 @@ export function SelectedObjectPanel(props: {
                                 />
                                 <RoadOptionsInput
                                     title="Other Way"
-                                    options={twoWayDraft()!.backward!}
+                                    roadType={twoWayDraft()!.backward!}
                                     shoulderOptions={shoulderOptions}
                                     sidewalkOptions={sidewalkOptions}
                                     laneWidthOptions={laneWidthOptions}

@@ -1,6 +1,6 @@
 import { IRoadBand, RoadConstants } from './IRoadBand';
 import { RoadBuilder } from './RoadBuilder';
-import { IRoadOptions } from './roads/IRoad';
+import { IRoadType } from './roads/IRoad';
 
 
 export class BandPainter {
@@ -9,7 +9,7 @@ export class BandPainter {
     textureWidth!: number;
     textureHeight!: number;
 
-    constructor(private readonly ctx: CanvasRenderingContext2D, readonly road: IRoadOptions) {
+    constructor(private readonly ctx: CanvasRenderingContext2D, readonly road: IRoadType) {
         this.roadColor = road.roadColor === 'new' ? RoadBuilder.NEW_ROAD_COLOR : RoadBuilder.OLD_ROAD_COLOR;
     }
 

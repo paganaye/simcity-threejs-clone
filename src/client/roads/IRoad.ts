@@ -1,6 +1,6 @@
 import { RoadType, KerbType, SideWalkType, Lane } from "../IRoadBand";
 
-export interface IRoadOptions {
+export interface IRoadType {
     roadColor: RoadType;
     lanes: number;
     rightKerb: KerbType;
@@ -20,8 +20,8 @@ export interface IRoadOptions {
 
 
 export type IRoad = {
-    forward: IRoadOptions;
-    backward?: IRoadOptions;
+    forward: IRoadType;
+    backward?: IRoadType;
     gapSize: number; // metre
 };
 

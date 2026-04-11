@@ -3,7 +3,7 @@ import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
 import { RoadBuilder } from '../RoadBuilder';
-import type { IRoadOptions } from '../roads/IRoad';
+import type { IRoadType } from '../roads/IRoad';
 
 export default class RoadTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -18,7 +18,7 @@ export default class RoadTest extends Page {
         const handleUILoaded = async (): Promise<void> => {
             await scene3D.init(this);
 
-            const road1: IRoadOptions = {
+            const road1: IRoadType = {
                 roadColor: 'old',
                 lanes: 3,
                 rightKerb: 'line',
@@ -33,7 +33,7 @@ export default class RoadTest extends Page {
                 start: { x: 0, y: 0, z: 20, angle: 0 },
                 scene: scene3D.scene,
                 length: 10,
-                options: road1,
+                style: road1,
             });
 
 
@@ -42,7 +42,7 @@ export default class RoadTest extends Page {
                 radius: 10,
                 sweepAngle: -Math.PI / 2,
                 scene: scene3D.scene,
-                options: road1,
+                roadType: road1,
                 segmentLength: 1.5,
             })
 
@@ -53,7 +53,7 @@ export default class RoadTest extends Page {
                 radius: 10,
                 sweepAngle: Math.PI / 2,
                 scene: scene3D.scene,
-                options: road1,
+                roadType: road1,
                 segmentLength: 1.5,
             })
 

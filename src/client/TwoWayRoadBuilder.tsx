@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { IOrientation2D } from "../sim/IPoint";
-import type { IRoad, IRoadOptions } from "./roads/IRoad";
+import type { IRoad, IRoadType } from "./roads/IRoad";
 import { RoadBuilder } from "./RoadBuilder";
 import { getBands } from "./RoadLayout";
 
@@ -22,8 +22,8 @@ export class TwoWayRoadBuilder implements IOrientation2D {
     }
 
     advanceRoad(length: number, road: IRoad, _cuts: any = {}) {
-        let left: IRoadOptions | null;
-        let right: IRoadOptions;
+        let left: IRoadType | null;
+        let right: IRoadType;
 
         const safeGap = Number.isFinite(road.gapSize) ? road.gapSize : 0;
         right = road.forward;
@@ -54,8 +54,8 @@ export class TwoWayRoadBuilder implements IOrientation2D {
         const sharedParams = { length, center: { x: centerX, y: this.y, z: centerZ, angle: this.angle }, normal: { x: normalX, z: normalZ }, scene: this.scene };
 
         // Gap is geometric only: place each half-road away from center by halfGapM.
-        RoadBuilder.createStraightRoadMesh({ ...sharedParams, halfOffsetM: halfGapM + rightWidthM / 2, widthM: rightWidthM, uvArray: rightUvArray, options: right });
-        if (left) RoadBuilder.createStraightRoadMesh({ ...sharedParams, halfOffsetM: -(halfGapM + leftWidthM / 2), widthM: leftWidthM, uvArray: leftUvArray, options: left });
+        RoadBuilder.createStraightRoadMesh({ ...sharedParams, halfOffsetM: halfGapM + rightWidthM / 2, widthM: rightWidthM, uvArray: rightUvArray, roadType: right });
+        if (left) RoadBuilder.createStraightRoadMesh({ ...sharedParams, halfOffsetM: -(halfGapM + leftWidthM / 2), widthM: leftWidthM, uvArray: leftUvArray, roadType: left });
 
         this.x += dx;
         this.z += dz;

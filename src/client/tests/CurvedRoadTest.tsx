@@ -30,7 +30,7 @@ export default class RoadTest extends Page {
             };
 
             RoadBuilder.createStraightRoad({
-                start: { x: 0, y: 0, z: 15, angle: 0 },
+                start: { x: 0, y: 0, z: 20, angle: 0 },
                 scene: scene3D.scene,
                 length: 10,
                 options: road1,
@@ -38,8 +38,8 @@ export default class RoadTest extends Page {
 
 
             RoadBuilder.createArcRoad({
-                start: { x: 10, y: 0, z: 29.3, angle: 0 },
-                radius: 25,
+                start: { x: 10, y: 0, z: 20, angle: 0 },
+                radius: 10,
                 sweepAngle: -Math.PI / 2,
                 scene: scene3D.scene,
                 options: road1,
@@ -47,16 +47,10 @@ export default class RoadTest extends Page {
             })
 
 
-            RoadBuilder.createStraightRoad({
-                start: { x: 20.7, y: 0, z: 4.3, angle: Math.PI / 2 },
-                scene: scene3D.scene,
-                length: 5,
-                options: road1,
-            });
 
             RoadBuilder.createArcRoad({
-                start: { x: 10, y: 0, z: 29.3, angle: 0 },
-                radius: 25,
+                start: { x: 10, y: 0, z: 20, angle: 0 },
+                radius: 10,
                 sweepAngle: Math.PI / 2,
                 scene: scene3D.scene,
                 options: road1,

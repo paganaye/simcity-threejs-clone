@@ -30,18 +30,18 @@ export default class JunctionTest extends Page {
             };
 
             RoadBuilder.createStraightRoad({
-                start: { x: 0, y: 0, z: 15, angle: 0 },
+                start: { x: 0, y: 0, z: 30, angle: 0 },
                 scene: scene3D.scene,
-                length: 40,
+                length: 39,
                 options: road1,
             });
 
 
 
             RoadBuilder.createStraightRoad({
-                start: { x: 0, y: 0, z: 4.3, angle: -Math.PI/4 },
+                start: { x: 10, y: 0, z: 10, angle: -Math.PI/4 },
                 scene: scene3D.scene,
-                length: 5,
+                length: 30,
                 options: road1,
             });
 

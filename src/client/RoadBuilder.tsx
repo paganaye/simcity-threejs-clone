@@ -336,8 +336,9 @@ export class RoadBuilder {
 
         const bands = getBands(options);
         const widthM = bands.totalWidthM;
-        const sideSign = 1;
-        const halfOffsetM = sideSign * (widthM / 2);
+        // Origin is now at the center of the carriageway, not the left edge
+        const carriagewayCenter = (bands.carriagewayStartM + bands.carriagewayEndM) / 2;
+        const halfOffsetM = carriagewayCenter - widthM / 2;
         const dx = Math.cos(start.angle) * length;
         const dz = -Math.sin(start.angle) * length;
         const normalX = Math.sin(start.angle);
@@ -427,13 +428,12 @@ export class RoadBuilder {
         const leftNormalZ = Math.cos(start.angle);
         // Convention: sweepAngle < 0 turns left, sweepAngle > 0 turns right.
         const turnDirection = safeSweepAngle < 0 ? -1 : 1;
-        // effectiveRadius: offset so that the road CENTER is always at safeRadius from the arc center,
-        // regardless of turn direction. Without this, the boundary from which radius is measured
-        // flips between inner/outer edge depending on turn direction, causing visual asymmetry.
-        const effectiveRadius = safeRadius - (widthM / 2) * turnDirection;
+        // leftNormal = (sin θ, cos θ) = the RIGHT perpendicular of the road.
+        // For a left turn, arc center is to the LEFT = -leftNormal; turnDirection=-1 → + leftNormal * (-1)
+        // For a right turn, arc center is to the RIGHT = +leftNormal; turnDirection=+1 → + leftNormal * (+1)
         const center = {
-            x: start.x + leftNormalX * effectiveRadius * turnDirection,
-            z: start.z + leftNormalZ * effectiveRadius * turnDirection,
+            x: start.x + leftNormalX * safeRadius * turnDirection,
+            z: start.z + leftNormalZ * safeRadius * turnDirection,
         };
 
         const curveSweepAngle = -safeSweepAngle;
@@ -449,13 +449,18 @@ export class RoadBuilder {
             const tangentAngle = start.angle + curveSweepAngle * t;
             const leftN = { x: Math.sin(tangentAngle), z: Math.cos(tangentAngle) };
 
+            // arcPoint: road carriage center at this t — opposite direction from center
+            const arcPoint = {
+                x: center.x - leftN.x * safeRadius * turnDirection,
+                z: center.z - leftN.z * safeRadius * turnDirection,
+            };
             const leftBoundary = {
-                x: center.x - leftN.x * effectiveRadius * turnDirection,
-                z: center.z - leftN.z * effectiveRadius * turnDirection,
+                x: arcPoint.x + leftN.x * (widthM / 2),
+                z: arcPoint.z + leftN.z * (widthM / 2),
             };
             const rightBoundary = {
-                x: leftBoundary.x - leftN.x * widthM,
-                z: leftBoundary.z - leftN.z * widthM,
+                x: arcPoint.x - leftN.x * (widthM / 2),
+                z: arcPoint.z - leftN.z * (widthM / 2),
             };
 
             const v = textureProgressV + (arcLength / this.LINE_LENGTH) * t;

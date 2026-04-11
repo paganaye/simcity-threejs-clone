@@ -29,7 +29,7 @@ export default class RoadTest extends Page {
             };
 
             RoadBuilder.createStraightRoad({
-                start: { x: 0, y: 0, z: 0, angle: 0 },
+                start: { x: 0, y: 0, z: 5.7, angle: 0 },
                 scene: scene3D.scene,
                 length: 30,
                 options: road1,

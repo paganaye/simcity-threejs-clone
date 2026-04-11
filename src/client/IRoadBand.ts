@@ -15,7 +15,7 @@ export const RoadConstants = {
     walkWay: '#8d8d95',
 }
 
-const kerbs = bands({
+const kerbs = bands('kerb', {
     'parallelParking': {
         color: 'asphalt',
         isCarriageway: true,
@@ -45,7 +45,7 @@ const kerbs = bands({
 
 export type KerbType = keyof typeof kerbs;
 
-const sidewalks = bands({
+const sidewalks = bands('sidewalk', {
     'small': {
         color: RoadConstants.walkWay,
         isCarriageway: false,
@@ -70,7 +70,7 @@ const sidewalks = bands({
 
 export type SideWalkType = keyof typeof sidewalks;
 
-export const laneWidths = bands({
+export const lanes = bands('lane', {
     'narrow': {
         color: 'asphalt',
         isCarriageway: true,
@@ -88,9 +88,9 @@ export const laneWidths = bands({
     }
 })
 
-export type LaneWidth = keyof typeof laneWidths;
+export type LaneWidth = keyof typeof lanes;
 
-export const laneSeparators = bands({
+export const laneSeparators = bands('laneSeparator', {
     'plain': {
         color: 'asphalt',
         isCarriageway: true,
@@ -105,14 +105,18 @@ export const laneSeparators = bands({
 
 export type LaneSeparator = keyof typeof laneSeparators;
 
-
-type BandsWithType<T extends Record<string, IRoadBandBase>> = {
-    [K in keyof T]: T[K] & { type: K }
+type BandsWithType<T extends Record<string, IRoadBandBase>, K extends RoadBandKind> = {
+    [P in keyof T]: T[P] & { type: P, kind: K }
 };
 
-function bands<T extends Record<string, IRoadBandBase>>(allBands: T): BandsWithType<T> {
-    const entries = Object.entries(allBands).map(([type, band]) => [type, { ...band, type }]);
-    return Object.fromEntries(entries) as BandsWithType<T>;
+export type RoadBandKind = 'sidewalk' | 'kerb' | 'lane' | 'laneSeparator';
+
+function bands<K extends RoadBandKind, T extends Record<string, IRoadBandBase>>(kind: K, allBands: T): BandsWithType<T, K> {
+    const result = {} as BandsWithType<T, K>;
+    for (const key in allBands) {
+        result[key] = { ...allBands[key], type: key, kind };
+    }
+    return result;
 }
 
 export type BandType = KerbType | SideWalkType | LaneWidth | LaneSeparator;
@@ -125,8 +129,9 @@ export interface IRoadBand {
 }
 
 export const roadBands = {
-    ...kerbs,
     ...sidewalks,
-    ...laneWidths,
+    ...kerbs,
+    ...lanes,
     ...laneSeparators
 };
+

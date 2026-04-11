@@ -18,12 +18,9 @@ export class BandPainter {
         this.textureHeight = this.ctx.canvas.height;
         this.drawRect('transparent', 0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
 
-
         for (const band of bands) {
             this.drawBand(band);
         }
-
-
     }
 
     drawRect(color: string, x: number, y: number, w: number, h: number): void {
@@ -44,6 +41,7 @@ export class BandPainter {
 
         switch (band.type) {
             case 'line':
+            case 'discontinuous':
                 drawRectPc(this.roadColor, 0, 0, 1, 1);
                 drawRectPc(band.color, 1 / 4, 0.25, 1 / 2, 0.5);
                 break;

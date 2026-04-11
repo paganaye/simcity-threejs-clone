@@ -72,40 +72,40 @@ export default class RoadTest extends Page {
                 }
             });
 
-            const road2: IRoad = {
-                forward: {
-                    roadColor: 'new',
-                    lanes: 2,
-                    rightKerb: 'line',
-                    rightSidewalk: 'grass',
-                    laneWidth: 'normal',
-                    leftKerb: 'line',
-                    leftSidewalk: 'grass',
-                },
-                gapSize: 0,
-            };
+            // const road2: IRoad = {
+            //     forward: {
+            //         roadColor: 'new',
+            //         lanes: 2,
+            //         rightKerb: 'line',
+            //         rightSidewalk: 'grass',
+            //         laneWidth: 'normal',
+            //         leftKerb: 'line',
+            //         leftSidewalk: 'grass',
+            //     },
+            //     gapSize: 0,
+            // };
 
-            RoadBuilder.createStraightRoad({
-                start: { x: 0, y: 0, z: 30, angle: degToRad(45) },
-                scene: scene3D.scene,
-                length: 15,
-                options: road2.forward,
-                gapSize: road2.gapSize,
-                cuts: {
-                    startCut: {
-                        left: 4,
-                        roadLeft: 2,
-                        roadRight: 0,
-                        right: 1,
-                    },
-                    endCut: {
-                        left: 4,
-                        roadLeft: 2,
-                        roadRight: 0,
-                        right: 1,
-                    }
-                }
-            });
+            // RoadBuilder.createStraightRoad({
+            //     start: { x: 0, y: 0, z: 30, angle: degToRad(45) },
+            //     scene: scene3D.scene,
+            //     length: 15,
+            //     options: road2.forward,
+            //     gapSize: road2.gapSize,
+            //     cuts: {
+            //         startCut: {
+            //             left: 4,
+            //             roadLeft: 2,
+            //             roadRight: 0,
+            //             right: 1,
+            //         },
+            //         endCut: {
+            //             left: 4,
+            //             roadLeft: 2,
+            //             roadRight: 0,
+            //             right: 1,
+            //         }
+            //     }
+            // });
             scene3D.isLoading.set(false);
             this.setCameraView(20, 40, 40, 20, 0, 20);
         };

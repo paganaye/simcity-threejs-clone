@@ -735,15 +735,18 @@ export class GameScene3D {
         };
         this.roadGizmo.onRoadMoved = (x, z, angle) => {
             this.#getSelectedRoadSegment()?.moveTo(x, z, angle);
+            this.roadNetwork.refreshTransientJoinArcs();
         };
         this.roadGizmo.onRoadResized = (newLength) => {
             const seg = this.#getSelectedRoadSegment();
             if (!seg) return;
             seg.resize(newLength);
+            this.roadNetwork.refreshTransientJoinArcs();
             this.onRoadSegmentResized?.(seg);
         };
         this.roadGizmo.onArcChanged = (midX, midZ) => {
             this.#getSelectedRoadSegment()?.setArc(midX, midZ);
+            this.roadNetwork.refreshTransientJoinArcs();
         };
         this.roadGizmo.onDeselect = () => {
             this.selectedInstance.set(undefined);
@@ -753,6 +756,7 @@ export class GameScene3D {
         };
         this.roadGizmo.onDragEnded = () => {
             (this.toolMap.get('road') as RoadToolController | undefined)?.onRoadDragEnded();
+            this.roadNetwork.refreshTransientJoinArcs();
         };
     }
 

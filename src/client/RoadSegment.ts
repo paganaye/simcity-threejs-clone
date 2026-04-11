@@ -87,13 +87,50 @@ export class RoadSegment {
         if (endX !== undefined && endZ !== undefined) {
             this._arcEndX = endX;
             this._arcEndZ = endZ;
-        } else if (this._arcEndX === undefined) {
+        } else if (this._arcEndX === undefined || this._arcEndZ === undefined) {
             this._arcEndX = this.startX + Math.cos(this.angle) * this.length;
             this._arcEndZ = this.startZ - Math.sin(this.angle) * this.length;
         }
+
+        const targetEndX = this._arcEndX;
+        const targetEndZ = this._arcEndZ;
+        if (targetEndX === undefined || targetEndZ === undefined) return;
+
+        // If arc control returns near the straight chord, switch back to true straight mode.
+        const chordDx = targetEndX - this.startX;
+        const chordDz = targetEndZ - this.startZ;
+        const chordLength = Math.hypot(chordDx, chordDz);
+        if (chordLength > 1e-6) {
+            const ux = chordDx / chordLength;
+            const uz = chordDz / chordLength;
+            const nx = -uz;
+            const nz = ux;
+            const mx = midX - this.startX;
+            const mz = midZ - this.startZ;
+            const perpendicularDistance = Math.abs(mx * nx + mz * nz);
+            const straightThreshold = Math.max(0.2, chordLength * 0.02);
+
+            if (perpendicularDistance <= straightThreshold) {
+                this.#setStraightFromEndpoints(targetEndX, targetEndZ);
+                this.rebuild();
+                return;
+            }
+        }
+
         this._arcMidX = midX;
         this._arcMidZ = midZ;
         this.rebuild();
+    }
+
+    #setStraightFromEndpoints(endX: number, endZ: number): void {
+        const dx = endX - this.startX;
+        const dz = endZ - this.startZ;
+        this.length = Math.hypot(dx, dz);
+        this.angle = Math.atan2(-dz, dx);
+        this._arcMidX = undefined;
+        this._arcMidZ = undefined;
+        this._arcEndX = undefined;
+        this._arcEndZ = undefined;
     }
 
     /** Move without rebuilding geometry — group transform handles world position. */
@@ -177,6 +214,7 @@ export class RoadSegment {
                 });
             }
             // Points nearly collinear — fall back to straight road.
+            this.#setStraightFromEndpoints(p3x, p3z);
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
             const b = new TwoWayRoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);

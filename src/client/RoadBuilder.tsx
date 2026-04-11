@@ -3,7 +3,7 @@ import { BandPainter } from "./BandPainter";
 import { getBands, IRoadBands } from "./RoadLayout";
 import type { IRoadOptions } from "./roads/IRoad";
 import type { IOrientation2D, IPoint2D, IPoint3D } from "../sim/IPoint";
-import { LaneWidth } from "./IRoadBand";
+import { Lane } from "./IRoadBand";
 
 export interface ISideCuts {
     from: number; // sidewalk start cut
@@ -76,11 +76,11 @@ export class RoadBuilder {
         return Math.max(0, gapSize || 0);
     }
 
-    static getEntryExitWidthMeters(laneWidth: LaneWidth): number {
+    static getEntryExitWidthMeters(laneWidth: Lane): number {
         return this.getLaneWidthMeters(laneWidth) + this.YELLOW_LINE_WIDTH_M;
     }
 
-    static getKerbWidthMeters(kerb: IRoadOptions['rightKerb'], _laneWidth: LaneWidth): number {
+    static getKerbWidthMeters(kerb: IRoadOptions['rightKerb'], _laneWidth: Lane): number {
         switch (kerb) {
             case 'parallelParking': return this.PARALLEL_PARKING_WIDTH_M;
             case 'perpendicularParking': return this.PERPENDICULAR_PARKING_WIDTH_M;

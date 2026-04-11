@@ -40,6 +40,10 @@ export class BandPainter {
         }
 
         switch (band.type) {
+            case 'plain':
+                drawRectPc(this.roadColor, 0, 0, 1, 1);
+                drawRectPc(band.color, 1 / 4, 0, 1 / 2, 1);
+                break;
             case 'line':
             case 'discontinuous':
                 drawRectPc(this.roadColor, 0, 0, 1, 1);

@@ -1,4 +1,4 @@
-import { BandType, IRoadBand, laneSeparators, LaneWidth, roadBands } from './IRoadBand';
+import { BandType, IRoadBand, laneSeparators, Lane, roadBands } from './IRoadBand';
 import type { IRoad, IRoadOptions } from './roads/IRoad';
 
 
@@ -47,7 +47,7 @@ export interface IJunctionTextureResult {
 
 export function getBands(options: IRoadOptions): IRoadBands {
     const laneCount = Math.max(0, options.lanes);
-    const laneType: LaneWidth = 'normal';
+    const laneType: Lane = 'normal';
 
     let bands: IRoadBand[] = [];
 
@@ -74,7 +74,7 @@ export function getBands(options: IRoadOptions): IRoadBands {
     let carriagewayEndM;
 
     for (const band of bands) {
-        const isCarriageway = band.isCarriageway;
+        const isCarriageway = band.kind === 'lane' || band.kind === 'laneSeparator';
         if (isCarriageway) {
             if (carriagewayStartM === undefined) carriagewayStartM = offsetM;
             carriagewayEndM = offsetM + band.widthM;

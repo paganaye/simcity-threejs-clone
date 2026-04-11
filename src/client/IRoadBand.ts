@@ -2,7 +2,6 @@ export type RoadType = 'old' | 'new';
 
 interface IRoadBandBase {
     widthM: number;
-    isCarriageway?: boolean;
     color: string;
 }
 
@@ -18,27 +17,22 @@ export const RoadConstants = {
 const kerbs = bands('kerb', {
     'parallelParking': {
         color: 'asphalt',
-        isCarriageway: true,
         widthM: 2.4,
     },
     'perpendicularParking': {
         color: 'asphalt',
-        isCarriageway: true,
         widthM: 5.0,
     },
     'emergencyLane': {
         color: '#2b2b2b',
-        isCarriageway: true,
         widthM: 3.5,
     },
     'line': {
         color: RoadConstants.yellowLine,
-        isCarriageway: true,
         widthM: 0.4,
     },
     'none': {
         color: 'transparent',
-        isCarriageway: false,
         widthM: 0,
     }
 });
@@ -48,22 +42,18 @@ export type KerbType = keyof typeof kerbs;
 const sidewalks = bands('sidewalk', {
     'small': {
         color: RoadConstants.walkWay,
-        isCarriageway: false,
         widthM: 1.0,
     },
     'large': {
         color: RoadConstants.walkWay,
-        isCarriageway: false,
         widthM: 2.0,
     },
     'grass': {
         color: RoadConstants.grass,
-        isCarriageway: false,
         widthM: 1.0,
     },
     'none': {
         color: 'transparent',
-        isCarriageway: false,
         widthM: 0,
     }
 })
@@ -73,32 +63,27 @@ export type SideWalkType = keyof typeof sidewalks;
 export const lanes = bands('lane', {
     'narrow': {
         color: 'asphalt',
-        isCarriageway: true,
         widthM: 3.0,
     },
     'normal': {
         color: 'asphalt',
-        isCarriageway: true,
         widthM: 3.5,
     },
     'wide': {
         color: 'asphalt',
-        isCarriageway: true,
         widthM: 4.0,
     }
 })
 
-export type LaneWidth = keyof typeof lanes;
+export type Lane = keyof typeof lanes;
 
 export const laneSeparators = bands('laneSeparator', {
     'plain': {
-        color: 'asphalt',
-        isCarriageway: true,
+        color: RoadConstants.yellowLine,
         widthM: 0.5,
     },
     'discontinuous': {
-        color: 'asphalt',
-        isCarriageway: true,
+        color: RoadConstants.yellowLine,
         widthM: 0.5,
     }
 })
@@ -119,12 +104,12 @@ function bands<K extends RoadBandKind, T extends Record<string, IRoadBandBase>>(
     return result;
 }
 
-export type BandType = KerbType | SideWalkType | LaneWidth | LaneSeparator;
+export type BandType = SideWalkType | KerbType | Lane | LaneSeparator;
 
 export interface IRoadBand {
     type: BandType,
+    kind: RoadBandKind;
     widthM: number;
-    isCarriageway?: boolean;
     color: string;
 }
 

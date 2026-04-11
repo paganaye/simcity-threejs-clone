@@ -4,7 +4,6 @@ import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
 import { RoadBuilder } from '../RoadBuilder';
 import type { IRoad } from '../roads/IRoad';
-import { degToRad } from 'three/src/math/MathUtils.js';
 
 export default class RoadTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -63,10 +62,16 @@ export default class RoadTest extends Page {
                     ],
                     leftCuts: [
                         {
-                            from: 12,
-                            roadFrom: 15,
-                            roadTo: 22,
-                            to: 25,
+                            from: 5,
+                            roadFrom: 6,
+                            roadTo: 7,
+                            to: 8,
+                        },
+                        {
+                            from: 15,
+                            roadFrom: 16,
+                            roadTo: 17,
+                            to: 18,
                         }
                     ],
                 }

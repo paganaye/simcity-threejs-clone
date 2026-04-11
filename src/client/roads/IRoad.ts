@@ -1,11 +1,11 @@
-import { RoadType, KerbType, SideWalkType, LaneWidth } from "../IRoadBand";
+import { RoadType, KerbType, SideWalkType, Lane } from "../IRoadBand";
 
 export interface IRoadOptions {
     roadColor: RoadType;
     lanes: number;
     rightKerb: KerbType;
     rightSidewalk: SideWalkType;
-    laneWidth: LaneWidth;
+    laneWidth: Lane;
     leftKerb: KerbType;
     leftSidewalk: SideWalkType;
 }

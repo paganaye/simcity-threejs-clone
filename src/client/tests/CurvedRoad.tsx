@@ -34,77 +34,30 @@ export default class RoadTest extends Page {
 
 
             RoadBuilder.createStraightRoad({
-                start: { x: 0, y: 0, z: 0, angle: 0 },
+                start: { x: 0, y: 0, z: 25, angle: 0 },
                 scene: scene3D.scene,
-                length: 30,
+                length: 35,
                 options: road1.forward,
                 gapSize: road1.gapSize,
                 cuts: {
-                    startCut: {
-                        left: 4,
-                        roadLeft: 2,
-                        roadRight: 0,
-                        right: 1,
-                    },
                     endCut: {
                         left: 4,
-                        roadLeft: 2,
-                        roadRight: 0,
-                        right: 1,
-                    },
-                    rightCuts: [
-                        {
-                            from: 7,
-                            roadFrom: 10,
-                            roadTo: 17,
-                            to: 20,
-                        }
-                    ],
-                    leftCuts: [
-                        {
-                            from: 12,
-                            roadFrom: 15,
-                            roadTo: 22,
-                            to: 25,
-                        }
-                    ],
+                        roadLeft: 4,
+                        roadRight: 1,
+                        right: 0,
+                    }
                 }
             });
 
-            // const road2: IRoad = {
-            //     forward: {
-            //         roadColor: 'new',
-            //         lanes: 2,
-            //         rightKerb: 'line',
-            //         rightSidewalk: 'grass',
-            //         laneWidth: 'normal',
-            //         leftKerb: 'line',
-            //         leftSidewalk: 'grass',
-            //     },
-            //     gapSize: 0,
-            // };
+            RoadBuilder.createStraightRoad({
+                start: { x: 25, y: 0, z: 25, angle: Math.PI / 2 },
+                scene: scene3D.scene,
+                length: 25,
+                options: road1.forward,
+                gapSize: road1.gapSize
+            });
 
-            // RoadBuilder.createStraightRoad({
-            //     start: { x: 0, y: 0, z: 30, angle: degToRad(45) },
-            //     scene: scene3D.scene,
-            //     length: 15,
-            //     options: road2.forward,
-            //     gapSize: road2.gapSize,
-            //     cuts: {
-            //         startCut: {
-            //             left: 4,
-            //             roadLeft: 2,
-            //             roadRight: 0,
-            //             right: 1,
-            //         },
-            //         endCut: {
-            //             left: 4,
-            //             roadLeft: 2,
-            //             roadRight: 0,
-            //             right: 1,
-            //         }
-            //     }
-            // });
+
             scene3D.isLoading.set(false);
             this.setCameraView(20, 40, 40, 20, 0, 20);
         };

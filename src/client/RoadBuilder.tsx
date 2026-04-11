@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { BandPainter } from "./BandPainter";
-import { getBands, IRoadBands } from "./RoadLayout";
+import { getBands } from "./RoadLayout";
 import type { IRoadOptions } from "./roads/IRoad";
-import type { IOrientation2D, IPoint2D, IPoint3D } from "../sim/IPoint";
+import type { IOrientation2D, IPoint2D } from "../sim/IPoint";
 import { Lane } from "./IRoadBand";
 
 export interface ISideCuts {
@@ -216,10 +216,10 @@ export class RoadBuilder {
             endCut,
         } = params;
         const halfLength = length / 2;
-        const leftOuter = -widthM / 2;
-        const roadLeft = leftOuter + carriagewayStartM;
-        const roadRight = leftOuter + carriagewayEndM;
-        const rightOuter = widthM / 2;
+        const leftOuter = widthM / 2;
+        const roadLeft = leftOuter - carriagewayStartM;
+        const roadRight = leftOuter - carriagewayEndM;
+        const rightOuter = -widthM / 2;
         const lateral = [leftOuter, roadLeft, roadRight, rightOuter];
 
         const startCuts = this.getExtremityValues(startCut, length);
@@ -307,7 +307,7 @@ export class RoadBuilder {
         const uvs: number[] = [];
         for (const point of contour) {
             const t = THREE.MathUtils.clamp((point.x + halfLength) / length, 0, 1);
-            const baseU = THREE.MathUtils.clamp((point.y - leftOuter) / widthM, 0, 1);
+            const baseU = THREE.MathUtils.clamp((leftOuter - point.y) / widthM, 0, 1);
             const u = side === 'left' ? 1 - baseU : baseU;
             vertices.push(point.x, point.y, 0);
             uvs.push(u, startV + repeat * t);
@@ -405,75 +405,75 @@ export class RoadBuilder {
         scene.add(mesh);
     }
 
-    static createCurvedRoadMesh(params: {
-        side: 'left' | 'right';
-        options: IRoadOptions;
-        bands: IRoadBands;
-        gap: number;
-        turnAngle: number;
-        segments: number;
-        radius: number;
-        totalCurveAngle: number;
-        startV: number;
-        arcCenter: IPoint3D;
-        initialRoadAngle: number;
-        geomAngleOffset: number;
-        scene: THREE.Object3D;
-    }): void {
-        const { side, options, bands, gap, turnAngle, segments, radius, totalCurveAngle, startV, arcCenter, initialRoadAngle, geomAngleOffset, scene } = params;
-        const widthM = bands.totalWidthM;
-        if (widthM <= 0) return;
-        const halfGapM = gap / 2;
-        const turnSideSign = turnAngle >= 0 ? 1 : -1;
-        const innerOffset = (side === 'right' ? halfGapM : -halfGapM) * turnSideSign;
-        const outerOffset = side === 'right'
-            ? (halfGapM + widthM) * turnSideSign
-            : -(halfGapM + widthM) * turnSideSign;
+    // static createCurvedRoadMesh(params: {
+    //     side: 'left' | 'right';
+    //     options: IRoadOptions;
+    //     bands: IRoadBands;
+    //     gap: number;
+    //     turnAngle: number;
+    //     segments: number;
+    //     radius: number;
+    //     totalCurveAngle: number;
+    //     startV: number;
+    //     arcCenter: IPoint3D;
+    //     initialRoadAngle: number;
+    //     geomAngleOffset: number;
+    //     scene: THREE.Object3D;
+    // }): void {
+    //     const { side, options, bands, gap, turnAngle, segments, radius, totalCurveAngle, startV, arcCenter, initialRoadAngle, geomAngleOffset, scene } = params;
+    //     const widthM = bands.totalWidthM;
+    //     if (widthM <= 0) return;
+    //     const halfGapM = gap / 2;
+    //     const turnSideSign = turnAngle >= 0 ? 1 : -1;
+    //     const innerOffset = (side === 'right' ? halfGapM : -halfGapM) * turnSideSign;
+    //     const outerOffset = side === 'right'
+    //         ? (halfGapM + widthM) * turnSideSign
+    //         : -(halfGapM + widthM) * turnSideSign;
 
-        const getCurvePoint = (t: number, offsetRadius: number) => {
-            const currentTangentAngle = initialRoadAngle + t * turnAngle;
-            const geometryRayAngle = currentTangentAngle + geomAngleOffset;
-            const cosRay = Math.cos(geometryRayAngle);
-            const sinRay = Math.sin(geometryRayAngle);
-            return {
-                x: arcCenter.x + cosRay * (radius + offsetRadius),
-                z: arcCenter.z - sinRay * (radius + offsetRadius),
-            };
-        };
+    //     const getCurvePoint = (t: number, offsetRadius: number) => {
+    //         const currentTangentAngle = initialRoadAngle + t * turnAngle;
+    //         const geometryRayAngle = currentTangentAngle + geomAngleOffset;
+    //         const cosRay = Math.cos(geometryRayAngle);
+    //         const sinRay = Math.sin(geometryRayAngle);
+    //         return {
+    //             x: arcCenter.x + cosRay * (radius + offsetRadius),
+    //             z: arcCenter.z - sinRay * (radius + offsetRadius),
+    //         };
+    //     };
 
-        const vertices: number[] = [];
-        const uvsSide: number[] = [];
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            const innerPoint = getCurvePoint(t, innerOffset);
-            const outerPoint = getCurvePoint(t, outerOffset);
-            vertices.push(innerPoint.x, arcCenter.y, innerPoint.z);
-            vertices.push(outerPoint.x, arcCenter.y, outerPoint.z);
-            const v = (radius * totalCurveAngle * t) / RoadBuilder.LINE_LENGTH;
-            const vv = startV + v;
-            uvsSide.push(0, vv);
-            uvsSide.push(1, vv);
-        }
+    //     const vertices: number[] = [];
+    //     const uvsSide: number[] = [];
+    //     for (let i = 0; i <= segments; i++) {
+    //         const t = i / segments;
+    //         const innerPoint = getCurvePoint(t, innerOffset);
+    //         const outerPoint = getCurvePoint(t, outerOffset);
+    //         vertices.push(innerPoint.x, arcCenter.y, innerPoint.z);
+    //         vertices.push(outerPoint.x, arcCenter.y, outerPoint.z);
+    //         const v = (radius * totalCurveAngle * t) / RoadBuilder.LINE_LENGTH;
+    //         const vv = startV + v;
+    //         uvsSide.push(0, vv);
+    //         uvsSide.push(1, vv);
+    //     }
 
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvsSide, 2));
+    //     const geometry = new THREE.BufferGeometry();
+    //     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    //     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvsSide, 2));
 
-        const indices: number[] = [];
-        for (let i = 0; i < segments; i++) {
-            const a = i * 2;
-            const b = a + 1;
-            const c = a + 2;
-            const d = a + 3;
-            indices.push(a, b, d);
-            indices.push(a, d, c);
-        }
-        geometry.setIndex(indices);
-        geometry.computeVertexNormals();
+    //     const indices: number[] = [];
+    //     for (let i = 0; i < segments; i++) {
+    //         const a = i * 2;
+    //         const b = a + 1;
+    //         const c = a + 2;
+    //         const d = a + 3;
+    //         indices.push(a, b, d);
+    //         indices.push(a, d, c);
+    //     }
+    //     geometry.setIndex(indices);
+    //     geometry.computeVertexNormals();
 
-        const mesh = new THREE.Mesh(geometry, this.getRoadMaterial(options));
-        scene.add(mesh);
-    }
+    //     const mesh = new THREE.Mesh(geometry, this.getRoadMaterial(options));
+    //     scene.add(mesh);
+    // }
 
     static getRoadMaterial(options: IRoadOptions): THREE.MeshStandardMaterial {
         const key = this.styleKey(options);

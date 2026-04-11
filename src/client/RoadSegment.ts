@@ -123,7 +123,7 @@ export class RoadSegment {
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
             const builder = new TwoWayRoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
-            builder.addStraightRoad(this.length, this.iRoad);
+            builder.advanceRoad(this.length, this.iRoad);
         }
 
         this.#tagChildren();
@@ -185,7 +185,7 @@ export class RoadSegment {
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
             const b = new TwoWayRoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
-            b.addStraightRoad(this.length, this.iRoad);
+            b.advanceRoad(this.length, this.iRoad);
             return;
         }
 
@@ -266,8 +266,8 @@ export class RoadSegment {
         this.group.position.set(0, 0, 0);
         this.group.rotation.set(0, 0, 0);
 
-        const builder = new TwoWayRoadBuilder({ x: p1x, y: 0.015, z: p1z, angle: startAngle }, this.group);
-        builder.addCurvedRoad(turnAngle, radius, this.iRoad, {});
+        // const builder = new TwoWayRoadBuilder({ x: p1x, y: 0.015, z: p1z, angle: startAngle }, this.group);
+        // builder.addCurvedRoad(turnAngle, radius, this.iRoad, {});
 
         // Keep stored state consistent with the arc geometry.
         this.angle = startAngle;

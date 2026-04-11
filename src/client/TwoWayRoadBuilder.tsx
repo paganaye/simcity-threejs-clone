@@ -21,7 +21,7 @@ export class TwoWayRoadBuilder implements IOrientation2D {
         this.angle = startPosition.angle;
     }
 
-    addStraightRoad(length: number, road: IRoad, _cuts: any = {}) {
+    advanceRoad(length: number, road: IRoad, _cuts: any = {}) {
         let left: IRoadOptions | null;
         let right: IRoadOptions;
 
@@ -62,70 +62,70 @@ export class TwoWayRoadBuilder implements IOrientation2D {
         this.textureProgressV = endV;
     }
 
-    addCurvedRoad(turnAngle: number, radius: number, road: IRoad, _cuts: any) {
-        const rightBands = getBands(road.forward);
-        const leftBands = road.backward ? getBands(road.backward) : null;
+    // addCurvedRoad(turnAngle: number, radius: number, road: IRoad, _cuts: any) {
+    //     const rightBands = getBands(road.forward);
+    //     const leftBands = road.backward ? getBands(road.backward) : null;
 
-        let left: IRoadOptions | null;
-        let right: IRoadOptions;
-        let gap: number;
-        right = road.forward;
-        left = road.backward ?? null;
-        gap = left && Number.isFinite(road.gapSize) ? road.gapSize : 0;
+    //     let left: IRoadOptions | null;
+    //     let right: IRoadOptions;
+    //     let gap: number;
+    //     right = road.forward;
+    //     left = road.backward ?? null;
+    //     gap = left && Number.isFinite(road.gapSize) ? road.gapSize : 0;
 
-        if (Math.abs(turnAngle) < 0.001) return;
+    //     if (Math.abs(turnAngle) < 0.001) return;
 
-        const DEBUG_ROAD_ARC = true;
+    //     const DEBUG_ROAD_ARC = true;
 
-        if (DEBUG_ROAD_ARC) {
-            console.log('[RoadBuilder.turn] input', {
-                roadType: left ? 'two-way' : 'one-way',
-                turnAngle,
-                radius,
-                x: this.x,
-                z: this.z,
-                angle: this.angle,
-                gap,
-            });
-        }
+    //     if (DEBUG_ROAD_ARC) {
+    //         console.log('[RoadBuilder.turn] input', {
+    //             roadType: left ? 'two-way' : 'one-way',
+    //             turnAngle,
+    //             radius,
+    //             x: this.x,
+    //             z: this.z,
+    //             angle: this.angle,
+    //             gap,
+    //         });
+    //     }
 
-        const segments = Math.max(1, Math.round(Math.abs(RoadBuilder.TURNING_SEGMENTS_MULTIPLIER * turnAngle)));
-        const initialRoadAngle = this.angle;
-        const finalRoadAngle = initialRoadAngle + turnAngle;
-        const centerCalcDirection = turnAngle > 0 ? -1 : 1;
-        const cx = this.x + Math.sin(initialRoadAngle) * radius * centerCalcDirection;
-        const cz = this.z + Math.cos(initialRoadAngle) * radius * centerCalcDirection;
-        const geomAngleOffset = turnAngle > 0 ? -Math.PI / 2 : +Math.PI / 2;
-        const totalCurveAngle = Math.abs(turnAngle);
-        const curveLength = radius * totalCurveAngle;
-        const startV = this.textureProgressV;
-        this.textureProgressV = startV + curveLength / RoadBuilder.LINE_LENGTH;
+    //     const segments = Math.max(1, Math.round(Math.abs(RoadBuilder.TURNING_SEGMENTS_MULTIPLIER * turnAngle)));
+    //     const initialRoadAngle = this.angle;
+    //     const finalRoadAngle = initialRoadAngle + turnAngle;
+    //     const centerCalcDirection = turnAngle > 0 ? -1 : 1;
+    //     const cx = this.x + Math.sin(initialRoadAngle) * radius * centerCalcDirection;
+    //     const cz = this.z + Math.cos(initialRoadAngle) * radius * centerCalcDirection;
+    //     const geomAngleOffset = turnAngle > 0 ? -Math.PI / 2 : +Math.PI / 2;
+    //     const totalCurveAngle = Math.abs(turnAngle);
+    //     const curveLength = radius * totalCurveAngle;
+    //     const startV = this.textureProgressV;
+    //     this.textureProgressV = startV + curveLength / RoadBuilder.LINE_LENGTH;
 
-        const sharedCurveParams = { gap, turnAngle, segments, radius, totalCurveAngle, startV, arcCenter: { x: cx, y: this.y, z: cz }, initialRoadAngle, geomAngleOffset, scene: this.scene };
+    //     const sharedCurveParams = { gap, turnAngle, segments, radius, totalCurveAngle, startV, arcCenter: { x: cx, y: this.y, z: cz }, initialRoadAngle, geomAngleOffset, scene: this.scene };
 
-        if (DEBUG_ROAD_ARC) {
-            console.log('[RoadBuilder.turn] side right', { widthM: rightBands.totalWidthM, lanes: right.lanes });
-            if (left && leftBands) console.log('[RoadBuilder.turn] side left', { widthM: leftBands.totalWidthM, lanes: left.lanes });
-        }
+    //     if (DEBUG_ROAD_ARC) {
+    //         console.log('[RoadBuilder.turn] side right', { widthM: rightBands.totalWidthM, lanes: right.lanes });
+    //         if (left && leftBands) console.log('[RoadBuilder.turn] side left', { widthM: leftBands.totalWidthM, lanes: left.lanes });
+    //     }
 
-        if (left && leftBands) RoadBuilder.createCurvedRoadMesh({ ...sharedCurveParams, side: 'left', options: left, bands: leftBands! });
-        RoadBuilder.createCurvedRoadMesh({ ...sharedCurveParams, side: 'right', options: right, bands: rightBands! });
+    //     if (left && leftBands) RoadBuilder.createCurvedRoadMesh({ ...sharedCurveParams, side: 'left', options: left, bands: leftBands! });
+    //     RoadBuilder.createCurvedRoadMesh({ ...sharedCurveParams, side: 'right', options: right, bands: rightBands! });
 
-        this.angle = finalRoadAngle;
-        const finalGeometryRayAngle = finalRoadAngle + geomAngleOffset;
-        this.x = cx + Math.cos(finalGeometryRayAngle) * radius;
-        this.z = cz - Math.sin(finalGeometryRayAngle) * radius;
+    //     this.angle = finalRoadAngle;
+    //     const finalGeometryRayAngle = finalRoadAngle + geomAngleOffset;
+    //     this.x = cx + Math.cos(finalGeometryRayAngle) * radius;
+    //     this.z = cz - Math.sin(finalGeometryRayAngle) * radius;
 
-        if (DEBUG_ROAD_ARC) {
-            console.log('[RoadBuilder.turn] output', {
-                finalAngle: this.angle,
-                finalX: this.x,
-                finalZ: this.z,
-                centerX: cx,
-                centerZ: cz,
-                geomAngleOffset,
-            });
-        }
-    }
+    //     if (DEBUG_ROAD_ARC) {
+    //         console.log('[RoadBuilder.turn] output', {
+    //             finalAngle: this.angle,
+    //             finalX: this.x,
+    //             finalZ: this.z,
+    //             centerX: cx,
+    //             centerZ: cz,
+    //             geomAngleOffset,
+    //         });
+    //     }
+    // }
 
 }

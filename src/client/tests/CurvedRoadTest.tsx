@@ -3,7 +3,7 @@ import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
 import { RoadBuilder } from '../RoadBuilder';
-import type { IRoad, IRoadOptions } from '../roads/IRoad';
+import type { IRoadOptions } from '../roads/IRoad';
 
 export default class RoadTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -29,18 +29,32 @@ export default class RoadTest extends Page {
 
             };
 
+            RoadBuilder.createStraightRoad({
+                start: { x: -0.4, y: 0, z: 0, angle: 0 },
+                scene: scene3D.scene,
+                length: 10,
+                options: road1,
+            });
 
 
-
-            RoadBuilder.createCurvedRoad({
-                start: { x: 0, y: 0, z: 25, angle: Math.PI / 2 },
-                control1: { x: 0, z: 20 },
-                end: { x: 25, y: 0, z: 0, angle: 0 },
-                control2: { x: 20, z: 0 },
+            RoadBuilder.createArcRoad({
+                start: { x: 10, y: 0, z: 0, angle: 0 },
+                radius: 25,
+                sweepAngle: -Math.PI / 2,
                 scene: scene3D.scene,
                 options: road1,
                 segmentLength: 1.5,
             })
+
+
+            RoadBuilder.createStraightRoad({
+                start: { x: 20.7, y: 0, z: 35.5, angle: Math.PI / 2 },
+                scene: scene3D.scene,
+                length: 10,
+                options: road1,
+            });
+
+
             scene3D.isLoading.set(false);
             this.setCameraView(20, 40, 40, 20, 0, 20);
         };

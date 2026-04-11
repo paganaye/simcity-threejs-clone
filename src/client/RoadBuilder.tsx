@@ -325,11 +325,10 @@ export class RoadBuilder {
         scene: THREE.Object3D;
         length: number;
         options: IRoadOptions;
-        side?: 'left' | 'right';
         textureProgressV?: number;
         cuts?: IRoadCuts;
     }): void {
-        const { start, scene, length, options, side = 'right', textureProgressV = 0, cuts } = params;
+        const { start, scene, length, options, textureProgressV = 0, cuts } = params;
 
         const y = start.y ?? 0;
 
@@ -337,7 +336,7 @@ export class RoadBuilder {
 
         const bands = getBands(options);
         const widthM = bands.totalWidthM;
-        const sideSign = side === 'left' ? -1 : 1;
+        const sideSign = 1;
         const halfOffsetM = sideSign * (widthM / 2);
         const dx = Math.cos(start.angle) * length;
         const dz = -Math.sin(start.angle) * length;
@@ -346,9 +345,7 @@ export class RoadBuilder {
         const repeat = length / RoadBuilder.LINE_LENGTH;
         const startV = textureProgressV;
         const endV = startV + repeat;
-        const uvArray = side === 'left'
-            ? [1, startV, 1, endV, 0, startV, 0, endV]
-            : [0, startV, 0, endV, 1, startV, 1, endV];
+        const uvArray = [0, startV, 0, endV, 1, startV, 1, endV];
 
         const centerX = start.x + dx / 2;
         const centerZ = start.z + dz / 2;
@@ -394,78 +391,70 @@ export class RoadBuilder {
         scene.add(mesh);
     }
 
-    static createCurvedRoad(params: {
+    static createArcRoad(params: {
         start: IOrientation2D;
-        control1: IPoint2D;
-        control2: IPoint2D;
-        end: IOrientation2D;
+        radius: number;
+        sweepAngle: number;
         scene: THREE.Object3D;
         options: IRoadOptions;
-        side?: 'left' | 'right';
         textureProgressV?: number;
         segments?: number;
         segmentLength?: number;
     }): void {
         const {
             start,
-            control1,
-            control2,
-            end,
+            radius,
+            sweepAngle,
             scene,
             options,
-            side = 'right',
             textureProgressV = 0,
             segments,
             segmentLength = 2,
         } = params;
 
-        const p0 = { x: start.x, z: start.z };
-        const p1 = { x: control1.x, z: control1.z };
-        const p2 = { x: control2.x, z: control2.z };
-        const p3 = { x: end.x, z: end.z };
-
-        const evaluateBezier = (t: number): IPoint2D => {
-            const oneMinusT = 1 - t;
-            const b0 = oneMinusT * oneMinusT * oneMinusT;
-            const b1 = 3 * oneMinusT * oneMinusT * t;
-            const b2 = 3 * oneMinusT * t * t;
-            const b3 = t * t * t;
-            return {
-                x: b0 * p0.x + b1 * p1.x + b2 * p2.x + b3 * p3.x,
-                z: b0 * p0.z + b1 * p1.z + b2 * p2.z + b3 * p3.z,
-            };
+        const safeRadius = Math.max(0.001, Math.abs(radius));
+        const safeSweepAngle = Number.isFinite(sweepAngle) ? sweepAngle : 0;
+        if (Math.abs(safeSweepAngle) < 1e-6) return;
+        const minSegmentLength = Math.max(0.1, segmentLength);
+        const turnDirection = safeSweepAngle > 0 ? -1 : 1;
+        const center = {
+            x: start.x + Math.sin(start.angle) * safeRadius * turnDirection,
+            z: start.z + Math.cos(start.angle) * safeRadius * turnDirection,
         };
 
-        const estimateLength =
-            Math.hypot(p1.x - p0.x, p1.z - p0.z) +
-            Math.hypot(p2.x - p1.x, p2.z - p1.z) +
-            Math.hypot(p3.x - p2.x, p3.z - p2.z);
-        const subdivisions = Math.max(2, segments ?? Math.ceil(estimateLength / Math.max(0.1, segmentLength)));
+        const geomAngleOffset = safeSweepAngle > 0 ? -Math.PI / 2 : +Math.PI / 2;
+        const arcLength = safeRadius * Math.abs(safeSweepAngle);
+        const subdivisionCount = Math.max(2, segments ?? Math.ceil(arcLength / minSegmentLength));
 
         let currentV = textureProgressV;
-        let previous = evaluateBezier(0);
-        for (let i = 1; i <= subdivisions; i++) {
-            const t = i / subdivisions;
-            const current = evaluateBezier(t);
-            const dx = current.x - previous.x;
-            const dz = current.z - previous.z;
-            const length = Math.hypot(dx, dz);
+        let previousPoint: IPoint2D | null = null;
+        for (let i = 0; i <= subdivisionCount; i++) {
+            const t = i / subdivisionCount;
+            const tangentAngle = start.angle + safeSweepAngle * t;
+            const rayAngle = tangentAngle + geomAngleOffset;
+            const point = {
+                x: center.x + Math.cos(rayAngle) * safeRadius,
+                z: center.z - Math.sin(rayAngle) * safeRadius,
+            };
 
-            if (length > 1e-4) {
-                const angle = Math.atan2(-dz, dx);
-                if (i & 1)
-                this.createStraightRoad({
-                    start: { x: previous.x, y: start.y ?? 0, z: previous.z, angle },
-                    scene,
-                    length,
-                    options,
-                    side,
-                    textureProgressV: currentV,
-                });
-                currentV += length / this.LINE_LENGTH;
+            if (previousPoint) {
+                const dx = point.x - previousPoint.x;
+                const dz = point.z - previousPoint.z;
+                const length = Math.hypot(dx, dz);
+                if (length > 1e-4) {
+                    const segmentAngle = Math.atan2(-dz, dx);
+                    this.createStraightRoad({
+                        start: { x: previousPoint.x, y: start.y ?? 0, z: previousPoint.z, angle: segmentAngle },
+                        scene,
+                        length,
+                        options,
+                        textureProgressV: currentV,
+                    });
+                    currentV += length / this.LINE_LENGTH;
+                }
             }
 
-            previous = current;
+            previousPoint = point;
         }
     }
 

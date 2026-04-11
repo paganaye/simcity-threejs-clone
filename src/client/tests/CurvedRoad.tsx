@@ -38,7 +38,6 @@ export default class RoadTest extends Page {
                 scene: scene3D.scene,
                 length: 35,
                 options: road1.forward,
-                gapSize: road1.gapSize,
                 cuts: {
                     endCut: {
                         left: 4,
@@ -53,8 +52,7 @@ export default class RoadTest extends Page {
                 start: { x: 25, y: 0, z: 25, angle: Math.PI / 2 },
                 scene: scene3D.scene,
                 length: 25,
-                options: road1.forward,
-                gapSize: road1.gapSize
+                options: road1.forward
             });
 
 

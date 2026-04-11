@@ -72,10 +72,6 @@ export class RoadBuilder {
         }
     }
 
-    static getGapWidthMeters(gapSize: number): number {
-        return Math.max(0, gapSize || 0);
-    }
-
     static getEntryExitWidthMeters(laneWidth: Lane): number {
         return this.getLaneWidthMeters(laneWidth) + this.YELLOW_LINE_WIDTH_M;
     }
@@ -196,7 +192,6 @@ export class RoadBuilder {
         carriagewayEndM: number;
         startV: number;
         endV: number;
-        side: 'left' | 'right';
         rightCuts?: ISideCuts[];
         leftCuts?: ISideCuts[];
         startCut?: IExtremityCut;
@@ -209,7 +204,6 @@ export class RoadBuilder {
             carriagewayEndM,
             startV,
             endV,
-            side,
             rightCuts,
             leftCuts,
             startCut,
@@ -308,7 +302,7 @@ export class RoadBuilder {
         for (const point of contour) {
             const t = THREE.MathUtils.clamp((point.x + halfLength) / length, 0, 1);
             const baseU = THREE.MathUtils.clamp((leftOuter - point.y) / widthM, 0, 1);
-            const u = side === 'left' ? 1 - baseU : baseU;
+            const u = baseU;
             vertices.push(point.x, point.y, 0);
             uvs.push(u, startV + repeat * t);
         }
@@ -331,24 +325,20 @@ export class RoadBuilder {
         scene: THREE.Object3D;
         length: number;
         options: IRoadOptions;
-        gapSize?: number;
-        halfGapSize?: number;
         side?: 'left' | 'right';
         textureProgressV?: number;
         cuts?: IRoadCuts;
     }): void {
-        const { start, scene, length, options, gapSize, halfGapSize, side = 'right', textureProgressV = 0, cuts } = params;
+        const { start, scene, length, options, side = 'right', textureProgressV = 0, cuts } = params;
 
         const y = start.y ?? 0;
-        const safeGap = Number.isFinite(gapSize ?? NaN) ? (gapSize as number) : 0;
-        const safeHalfGap = Number.isFinite(halfGapSize ?? NaN) ? (halfGapSize as number) : safeGap / 2;
 
         if (length <= 0) return;
 
         const bands = getBands(options);
         const widthM = bands.totalWidthM;
         const sideSign = side === 'left' ? -1 : 1;
-        const halfOffsetM = sideSign * (safeHalfGap + widthM / 2);
+        const halfOffsetM = sideSign * (widthM / 2);
         const dx = Math.cos(start.angle) * length;
         const dz = -Math.sin(start.angle) * length;
         const normalX = Math.sin(start.angle);
@@ -388,7 +378,6 @@ export class RoadBuilder {
             carriagewayEndM: bands.carriagewayEndM,
             startV,
             endV,
-            side,
             rightCuts: cuts?.rightCuts,
             leftCuts: cuts?.leftCuts,
             startCut: cuts?.startCut,

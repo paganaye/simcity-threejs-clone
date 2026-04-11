@@ -327,8 +327,9 @@ export class RoadBuilder {
         style: IRoadType;
         textureProgressV?: number;
         cuts?: IRoadCuts;
+        offsetM?: number;
     }): void {
-        const { start, scene, length, style: options, textureProgressV = 0, cuts } = params;
+        const { start, scene, length, style: options, textureProgressV = 0, cuts, offsetM = 0 } = params;
 
         const y = start.y ?? 0;
 
@@ -361,7 +362,7 @@ export class RoadBuilder {
         if (!hasCustomCuts) {
             RoadBuilder.createStraightRoadMesh({
                 ...sharedParams,
-                halfOffsetM,
+                halfOffsetM: halfOffsetM + offsetM,
                 widthM,
                 uvArray,
                 roadType: options,
@@ -383,9 +384,9 @@ export class RoadBuilder {
         });
         const mesh = new THREE.Mesh(geometry, this.getRoadMaterial(options));
         mesh.position.set(
-            centerX + normalX * halfOffsetM,
+            centerX + normalX * (halfOffsetM + offsetM),
             y,
-            centerZ + normalZ * halfOffsetM
+            centerZ + normalZ * (halfOffsetM + offsetM)
         );
         mesh.rotation.x = -Math.PI / 2;
         mesh.rotation.z = start.angle;
@@ -424,6 +425,13 @@ export class RoadBuilder {
         const widthM = bands.totalWidthM;
         if (widthM <= 0) return;
 
+        // Keep requested sweep (so handles/endpoints stay correct) and full nominal width.
+        // If the turn is too tight, clamp only the inner boundary radius.
+        const halfWidth = widthM / 2;
+        const minInnerRadius = 0.2;
+        const innerRadius = Math.max(minInnerRadius, safeRadius - halfWidth);
+        const outerRadius = safeRadius + halfWidth;
+
         const leftNormalX = Math.sin(start.angle);
         const leftNormalZ = Math.cos(start.angle);
         // Convention: sweepAngle < 0 turns left, sweepAngle > 0 turns right.
@@ -449,18 +457,18 @@ export class RoadBuilder {
             const tangentAngle = start.angle + curveSweepAngle * t;
             const leftN = { x: Math.sin(tangentAngle), z: Math.cos(tangentAngle) };
 
-            // arcPoint: road carriage center at this t — opposite direction from center
-            const arcPoint = {
-                x: center.x - leftN.x * safeRadius * turnDirection,
-                z: center.z - leftN.z * safeRadius * turnDirection,
-            };
+            // For right turn (turnDirection>0), left boundary is inner.
+            // For left turn (turnDirection<0), right boundary is inner.
+            const leftRadius = turnDirection > 0 ? innerRadius : outerRadius;
+            const rightRadius = turnDirection > 0 ? outerRadius : innerRadius;
+            const radialSign = -turnDirection;
             const leftBoundary = {
-                x: arcPoint.x + leftN.x * (widthM / 2),
-                z: arcPoint.z + leftN.z * (widthM / 2),
+                x: center.x + leftN.x * radialSign * leftRadius,
+                z: center.z + leftN.z * radialSign * leftRadius,
             };
             const rightBoundary = {
-                x: arcPoint.x - leftN.x * (widthM / 2),
-                z: arcPoint.z - leftN.z * (widthM / 2),
+                x: center.x + leftN.x * radialSign * rightRadius,
+                z: center.z + leftN.z * radialSign * rightRadius,
             };
 
             const v = textureProgressV + (arcLength / this.LINE_LENGTH) * t;

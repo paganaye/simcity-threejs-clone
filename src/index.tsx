@@ -6,19 +6,20 @@ import "./client/GameUI.css";
 const pages = {
     "Buildings": "client/tests/BuildingsTest",
     "Character Test": "client/tests/CharacterTest",
+    "Curved Road": "client/tests/CurvedRoadTest",
     "Game": "client/GamePage",
+    "GamePart": "client/tests/GamePart",
     "Gizmo": "client/tests/GizmoTest",
+    "Junction": "client/tests/JunctionTest",
     "Marbles Test": "client/tests/MarblesTest",
     "Maze": "client/tests/MazeTest",
     "Path": "client/tests/PathTest",
     "Quaternion": "client/tests/QuaternionTest",
     "Road Cut": "client/tests/RoadCutTest",
-    "Curved Road": "client/tests/CurvedRoadTest",
-    "Junction": "client/tests/JunctionTest",
+    "Road tool": "client/tests/RoadToolTest",
     "Simple Test": "client/tests/SimpleTest",
     "Stencil Buffer": "client/tests/StencilBufferTest",
     "Three Editor": "client/editor/ThreeEditor",
-    "GamePart": "client/tests/GamePart",
 
 };
 

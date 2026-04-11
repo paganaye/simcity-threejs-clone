@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TwoWayRoadBuilder } from './TwoWayRoadBuilder';
+import type { IRoadCuts } from './RoadBuilder';
 import type { IRoad } from './roads/IRoad';
 
 const DEBUG_ROAD_ARC = true;
@@ -25,6 +26,7 @@ export class RoadSegment {
     // Stored end position when arc is active (world space).
     private _arcEndX?: number;
     private _arcEndZ?: number;
+    private junctionCuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts };
 
     constructor(
         private readonly sceneRoot: THREE.Object3D,
@@ -72,6 +74,11 @@ export class RoadSegment {
             gapSize: Number.isFinite(nextRoad.gapSize) ? nextRoad.gapSize : 0,
         };
         this.group.userData.iRoad = this.iRoad;
+        this.rebuild();
+    }
+
+    setJunctionCuts(cuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts }): void {
+        this.junctionCuts = cuts;
         this.rebuild();
     }
 
@@ -123,7 +130,7 @@ export class RoadSegment {
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
             const builder = new TwoWayRoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
-            builder.advanceRoad(this.length, this.iRoad);
+            builder.advanceRoad(this.length, this.iRoad, this.junctionCuts);
         }
 
         this.#tagChildren();
@@ -160,18 +167,6 @@ export class RoadSegment {
         const p2x = midX, p2z = midZ;
         const p3x = endX, p3z = endZ;
 
-        if (DEBUG_ROAD_ARC) {
-            console.log('[RoadArc] input', {
-                segmentId: this.group.id,
-                roadType: this.iRoad.backward ? 'two-way' : 'one-way',
-                start: { x: p1x, z: p1z },
-                mid: { x: p2x, z: p2z },
-                end: { x: p3x, z: p3z },
-                prevAngle: this.angle,
-                prevLength: this.length,
-            });
-        }
-
         // Circumcircle of three world points.
         const D = 2 * (p1x * (p2z - p3z) + p2x * (p3z - p1z) + p3x * (p1z - p2z));
         if (Math.abs(D) < 0.01) {
@@ -185,7 +180,7 @@ export class RoadSegment {
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
             const b = new TwoWayRoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
-            b.advanceRoad(this.length, this.iRoad);
+            b.advanceRoad(this.length, this.iRoad, this.junctionCuts);
             return;
         }
 
@@ -247,38 +242,16 @@ export class RoadSegment {
         const startAngle = a1 + (turnAngle > 0 ? Math.PI / 2 : -Math.PI / 2);
         const arcAngle = Math.abs(turnAngle);
 
-        if (DEBUG_ROAD_ARC) {
-            console.log('[RoadArc] solved', {
-                segmentId: this.group.id,
-                center: { x: cx, z: cz },
-                radius,
-                angles: { a1, a2, a3 },
-                shortDelta,
-                longDelta,
-                chosenTurnAngle: turnAngle,
-                startAngle,
-                arcAngle,
-                containsMidOnShort: isOnArc(a1, a2, shortDelta),
-            });
-        }
 
         // Build at world-space identity so builder positions are world coordinates.
         this.group.position.set(0, 0, 0);
         this.group.rotation.set(0, 0, 0);
 
-        // const builder = new TwoWayRoadBuilder({ x: p1x, y: 0.015, z: p1z, angle: startAngle }, this.group);
-        // builder.addCurvedRoad(turnAngle, radius, this.iRoad, {});
+        const builder = new TwoWayRoadBuilder({ x: p1x, y: 0.015, z: p1z, angle: startAngle }, this.group);
+        builder.addCurvedRoad(turnAngle, radius, this.iRoad);
 
         // Keep stored state consistent with the arc geometry.
         this.angle = startAngle;
         this.length = arcAngle * radius;
-
-        if (DEBUG_ROAD_ARC) {
-            console.log('[RoadArc] output', {
-                segmentId: this.group.id,
-                newAngle: this.angle,
-                newLength: this.length,
-            });
-        }
     }
 }

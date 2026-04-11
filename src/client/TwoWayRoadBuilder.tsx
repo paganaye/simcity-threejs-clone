@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { IOrientation2D } from "../sim/IPoint";
 import type { IRoad, IRoadType } from "./roads/IRoad";
+import type { IRoadCuts } from "./RoadBuilder";
 import { RoadBuilder } from "./RoadBuilder";
 import { getBands } from "./RoadLayout";
 
@@ -21,7 +22,7 @@ export class TwoWayRoadBuilder implements IOrientation2D {
         this.angle = startPosition.angle;
     }
 
-    advanceRoad(length: number, road: IRoad, _cuts: any = {}) {
+    advanceRoad(length: number, road: IRoad, cuts: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts } = {}) {
         let left: IRoadType | null;
         let right: IRoadType;
 
@@ -38,94 +39,113 @@ export class TwoWayRoadBuilder implements IOrientation2D {
         const halfGapM = left ? safeGap / 2 : 0;
         const dx = Math.cos(this.angle) * length;
         const dz = -Math.sin(this.angle) * length;
-        const normalX = Math.sin(this.angle);
-        const normalZ = Math.cos(this.angle);
         const repeat = length / RoadBuilder.LINE_LENGTH;
         const startV = this.textureProgressV;
         const endV = startV + repeat;
-        // const rightShouldStretch = RoadBuilder.hasEntryExitKerb(right);
-        // const leftShouldStretch = RoadBuilder.hasEntryExitKerb(left);
-        const rightUvArray = [0, startV, 0, endV, 1, startV, 1, endV];
-        const leftUvArray = [1, startV, 1, endV, 0, startV, 0, endV];
 
-        const centerX = this.x + dx / 2;
-        const centerZ = this.z + dz / 2;
-
-        const sharedParams = { length, center: { x: centerX, y: this.y, z: centerZ, angle: this.angle }, normal: { x: normalX, z: normalZ }, scene: this.scene };
+        const start = { x: this.x, y: this.y, z: this.z, angle: this.angle };
+        const end = { x: this.x + dx, y: this.y, z: this.z + dz, angle: this.angle + Math.PI };
 
         // Gap is geometric only: place each half-road away from center by halfGapM.
-        RoadBuilder.createStraightRoadMesh({ ...sharedParams, halfOffsetM: halfGapM + rightWidthM / 2, widthM: rightWidthM, uvArray: rightUvArray, roadType: right });
-        if (left) RoadBuilder.createStraightRoadMesh({ ...sharedParams, halfOffsetM: -(halfGapM + leftWidthM / 2), widthM: leftWidthM, uvArray: leftUvArray, roadType: left });
+        RoadBuilder.createStraightRoad({
+            start,
+            scene: this.scene,
+            length,
+            style: right,
+            textureProgressV: startV,
+            cuts: cuts.forwardCuts,
+            offsetM: halfGapM + rightWidthM / 2,
+        });
+        if (left) {
+            RoadBuilder.createStraightRoad({
+                start: end,
+                scene: this.scene,
+                length,
+                style: left,
+                textureProgressV: startV,
+                cuts: cuts.backwardCuts,
+                offsetM: halfGapM + leftWidthM / 2,
+            });
+        }
 
         this.x += dx;
         this.z += dz;
         this.textureProgressV = endV;
     }
 
-    // addCurvedRoad(turnAngle: number, radius: number, road: IRoad, _cuts: any) {
-    //     const rightBands = getBands(road.forward);
-    //     const leftBands = road.backward ? getBands(road.backward) : null;
+    addCurvedRoad(turnAngle: number, radius: number, road: IRoad): void {
+        if (Math.abs(turnAngle) < 1e-6 || radius <= 0) return;
 
-    //     let left: IRoadOptions | null;
-    //     let right: IRoadOptions;
-    //     let gap: number;
-    //     right = road.forward;
-    //     left = road.backward ?? null;
-    //     gap = left && Number.isFinite(road.gapSize) ? road.gapSize : 0;
+        const right = road.forward;
+        const left = road.backward ?? null;
+        const rightBands = getBands(right);
+        const leftBands = left ? getBands(left) : null;
+        const safeGap = left && Number.isFinite(road.gapSize) ? road.gapSize : 0;
+        const halfGapM = left ? safeGap / 2 : 0;
 
-    //     if (Math.abs(turnAngle) < 0.001) return;
+        // createArcRoad uses opposite sweep sign compared to segment turnAngle.
+        const sweepAngle = -turnAngle;
+        const turnDirection = sweepAngle < 0 ? -1 : 1;
+        const leftNormalX = Math.sin(this.angle);
+        const leftNormalZ = Math.cos(this.angle);
 
-    //     const DEBUG_ROAD_ARC = true;
+        const startV = this.textureProgressV;
 
-    //     if (DEBUG_ROAD_ARC) {
-    //         console.log('[RoadBuilder.turn] input', {
-    //             roadType: left ? 'two-way' : 'one-way',
-    //             turnAngle,
-    //             radius,
-    //             x: this.x,
-    //             z: this.z,
-    //             angle: this.angle,
-    //             gap,
-    //         });
-    //     }
+        const drawOffsetArc = (style: IRoadType, lateralOffsetM: number): void => {
+            const offsetStartX = this.x + leftNormalX * lateralOffsetM;
+            const offsetStartZ = this.z + leftNormalZ * lateralOffsetM;
+            const offsetRadius = radius - lateralOffsetM * turnDirection;
+            if (offsetRadius <= 0.01) return;
 
-    //     const segments = Math.max(1, Math.round(Math.abs(RoadBuilder.TURNING_SEGMENTS_MULTIPLIER * turnAngle)));
-    //     const initialRoadAngle = this.angle;
-    //     const finalRoadAngle = initialRoadAngle + turnAngle;
-    //     const centerCalcDirection = turnAngle > 0 ? -1 : 1;
-    //     const cx = this.x + Math.sin(initialRoadAngle) * radius * centerCalcDirection;
-    //     const cz = this.z + Math.cos(initialRoadAngle) * radius * centerCalcDirection;
-    //     const geomAngleOffset = turnAngle > 0 ? -Math.PI / 2 : +Math.PI / 2;
-    //     const totalCurveAngle = Math.abs(turnAngle);
-    //     const curveLength = radius * totalCurveAngle;
-    //     const startV = this.textureProgressV;
-    //     this.textureProgressV = startV + curveLength / RoadBuilder.LINE_LENGTH;
+            RoadBuilder.createArcRoad({
+                start: { x: offsetStartX, y: this.y, z: offsetStartZ, angle: this.angle },
+                radius: offsetRadius,
+                sweepAngle,
+                scene: this.scene,
+                roadType: style,
+                textureProgressV: startV,
+            });
+        };
 
-    //     const sharedCurveParams = { gap, turnAngle, segments, radius, totalCurveAngle, startV, arcCenter: { x: cx, y: this.y, z: cz }, initialRoadAngle, geomAngleOffset, scene: this.scene };
+        const centerX = this.x + leftNormalX * radius * turnDirection;
+        const centerZ = this.z + leftNormalZ * radius * turnDirection;
+        const endAngle = this.angle + turnAngle;
+        const endLeftNormalX = Math.sin(endAngle);
+        const endLeftNormalZ = Math.cos(endAngle);
+        const endX = centerX - endLeftNormalX * radius * turnDirection;
+        const endZ = centerZ - endLeftNormalZ * radius * turnDirection;
 
-    //     if (DEBUG_ROAD_ARC) {
-    //         console.log('[RoadBuilder.turn] side right', { widthM: rightBands.totalWidthM, lanes: right.lanes });
-    //         if (left && leftBands) console.log('[RoadBuilder.turn] side left', { widthM: leftBands.totalWidthM, lanes: left.lanes });
-    //     }
+        drawOffsetArc(right, halfGapM + rightBands.totalWidthM / 2);
 
-    //     if (left && leftBands) RoadBuilder.createCurvedRoadMesh({ ...sharedCurveParams, side: 'left', options: left, bands: leftBands! });
-    //     RoadBuilder.createCurvedRoadMesh({ ...sharedCurveParams, side: 'right', options: right, bands: rightBands! });
+        if (left && leftBands) {
+            const backwardSweep = turnAngle;
+            const backwardTurnDirection = backwardSweep < 0 ? -1 : 1;
+            const backwardStartAngle = endAngle + Math.PI;
+            const backwardLeftNormalX = Math.sin(backwardStartAngle);
+            const backwardLeftNormalZ = Math.cos(backwardStartAngle);
+            const backwardOffsetM = halfGapM + leftBands.totalWidthM / 2;
+            const backwardStartX = endX + backwardLeftNormalX * backwardOffsetM;
+            const backwardStartZ = endZ + backwardLeftNormalZ * backwardOffsetM;
+            const backwardRadius = radius - backwardOffsetM * backwardTurnDirection;
 
-    //     this.angle = finalRoadAngle;
-    //     const finalGeometryRayAngle = finalRoadAngle + geomAngleOffset;
-    //     this.x = cx + Math.cos(finalGeometryRayAngle) * radius;
-    //     this.z = cz - Math.sin(finalGeometryRayAngle) * radius;
+            if (backwardRadius > 0.01) {
+                RoadBuilder.createArcRoad({
+                    start: { x: backwardStartX, y: this.y, z: backwardStartZ, angle: backwardStartAngle },
+                    radius: backwardRadius,
+                    sweepAngle: backwardSweep,
+                    scene: this.scene,
+                    roadType: left,
+                    textureProgressV: startV,
+                });
+            }
+        }
 
-    //     if (DEBUG_ROAD_ARC) {
-    //         console.log('[RoadBuilder.turn] output', {
-    //             finalAngle: this.angle,
-    //             finalX: this.x,
-    //             finalZ: this.z,
-    //             centerX: cx,
-    //             centerZ: cz,
-    //             geomAngleOffset,
-    //         });
-    //     }
-    // }
+        this.angle = endAngle;
+        this.x = endX;
+        this.z = endZ;
+
+        const arcLength = radius * Math.abs(turnAngle);
+        this.textureProgressV = startV + arcLength / RoadBuilder.LINE_LENGTH;
+    }
 
 }

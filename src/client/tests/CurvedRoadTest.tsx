@@ -22,7 +22,7 @@ export default class RoadTest extends Page {
                 roadColor: 'old',
                 lanes: 3,
                 rightKerb: 'line',
-                rightSidewalk: 'small',
+                rightSidewalk: 'grass',
                 laneWidth: 'normal',
                 leftKerb: 'line',
                 leftSidewalk: 'small',
@@ -30,7 +30,7 @@ export default class RoadTest extends Page {
             };
 
             RoadBuilder.createStraightRoad({
-                start: { x: -0.4, y: 0, z: 0, angle: 0 },
+                start: { x: 0, y: 0, z: 15, angle: 0 },
                 scene: scene3D.scene,
                 length: 10,
                 options: road1,
@@ -38,7 +38,7 @@ export default class RoadTest extends Page {
 
 
             RoadBuilder.createArcRoad({
-                start: { x: 10, y: 0, z: 0, angle: 0 },
+                start: { x: 10, y: 0, z: 29.3, angle: 0 },
                 radius: 25,
                 sweepAngle: -Math.PI / 2,
                 scene: scene3D.scene,
@@ -48,12 +48,20 @@ export default class RoadTest extends Page {
 
 
             RoadBuilder.createStraightRoad({
-                start: { x: 20.7, y: 0, z: 35.5, angle: Math.PI / 2 },
+                start: { x: 20.7, y: 0, z: 4.3, angle: Math.PI / 2 },
                 scene: scene3D.scene,
-                length: 10,
+                length: 5,
                 options: road1,
             });
 
+            RoadBuilder.createArcRoad({
+                start: { x: 10, y: 0, z: 29.3, angle: 0 },
+                radius: 25,
+                sweepAngle: Math.PI / 2,
+                scene: scene3D.scene,
+                options: road1,
+                segmentLength: 1.5,
+            })
 
             scene3D.isLoading.set(false);
             this.setCameraView(20, 40, 40, 20, 0, 20);

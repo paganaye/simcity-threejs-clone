@@ -397,6 +397,7 @@ export class RoadBuilder {
         sweepAngle: number;
         scene: THREE.Object3D;
         options: IRoadOptions;
+        cuts?: IRoadCuts;
         textureProgressV?: number;
         segments?: number;
         segmentLength?: number;
@@ -407,6 +408,7 @@ export class RoadBuilder {
             sweepAngle,
             scene,
             options,
+            cuts: _cuts,
             textureProgressV = 0,
             segments,
             segmentLength = 2,
@@ -416,46 +418,70 @@ export class RoadBuilder {
         const safeSweepAngle = Number.isFinite(sweepAngle) ? sweepAngle : 0;
         if (Math.abs(safeSweepAngle) < 1e-6) return;
         const minSegmentLength = Math.max(0.1, segmentLength);
-        const turnDirection = safeSweepAngle > 0 ? -1 : 1;
+
+        const bands = getBands(options);
+        const widthM = bands.totalWidthM;
+        if (widthM <= 0) return;
+
+        const leftNormalX = Math.sin(start.angle);
+        const leftNormalZ = Math.cos(start.angle);
+        // Convention: sweepAngle < 0 turns left, sweepAngle > 0 turns right.
+        const turnDirection = safeSweepAngle < 0 ? -1 : 1;
+        // effectiveRadius: offset so that the road CENTER is always at safeRadius from the arc center,
+        // regardless of turn direction. Without this, the boundary from which radius is measured
+        // flips between inner/outer edge depending on turn direction, causing visual asymmetry.
+        const effectiveRadius = safeRadius - (widthM / 2) * turnDirection;
         const center = {
-            x: start.x + Math.sin(start.angle) * safeRadius * turnDirection,
-            z: start.z + Math.cos(start.angle) * safeRadius * turnDirection,
+            x: start.x + leftNormalX * effectiveRadius * turnDirection,
+            z: start.z + leftNormalZ * effectiveRadius * turnDirection,
         };
 
-        const geomAngleOffset = safeSweepAngle > 0 ? -Math.PI / 2 : +Math.PI / 2;
-        const arcLength = safeRadius * Math.abs(safeSweepAngle);
+        const curveSweepAngle = -safeSweepAngle;
+        const arcLength = safeRadius * Math.abs(curveSweepAngle);
         const subdivisionCount = Math.max(2, segments ?? Math.ceil(arcLength / minSegmentLength));
 
-        let currentV = textureProgressV;
-        let previousPoint: IPoint2D | null = null;
+        const vertices: number[] = [];
+        const uvs: number[] = [];
+        const indices: number[] = [];
+
         for (let i = 0; i <= subdivisionCount; i++) {
             const t = i / subdivisionCount;
-            const tangentAngle = start.angle + safeSweepAngle * t;
-            const rayAngle = tangentAngle + geomAngleOffset;
-            const point = {
-                x: center.x + Math.cos(rayAngle) * safeRadius,
-                z: center.z - Math.sin(rayAngle) * safeRadius,
+            const tangentAngle = start.angle + curveSweepAngle * t;
+            const leftN = { x: Math.sin(tangentAngle), z: Math.cos(tangentAngle) };
+
+            const leftBoundary = {
+                x: center.x - leftN.x * effectiveRadius * turnDirection,
+                z: center.z - leftN.z * effectiveRadius * turnDirection,
+            };
+            const rightBoundary = {
+                x: leftBoundary.x - leftN.x * widthM,
+                z: leftBoundary.z - leftN.z * widthM,
             };
 
-            if (previousPoint) {
-                const dx = point.x - previousPoint.x;
-                const dz = point.z - previousPoint.z;
-                const length = Math.hypot(dx, dz);
-                if (length > 1e-4) {
-                    const segmentAngle = Math.atan2(-dz, dx);
-                    this.createStraightRoad({
-                        start: { x: previousPoint.x, y: start.y ?? 0, z: previousPoint.z, angle: segmentAngle },
-                        scene,
-                        length,
-                        options,
-                        textureProgressV: currentV,
-                    });
-                    currentV += length / this.LINE_LENGTH;
-                }
-            }
-
-            previousPoint = point;
+            const v = textureProgressV + (arcLength / this.LINE_LENGTH) * t;
+            vertices.push(leftBoundary.x, start.y ?? 0, leftBoundary.z);
+            uvs.push(1, v);
+            vertices.push(rightBoundary.x, start.y ?? 0, rightBoundary.z);
+            uvs.push(0, v);
         }
+
+        for (let i = 0; i < subdivisionCount; i++) {
+            const a = i * 2;
+            const b = a + 1;
+            const c = a + 2;
+            const d = a + 3;
+            indices.push(a, c, b);
+            indices.push(c, d, b);
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+
+        const mesh = new THREE.Mesh(geometry, this.getRoadMaterial(options));
+        scene.add(mesh);
     }
 
     // static createCurvedRoadMesh(params: {
@@ -542,6 +568,7 @@ export class RoadBuilder {
             transparent: true,
         });
         this.materialByStyle.set(key, material);
+        // material.wireframe = true;
         return material;
     }
 

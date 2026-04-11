@@ -394,6 +394,81 @@ export class RoadBuilder {
         scene.add(mesh);
     }
 
+    static createCurvedRoad(params: {
+        start: IOrientation2D;
+        control1: IPoint2D;
+        control2: IPoint2D;
+        end: IOrientation2D;
+        scene: THREE.Object3D;
+        options: IRoadOptions;
+        side?: 'left' | 'right';
+        textureProgressV?: number;
+        segments?: number;
+        segmentLength?: number;
+    }): void {
+        const {
+            start,
+            control1,
+            control2,
+            end,
+            scene,
+            options,
+            side = 'right',
+            textureProgressV = 0,
+            segments,
+            segmentLength = 2,
+        } = params;
+
+        const p0 = { x: start.x, z: start.z };
+        const p1 = { x: control1.x, z: control1.z };
+        const p2 = { x: control2.x, z: control2.z };
+        const p3 = { x: end.x, z: end.z };
+
+        const evaluateBezier = (t: number): IPoint2D => {
+            const oneMinusT = 1 - t;
+            const b0 = oneMinusT * oneMinusT * oneMinusT;
+            const b1 = 3 * oneMinusT * oneMinusT * t;
+            const b2 = 3 * oneMinusT * t * t;
+            const b3 = t * t * t;
+            return {
+                x: b0 * p0.x + b1 * p1.x + b2 * p2.x + b3 * p3.x,
+                z: b0 * p0.z + b1 * p1.z + b2 * p2.z + b3 * p3.z,
+            };
+        };
+
+        const estimateLength =
+            Math.hypot(p1.x - p0.x, p1.z - p0.z) +
+            Math.hypot(p2.x - p1.x, p2.z - p1.z) +
+            Math.hypot(p3.x - p2.x, p3.z - p2.z);
+        const subdivisions = Math.max(2, segments ?? Math.ceil(estimateLength / Math.max(0.1, segmentLength)));
+
+        let currentV = textureProgressV;
+        let previous = evaluateBezier(0);
+        for (let i = 1; i <= subdivisions; i++) {
+            const t = i / subdivisions;
+            const current = evaluateBezier(t);
+            const dx = current.x - previous.x;
+            const dz = current.z - previous.z;
+            const length = Math.hypot(dx, dz);
+
+            if (length > 1e-4) {
+                const angle = Math.atan2(-dz, dx);
+                if (i & 1)
+                this.createStraightRoad({
+                    start: { x: previous.x, y: start.y ?? 0, z: previous.z, angle },
+                    scene,
+                    length,
+                    options,
+                    side,
+                    textureProgressV: currentV,
+                });
+                currentV += length / this.LINE_LENGTH;
+            }
+
+            previous = current;
+        }
+    }
+
     // static createCurvedRoadMesh(params: {
     //     side: 'left' | 'right';
     //     options: IRoadOptions;

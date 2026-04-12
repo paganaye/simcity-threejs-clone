@@ -1,10 +1,10 @@
 import { Accessor, Show, createEffect, createSignal } from "solid-js";
 import type * as THREE from "three";
 import type { ISelectedInstance } from "./editor/ObjectGizmo";
-import type { Character, CharacterSelectionInfo } from "./Character";
-import type { RoadSegment } from "./RoadSegment";
+import type { Character, CharacterSelectionInfo } from "./characters/Character";
+import type { RoadSegment } from "./roads/RoadSegment";
 import type { IRoad, IRoadType } from "./roads/IRoad";
-import { KerbType, SideWalkType } from "./IRoadBand";
+import { KerbType, SideWalkType } from "./textures/IRoadBand";
 
 function RoadOptionsInput(props: {
     title: string;

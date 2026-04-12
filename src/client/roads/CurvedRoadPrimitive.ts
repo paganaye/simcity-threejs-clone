@@ -1,6 +1,6 @@
-import type { IRoadCuts } from './RoadBuilder';
+import type { IRoadCuts } from '../textures/RoadBuilder';
 import { RoadPrimitive, IPointXZ } from './RoadPrimitiveCompiler';
-import type { IRoadType } from './roads/IRoad';
+import type { IRoadType } from './IRoad';
 
 
 export class CurvedRoadPrimitive extends RoadPrimitive {

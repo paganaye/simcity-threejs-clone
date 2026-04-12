@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { computeMajorRoadSideCut, computeMinorRoadEndCut, computeMinorRoadLengthToMainEdge, IStraightRoadCutDef } from './JunctionCuts';
-import type { IRoadType } from './roads/IRoad';
-import type { IRoadCuts } from './RoadBuilder';
+import type { IRoadType } from './IRoad';
+import type { IRoadCuts } from '../textures/RoadBuilder';
+import { IStraightRoadCutDef, computeMinorRoadLengthToMainEdge, computeMinorRoadEndCut, computeMajorRoadSideCut } from './JunctionCuts';
 
 const roadType: IRoadType = {
     roadColor: 'old',

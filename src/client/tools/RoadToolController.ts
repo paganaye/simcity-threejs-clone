@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { type ILeftPointerGesture } from '../GameScene3D';
-import { RoadSegment } from '../RoadSegment';
+import { RoadSegment } from '../roads/RoadSegment';
 import { ROAD_SNAP } from '../editor/CustomGizmo';
 import { ToolController } from './ToolController';
 import { ActiveTool } from './ToolTypes';

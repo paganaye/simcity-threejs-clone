@@ -130,7 +130,6 @@ export type LaneSeparator = keyof typeof laneSeparators;
 
 export type BandType = SideWalkType | KerbType | Lane | LaneSeparator;
 
-export type IRoadBand = RoadBand & { type: BandType };
 
 export const roadBands = {
     ...sidewalks,

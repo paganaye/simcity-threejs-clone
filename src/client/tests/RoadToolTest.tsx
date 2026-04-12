@@ -2,7 +2,7 @@ import { render } from 'solid-js/web';
 import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
-import { RoadSegment } from '../RoadSegment';
+import { RoadSegment } from '../roads/RoadSegment';
 import type { IRoad } from '../roads/IRoad';
 
 export default class RoadTool extends Page {

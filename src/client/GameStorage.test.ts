@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { GameStorage } from './GameStorage';
-import { RoadNetwork } from './RoadNetwork';
+import { RoadNetwork } from './roads/RoadNetwork';
 
 vi.mock('./RoadSegment', () => {
     class MockRoadSegment {

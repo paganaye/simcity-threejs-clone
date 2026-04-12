@@ -2,7 +2,7 @@ import { render } from 'solid-js/web';
 import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
-import { RoadBuilder } from '../RoadBuilder';
+import { RoadBuilder } from '../textures/RoadBuilder';
 import type { IRoadType } from '../roads/IRoad';
 
 export default class RoadTest extends Page {

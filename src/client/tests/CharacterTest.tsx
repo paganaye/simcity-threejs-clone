@@ -1,5 +1,5 @@
 import { Page } from "../Page";
-import { Crowd3D } from "../Crowd3D";
+import { Crowd3D } from "../characters/Crowd3D";
 
 export default class CharacterTest extends Page {
   private crowd3D?: Crowd3D;

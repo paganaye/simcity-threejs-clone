@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { appConstants } from "../AppConstants";
+import { appConstants } from "../../AppConstants";
 //import type { CharacterPath } from "./CharacterPath";
 import { Population } from "./Population";
-import { rotateTowards } from "../sim/utils";
+import { rotateTowards } from "../../sim/utils";
 
 type RGB = [number, number, number];
 type FaceName = "front" | "back" | "left" | "right" | "top" | "bottom";

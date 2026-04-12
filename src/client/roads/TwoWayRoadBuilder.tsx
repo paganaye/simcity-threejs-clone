@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { IOrientation2D } from "../sim/IPoint";
-import type { IRoad, IRoadType } from "./roads/IRoad";
-import type { IRoadCuts } from "./RoadBuilder";
-import { RoadBuilder } from "./RoadBuilder";
+import { IOrientation2D } from "../../sim/IPoint";
+import type { IRoad, IRoadType } from "../roads/IRoad";
+import type { IRoadCuts } from "../textures/RoadBuilder";
+import { RoadBuilder } from "../textures/RoadBuilder";
 import { getBands } from "./RoadLayout";
 
 

@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { appConstants } from "../AppConstants";
+import { appConstants } from "../../AppConstants";
 import { Character } from "./Character";
-import { QuadTree } from "../sim/QuadTree";
-import type { IRectangle } from "../sim/IPoint";
+import { QuadTree } from "../../sim/QuadTree";
+import type { IRectangle } from "../../sim/IPoint";
 
 export interface CrowdOptions {
     count?: number;

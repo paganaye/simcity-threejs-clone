@@ -1,8 +1,8 @@
 import { AssetManager } from "../AssetManager";
-import type { CharacterDebugView } from "../Character";
+import type { CharacterDebugView } from "../characters/Character";
 import { Page } from "../Page";
-import { Crowd3D } from "../Crowd3D";
-import { Character } from "../Character";
+import { Crowd3D } from "../characters/Crowd3D";
+import { Character } from "../characters/Character";
 import { appConstants } from "../../AppConstants";
 
 export default class Path2 extends Page {

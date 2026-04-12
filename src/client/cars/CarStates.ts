@@ -1,8 +1,8 @@
 // Imports
-import { appConstants } from '../AppConstants.jsx';
-import { IPoint2D } from '../sim/IPoint.js';
-import { ICarInfo } from '../sim/SimCars.js';
-import { calculateArc, calculateTurnArc, DEG_120, DEG_180, DEG_270, DEG_60, DEG_90, getAngle, getCornerAngle, getDistance, lerp, lerpPoint } from '../sim/utils.js';
+import { appConstants } from '../../AppConstants.jsx';
+import { IPoint2D } from '../../sim/IPoint.js';
+import { ICarInfo } from '../../sim/SimCars.js';
+import { calculateArc, calculateTurnArc, DEG_120, DEG_180, DEG_270, DEG_60, DEG_90, getAngle, getCornerAngle, getDistance, lerp, lerpPoint } from '../../sim/utils.js';
 import { Car3D } from './Car3D.js';
 
 

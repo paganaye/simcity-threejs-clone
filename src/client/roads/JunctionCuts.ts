@@ -1,6 +1,6 @@
 import { getBands } from './RoadLayout';
-import type { IExtremityCut, IRoadCuts } from './RoadBuilder';
-import { IRoadType } from './roads/IRoad';
+import type { IExtremityCut, IRoadCuts } from '../textures/RoadBuilder';
+import { IRoadType } from './IRoad';
 
 export type IStraightRoadCutDef = {
     start: { x: number; y: number; z: number; angle: number };

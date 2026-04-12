@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { BandPainter } from "./BandPainter";
-import { getBands } from "./RoadLayout";
-import type { IRoadType } from "./roads/IRoad";
-import type { IOrientation2D, IPoint2D } from "../sim/IPoint";
+import { getBands } from "../roads/RoadLayout";
+import type { IRoadType } from "../roads/IRoad";
+import type { IOrientation2D, IPoint2D } from "../../sim/IPoint";
 import { Lane } from "./IRoadBand";
-import { StraightRoadPrimitive } from './StraightRoadPrimitive';
+import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 
 export interface ISideCuts {
     from: number; // sidewalk start cut

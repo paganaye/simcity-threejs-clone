@@ -1,10 +1,10 @@
-import { BandType, IRoadBand, laneSeparators, Lane, roadBands } from './IRoadBand';
-import type { IRoad, IRoadType } from './roads/IRoad';
+import { Lane, RoadBand, BandType, roadBands, laneSeparators } from '../textures/IRoadBand';
+import type { IRoad, IRoadType } from './IRoad';
 
 
 
 export interface IRoadBands {
-    bands: IRoadBand[];
+    bands: RoadBand[];
     totalWidthM: number;
     carriagewayStartM: number;
     carriagewayEndM: number;
@@ -49,7 +49,7 @@ export function getBands(options: IRoadType): IRoadBands {
     const laneCount = Math.max(0, options.lanes);
     const laneType: Lane = 'normal';
 
-    let bands: IRoadBand[] = [];
+    let bands: RoadBand[] = [];
 
     function addBand(type: BandType | undefined): void {
         let band = type ? roadBands[type] : null;

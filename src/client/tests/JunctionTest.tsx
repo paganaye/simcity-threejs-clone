@@ -10,9 +10,9 @@ import {
     getMajorBoundarySelection,
     getMinorMajorIntersections,
     type IStraightRoadCutDef,
-} from '../JunctionCuts';
+} from '../roads/JunctionCuts';
 import { Page } from '../Page';
-import { IRoadCuts, RoadBuilder } from '../RoadBuilder';
+import { IRoadCuts, RoadBuilder } from '../textures/RoadBuilder';
 import type { IRoadType } from '../roads/IRoad';
 
 type IStraightRoadDef = IStraightRoadCutDef;

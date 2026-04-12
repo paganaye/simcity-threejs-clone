@@ -1,4 +1,4 @@
-import { RoadType, KerbType, SideWalkType, Lane } from "../IRoadBand";
+import { RoadType, KerbType, SideWalkType, Lane } from "../textures/IRoadBand";
 
 export interface IRoadType {
     roadColor: RoadType;

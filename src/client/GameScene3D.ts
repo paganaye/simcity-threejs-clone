@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { AssetManager } from "./AssetManager"
 import { WorldMap3D } from './WorldMap3D';
 import { SimBridge } from '../sim/SimBridge';
-import { Cars3D } from './Cars3D';
+import { Cars3D } from './cars/Cars3D';
 import { ICityChanged } from '../sim/Init';
 import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
@@ -11,13 +11,13 @@ import { IFloorSize } from './GameUIComponent';
 import { RoadGizmo } from './editor/RoadGizmo';
 import type { CustomGizmo } from './editor/CustomGizmo';
 import { ISelectedInstance, ObjectGizmo } from './editor/ObjectGizmo';
-import { RoadSegment } from './RoadSegment';
+import { RoadSegment } from './roads/RoadSegment';
 import { ToolController } from './tools/ToolController';
 import { RoadToolController } from './tools/RoadToolController';
 import { BulldozerToolController } from './tools/BulldozerToolController';
 import { SelectToolController } from './tools/SelectToolController';
 import { ActiveTool } from './tools/ToolTypes';
-import { RoadNetwork } from './RoadNetwork';
+import { RoadNetwork } from './roads/RoadNetwork';
 import { Signal } from './Signal';
 import type { IRoad } from './roads/IRoad';
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
+import type { IRoadCuts } from '../textures/RoadBuilder';
+import type { IRoad } from './IRoad';
 import { TwoWayRoadBuilder } from './TwoWayRoadBuilder';
-import type { IRoadCuts } from './RoadBuilder';
-import type { IRoad } from './roads/IRoad';
 
 const DEBUG_ROAD_ARC = true;
 

@@ -2,7 +2,7 @@ import { render } from 'solid-js/web';
 import { createSignal } from 'solid-js';
 import { GameScene3D } from "./GameScene3D";
 import { Page } from './Page';
-import { Population } from './Population';
+import { Population } from './characters/Population';
 import { GameUIComponent, UIButton } from './GameUIComponent';
 import { Signal } from './Signal';
 import { placeRandomBuildings } from './placeRandomBuildings';

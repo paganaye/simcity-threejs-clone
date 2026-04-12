@@ -6,27 +6,8 @@ import type { IOrientation2D } from "../../sim/IPoint";
 import { Lane } from "./RoadBand";
 import { StraightRoadPrimitive } from "../roads/StraightRoadPrimitive";
 import { CurvedRoadPrimitive } from "../roads/CurvedRoadPrimitive";
-
-export interface ISideCuts {
-    from: number; // sidewalk start cut
-    roadFrom: number;
-    roadTo: number;
-    to: number; // sidewalk end cut
-}
-
-export interface IExtremityCut {
-    left: number;
-    roadLeft: number;
-    roadRight: number;
-    right: number;
-}
-
-export interface IRoadCuts {
-    rightCuts?: ISideCuts[];
-    leftCuts?: ISideCuts[];
-    startCut?: IExtremityCut;
-    endCut?: IExtremityCut;
-}
+import type { IRoadCuts } from "../roads/RoadCuts";
+export type { ISideCuts, IExtremityCut, IRoadCuts } from "../roads/RoadCuts";
 
 export class RoadBuilder {
     textureProgressV: number = 0;
@@ -124,21 +105,13 @@ export class RoadBuilder {
         const { start, scene, length, textureProgressV = 0, cuts, offsetM = 0 } = params;
         const options = params.roadType ?? params.style;
         if (!options) return;
-        if (length <= 0) return;
-        const dx = Math.cos(start.angle) * length;
-        const dz = -Math.sin(start.angle) * length;
-
-        const primitive = new StraightRoadPrimitive({
-            transient: false,
-            direction: 'forward',
-            start: { x: start.x, z: start.z },
-            end: { x: start.x + dx, z: start.z + dz },
+        const mesh = StraightRoadPrimitive.createRoadMesh({
+            start,
+            length,
             roadType: options,
-            cuts,
-        });
-        const mesh = primitive.createMesh({
             material: this.getRoadMaterial(options),
             y: start.y ?? 0,
+            cuts,
             textureProgressV,
             lineLength: this.LINE_LENGTH,
             offsetM,
@@ -165,52 +138,25 @@ export class RoadBuilder {
             radius,
             sweepAngle,
             scene,
-            cuts: _cuts,
+            cuts,
             textureProgressV = 0,
             segments,
             segmentLength = 2,
         } = params;
         const options = params.roadType ?? params.style;
         if (!options) return;
-
-        const safeRadius = Math.max(0.001, Math.abs(radius));
-        const safeSweepAngle = Number.isFinite(sweepAngle) ? sweepAngle : 0;
-        if (Math.abs(safeSweepAngle) < 1e-6) return;
-
-        const leftNormalX = Math.sin(start.angle);
-        const leftNormalZ = Math.cos(start.angle);
-        const turnDirection = safeSweepAngle < 0 ? -1 : 1;
-        const center = {
-            x: start.x + leftNormalX * safeRadius * turnDirection,
-            z: start.z + leftNormalZ * safeRadius * turnDirection,
-        };
-
-        const curveSweepAngle = -safeSweepAngle;
-        const radialSign = -turnDirection;
-        const pointAt = (t: number) => {
-            const tangentAngle = start.angle + curveSweepAngle * t;
-            const leftN = { x: Math.sin(tangentAngle), z: Math.cos(tangentAngle) };
-            return {
-                x: center.x + leftN.x * radialSign * safeRadius,
-                z: center.z + leftN.z * radialSign * safeRadius,
-            };
-        };
-
-        const primitive = new CurvedRoadPrimitive({
-            transient: false,
-            direction: 'forward',
-            start: pointAt(0),
-            mid: pointAt(0.5),
-            end: pointAt(1),
+        const mesh = CurvedRoadPrimitive.createRoadMesh({
+            start,
+            radius,
+            sweepAngle,
             roadType: options,
-            cuts: params.cuts,
-        });
-        const mesh = primitive.createMesh({
             material: this.getRoadMaterial(options),
             y: start.y ?? 0,
+            cuts,
             textureProgressV,
             lineLength: this.LINE_LENGTH,
-            segmentLength: segments ? (safeRadius * Math.abs(curveSweepAngle)) / Math.max(2, segments) : segmentLength,
+            segments,
+            segmentLength,
         });
         if (mesh) {
             scene.add(mesh);

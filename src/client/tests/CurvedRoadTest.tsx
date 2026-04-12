@@ -4,6 +4,8 @@ import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
 import { RoadBuilder } from '../textures/RoadBuilder';
 import type { IRoadType } from '../roads/IRoad';
+import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
+import { CurvedRoadPrimitive } from '../roads/CurvedRoadPrimitive';
 
 export default class RoadTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -29,33 +31,39 @@ export default class RoadTest extends Page {
 
             };
 
-            RoadBuilder.createStraightRoad({
+            const straight = StraightRoadPrimitive.createRoadMesh({
                 start: { x: 0, y: 0, z: 20, angle: 0 },
-                scene: scene3D.scene,
                 length: 10,
                 roadType: road1,
+                material: RoadBuilder.getRoadMaterial(road1),
+                y: 0,
             });
+            if (straight) scene3D.scene.add(straight);
 
 
-            RoadBuilder.createArcRoad({
+            const arc1 = CurvedRoadPrimitive.createRoadMesh({
                 start: { x: 10, y: 0, z: 20, angle: 0 },
                 radius: 10,
                 sweepAngle: -Math.PI / 2,
-                scene: scene3D.scene,
                 roadType: road1,
+                material: RoadBuilder.getRoadMaterial(road1),
+                y: 0,
                 segmentLength: 1.5,
-            })
+            });
+            if (arc1) scene3D.scene.add(arc1);
 
 
 
-            RoadBuilder.createArcRoad({
+            const arc2 = CurvedRoadPrimitive.createRoadMesh({
                 start: { x: 10, y: 0, z: 20, angle: 0 },
                 radius: 10,
                 sweepAngle: Math.PI / 2,
-                scene: scene3D.scene,
                 roadType: road1,
+                material: RoadBuilder.getRoadMaterial(road1),
+                y: 0,
                 segmentLength: 1.5,
-            })
+            });
+            if (arc2) scene3D.scene.add(arc2);
 
             scene3D.isLoading.set(false);
             this.setCameraView(20, 40, 40, 20, 0, 20);

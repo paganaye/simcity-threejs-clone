@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { IRoadCuts } from '../textures/RoadBuilder';
+import type { IRoadCuts } from './RoadCuts';
 import type { IRoad } from './IRoad';
 import { TwoWayRoadBuilder } from './TwoWayRoadBuilder';
 

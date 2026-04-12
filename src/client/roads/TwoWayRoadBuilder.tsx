@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import { IOrientation2D } from "../../sim/IPoint";
 import type { IRoad, IRoadType } from "../roads/IRoad";
-import type { IRoadCuts } from "../textures/RoadBuilder";
+import type { IRoadCuts } from "./RoadCuts";
 import { RoadBuilder } from "../textures/RoadBuilder";
 import { getBands } from "./RoadLayout";
+import { StraightRoadPrimitive } from "./StraightRoadPrimitive";
+import { CurvedRoadPrimitive } from "./CurvedRoadPrimitive";
 
 const DEBUG_CURVE_BUILD = true;
 
@@ -49,25 +51,33 @@ export class TwoWayRoadBuilder implements IOrientation2D {
         const end = { x: this.x + dx, y: this.y, z: this.z + dz, angle: this.angle + Math.PI };
 
         // Gap is geometric only: place each half-road away from center by halfGapM.
-        RoadBuilder.createStraightRoad({
+        const rightStraight = StraightRoadPrimitive.createRoadMesh({
             start,
-            scene: this.scene,
             length,
             roadType: right,
+            material: RoadBuilder.getRoadMaterial(right),
+            y: this.y,
             textureProgressV: startV,
             cuts: cuts.forwardCuts,
             offsetM: halfGapM + rightWidthM / 2,
         });
+        if (rightStraight) {
+            this.scene.add(rightStraight);
+        }
         if (left) {
-            RoadBuilder.createStraightRoad({
+            const leftStraight = StraightRoadPrimitive.createRoadMesh({
                 start: end,
-                scene: this.scene,
                 length,
                 roadType: left,
+                material: RoadBuilder.getRoadMaterial(left),
+                y: this.y,
                 textureProgressV: startV,
                 cuts: cuts.backwardCuts,
                 offsetM: halfGapM + leftWidthM / 2,
             });
+            if (leftStraight) {
+                this.scene.add(leftStraight);
+            }
         }
 
         this.x += dx;
@@ -112,14 +122,18 @@ export class TwoWayRoadBuilder implements IOrientation2D {
                 return;
             }
 
-            RoadBuilder.createArcRoad({
+            const rightArc = CurvedRoadPrimitive.createRoadMesh({
                 start: { x: offsetStartX, y: this.y, z: offsetStartZ, angle: this.angle },
                 radius: offsetRadius,
                 sweepAngle,
-                scene: this.scene,
                 roadType: style,
+                material: RoadBuilder.getRoadMaterial(style),
+                y: this.y,
                 textureProgressV: startV,
             });
+            if (rightArc) {
+                this.scene.add(rightArc);
+            }
         };
 
         const centerX = this.x + leftNormalX * radius * turnDirection;
@@ -144,14 +158,18 @@ export class TwoWayRoadBuilder implements IOrientation2D {
             const backwardRadius = radius - backwardOffsetM * backwardTurnDirection;
 
             if (backwardRadius > 0.01) {
-                RoadBuilder.createArcRoad({
+                const leftArc = CurvedRoadPrimitive.createRoadMesh({
                     start: { x: backwardStartX, y: this.y, z: backwardStartZ, angle: backwardStartAngle },
                     radius: backwardRadius,
                     sweepAngle: backwardSweep,
-                    scene: this.scene,
                     roadType: left,
+                    material: RoadBuilder.getRoadMaterial(left),
+                    y: this.y,
                     textureProgressV: startV,
                 });
+                if (leftArc) {
+                    this.scene.add(leftArc);
+                }
             } else if (DEBUG_CURVE_BUILD) {
                 console.log('[CurvedRoad] skip-backward-arc', {
                     radius,

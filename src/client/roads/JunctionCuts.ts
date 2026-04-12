@@ -1,5 +1,5 @@
 import { getBands } from './RoadLayout';
-import type { IExtremityCut, IRoadCuts } from '../textures/RoadBuilder';
+import type { IExtremityCut, IRoadCuts } from './RoadCuts';
 import { IRoadType } from './IRoad';
 
 export type IStraightRoadCutDef = {

@@ -1,14 +1,84 @@
 import * as THREE from 'three';
-import type { IRoadCuts } from '../textures/RoadBuilder';
+import type { IRoadCuts } from './RoadCuts';
 import { IPointXZ } from './RoadPrimitiveCompiler';
 import { RoadPrimitive } from './RoadPrimitive';
 import type { IRoadType } from './IRoad';
 import { getBands } from './RoadLayout';
+import type { IOrientation2D } from '../../sim/IPoint';
 
 // Represents a curved single road segment defined by start, mid, and end points.
 //  The curve is a circular arc passing through these three points.
 export class CurvedRoadPrimitive extends RoadPrimitive {
     mid: IPointXZ;
+
+    static createRoadMesh(params: {
+        start: IOrientation2D;
+        radius: number;
+        sweepAngle: number;
+        roadType: IRoadType;
+        material: THREE.Material;
+        cuts?: IRoadCuts;
+        y?: number;
+        textureProgressV?: number;
+        lineLength?: number;
+        segments?: number;
+        segmentLength?: number;
+    }): THREE.Mesh | null {
+        const {
+            start,
+            radius,
+            sweepAngle,
+            roadType,
+            material,
+            cuts,
+            y = 0,
+            textureProgressV = 0,
+            lineLength = 8,
+            segments,
+            segmentLength = 2,
+        } = params;
+
+        const safeRadius = Math.max(0.001, Math.abs(radius));
+        const safeSweepAngle = Number.isFinite(sweepAngle) ? sweepAngle : 0;
+        if (Math.abs(safeSweepAngle) < 1e-6) return null;
+
+        const leftNormalX = Math.sin(start.angle);
+        const leftNormalZ = Math.cos(start.angle);
+        const turnDirection = safeSweepAngle < 0 ? -1 : 1;
+        const center = {
+            x: start.x + leftNormalX * safeRadius * turnDirection,
+            z: start.z + leftNormalZ * safeRadius * turnDirection,
+        };
+
+        const curveSweepAngle = -safeSweepAngle;
+        const radialSign = -turnDirection;
+        const pointAt = (t: number) => {
+            const tangentAngle = start.angle + curveSweepAngle * t;
+            const leftN = { x: Math.sin(tangentAngle), z: Math.cos(tangentAngle) };
+            return {
+                x: center.x + leftN.x * radialSign * safeRadius,
+                z: center.z + leftN.z * radialSign * safeRadius,
+            };
+        };
+
+        const primitive = new CurvedRoadPrimitive({
+            transient: false,
+            direction: 'forward',
+            start: pointAt(0),
+            mid: pointAt(0.5),
+            end: pointAt(1),
+            roadType,
+            cuts,
+        });
+
+        return primitive.createMesh({
+            material,
+            y,
+            textureProgressV,
+            lineLength,
+            segmentLength: segments ? (safeRadius * Math.abs(curveSweepAngle)) / Math.max(2, segments) : segmentLength,
+        });
+    }
 
     constructor(params: {
         transient: boolean;

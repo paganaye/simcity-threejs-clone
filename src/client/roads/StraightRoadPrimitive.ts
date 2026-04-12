@@ -1,13 +1,58 @@
-import type { IRoadCuts } from '../textures/RoadBuilder';
+import type { IRoadCuts } from './RoadCuts';
 import * as THREE from 'three';
 import { IPointXZ } from './RoadPrimitiveCompiler';
 import { RoadPrimitive } from './RoadPrimitive';
 import type { IRoadType } from './IRoad';
 import { getBands } from './RoadLayout';
 import type { IPoint2D } from '../../sim/IPoint';
+import type { IOrientation2D } from '../../sim/IPoint';
 
 
 export class StraightRoadPrimitive extends RoadPrimitive {
+    static createRoadMesh(params: {
+        start: IOrientation2D;
+        length: number;
+        roadType: IRoadType;
+        material: THREE.Material;
+        cuts?: IRoadCuts;
+        y?: number;
+        textureProgressV?: number;
+        lineLength?: number;
+        offsetM?: number;
+    }): THREE.Mesh | null {
+        const {
+            start,
+            length,
+            roadType,
+            material,
+            cuts,
+            y = 0,
+            textureProgressV = 0,
+            lineLength = 8,
+            offsetM = 0,
+        } = params;
+        if (length <= 0) return null;
+
+        const dx = Math.cos(start.angle) * length;
+        const dz = -Math.sin(start.angle) * length;
+        const primitive = new StraightRoadPrimitive({
+            transient: false,
+            direction: 'forward',
+            start: { x: start.x, z: start.z },
+            end: { x: start.x + dx, z: start.z + dz },
+            roadType,
+            cuts,
+        });
+
+        return primitive.createMesh({
+            material,
+            y,
+            textureProgressV,
+            lineLength,
+            offsetM,
+        });
+    }
+
     constructor(params: {
         transient: boolean;
         direction: 'forward' | 'backward';

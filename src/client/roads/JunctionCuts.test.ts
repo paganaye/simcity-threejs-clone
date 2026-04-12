@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { IRoadType } from './IRoad';
-import type { IRoadCuts } from '../textures/RoadBuilder';
+import type { IRoadCuts } from './RoadCuts';
 import { IStraightRoadCutDef, computeMinorRoadLengthToMainEdge, computeMinorRoadEndCut, computeMajorRoadSideCut } from './JunctionCuts';
 
 const roadType: IRoadType = {

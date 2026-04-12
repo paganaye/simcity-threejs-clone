@@ -1,5 +1,5 @@
 import type { IRoad, IRoadType } from './IRoad';
-import type { IRoadCuts } from '../textures/RoadBuilder';
+import type { IRoadCuts } from './RoadCuts';
 import { StraightRoadPrimitive } from './StraightRoadPrimitive';
 import { RoadPrimitive } from './RoadPrimitive';
 import { IPoint2D } from '../../sim/IPoint';

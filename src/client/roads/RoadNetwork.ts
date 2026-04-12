@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoadSegment } from './RoadSegment';
 import { getBands } from './RoadLayout';
-import type { IRoadCuts, IExtremityCut } from '../textures/RoadBuilder';
+import type { IRoadCuts, IExtremityCut } from './RoadCuts';
 import { RoadPrimitiveCompiler } from './RoadPrimitiveCompiler';
 import { RoadPrimitive } from './RoadPrimitive';
 

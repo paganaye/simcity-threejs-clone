@@ -1,4 +1,4 @@
-import { Lane, RoadBand, BandType, roadBands, laneSeparators } from '../textures/IRoadBand';
+import { Lane, RoadBand, BandType, roadBands, laneSeparators } from '../textures/RoadBand';
 import type { IRoad, IRoadType } from './IRoad';
 
 

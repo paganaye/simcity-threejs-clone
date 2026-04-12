@@ -1,7 +1,10 @@
-import type { IRoad, IRoadType } from './roads/IRoad';
-import type { IRoadCuts } from './textures/RoadBuilder';
+import type { IRoad, IRoadType } from './IRoad';
+import type { IRoadCuts } from '../textures/RoadBuilder';
+import { StraightRoadPrimitive } from './StraightRoadPrimitive';
+import { RoadPrimitive } from './RoadPrimitive';
+import { IPoint2D } from '../../sim/IPoint';
+import { CurvedRoadPrimitive } from './CurvedRoadPrimitive';
 import { RoadSegment } from './RoadSegment';
-import type { IPoint2D } from '../sim/IPoint';
 
 export type IPointXZ = Pick<IPoint2D, 'x' | 'z'>;
 
@@ -18,10 +21,6 @@ const DEFAULT_ROAD: IRoad = {
     gapSize: 0,
 };
 
-export class RoadPrimitive { }
-
-
-
 export class RoadPrimitiveCompiler {
     compileSegment(segment: RoadSegment): RoadPrimitive[] {
         const candidate = segment as unknown as {
@@ -35,8 +34,7 @@ export class RoadPrimitiveCompiler {
         const result: RoadPrimitive[] = [];
 
         if (segment.arcMidX !== undefined && segment.arcMidZ !== undefined) {
-            result.push({
-                type: 'arc',
+            result.push(new CurvedRoadPrimitive({
                 transient: false,
                 direction: 'forward',
                 start: { x: segment.startX, z: segment.startZ },
@@ -44,11 +42,10 @@ export class RoadPrimitiveCompiler {
                 end: { x: segment.endX, z: segment.endZ },
                 roadType: road.forward,
                 cuts: cuts?.forwardCuts,
-            });
+            }));
 
             if (road.backward) {
-                result.push({
-                    type: 'arc',
+                result.push(new CurvedRoadPrimitive({
                     transient: false,
                     direction: 'backward',
                     start: { x: segment.endX, z: segment.endZ },
@@ -56,32 +53,30 @@ export class RoadPrimitiveCompiler {
                     end: { x: segment.startX, z: segment.startZ },
                     roadType: road.backward,
                     cuts: cuts?.backwardCuts,
-                });
+                }));
             }
 
             return result;
         }
 
-        result.push({
-            type: 'straight',
+        result.push(new StraightRoadPrimitive({
             transient: false,
             direction: 'forward',
             start: { x: segment.startX, z: segment.startZ },
             end: { x: segment.endX, z: segment.endZ },
             roadType: road.forward,
             cuts: cuts?.forwardCuts,
-        });
+        }));
 
         if (road.backward) {
-            result.push({
-                type: 'straight',
+            result.push(new StraightRoadPrimitive({
                 transient: false,
                 direction: 'backward',
                 start: { x: segment.endX, z: segment.endZ },
                 end: { x: segment.startX, z: segment.startZ },
                 roadType: road.backward,
                 cuts: cuts?.backwardCuts,
-            });
+            }));
         }
 
         return result;
@@ -96,8 +91,7 @@ export class RoadPrimitiveCompiler {
         roadType: IRoadType;
         cuts?: IRoadCuts;
     }): RoadPrimitive {
-        return {
-            type: 'arc',
+        return new CurvedRoadPrimitive({
             transient: true,
             direction: params.direction,
             start: params.start,
@@ -105,6 +99,6 @@ export class RoadPrimitiveCompiler {
             end: params.end,
             roadType: params.roadType,
             cuts: params.cuts,
-        };
+        });
     }
 }

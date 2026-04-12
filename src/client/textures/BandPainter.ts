@@ -1,6 +1,6 @@
-import { RoadBuilder } from './RoadBuilder';
 import { IRoadType } from '../roads/IRoad';
-import { RoadBand } from './IRoadBand';
+import { RoadBand } from './RoadBand';
+import { RoadBuilder } from './RoadBuilder';
 
 
 export class BandPainter {

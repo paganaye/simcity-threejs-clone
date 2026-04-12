@@ -4,7 +4,7 @@ import type { ISelectedInstance } from "./editor/ObjectGizmo";
 import type { Character, CharacterSelectionInfo } from "./characters/Character";
 import type { RoadSegment } from "./roads/RoadSegment";
 import type { IRoad, IRoadType } from "./roads/IRoad";
-import { KerbType, SideWalkType } from "./textures/IRoadBand";
+import { KerbType, SideWalkType } from "./textures/RoadBand";
 
 function RoadOptionsInput(props: {
     title: string;

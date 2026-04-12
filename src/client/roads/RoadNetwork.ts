@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { RoadSegment } from './RoadSegment';
 import { getBands } from './RoadLayout';
 import type { IRoadCuts, IExtremityCut } from '../textures/RoadBuilder';
-import { RoadPrimitiveCompiler, RoadPrimitive } from './RoadPrimitiveCompiler';
+import { RoadPrimitiveCompiler } from './RoadPrimitiveCompiler';
+import { RoadPrimitive } from './RoadPrimitive';
 
 export class RoadNetwork {
     readonly segments: RoadSegment[] = [];

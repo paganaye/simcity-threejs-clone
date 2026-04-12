@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
 import type { IRoad, IRoadType } from './IRoad';
-import { TwoWayRoadBuilder } from './TwoWayRoadBuilder';
 import { RoadPrimitive } from './RoadPrimitive';
+import { getBands } from './RoadLayout';
+import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 import { StraightRoadPrimitive } from './StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from './CurvedRoadPrimitive';
 import { IPoint2D } from '../../sim/IPoint';
@@ -235,8 +236,7 @@ export class RoadSegment {
         } else {
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
-            const builder = new TwoWayRoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
-            builder.advanceRoad(this.length, this.iRoad, this.junctionCuts);
+            this.#addStraightMeshes(this.length, this.junctionCuts);
         }
 
         this.#tagChildren();
@@ -287,8 +287,7 @@ export class RoadSegment {
             this.#setStraightFromEndpoints(p3x, p3z);
             this.group.position.set(this.startX, 0, this.startZ);
             this.group.rotation.y = this.angle;
-            const b = new TwoWayRoadBuilder({ x: 0, y: 0.015, z: 0, angle: 0 }, this.group);
-            b.advanceRoad(this.length, this.iRoad, this.junctionCuts);
+            this.#addStraightMeshes(this.length, this.junctionCuts);
             return;
         }
 
@@ -355,12 +354,113 @@ export class RoadSegment {
         this.group.position.set(0, 0, 0);
         this.group.rotation.set(0, 0, 0);
 
-        const builder = new TwoWayRoadBuilder({ x: p1x, y: 0.015, z: p1z, angle: startAngle }, this.group);
-        builder.addCurvedRoad(turnAngle, radius, this.iRoad);
+        this.#addCurvedMeshes(p1x, p1z, startAngle, turnAngle, radius);
 
         // Keep stored state consistent with the arc geometry.
         this.angle = startAngle;
         this.length = arcAngle * radius;
+    }
+
+    /** Add straight road meshes into this.group (local coords: start at origin, angle=0). */
+    #addStraightMeshes(length: number, cuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts }): void {
+        const { forward, backward, gapSize } = this.iRoad;
+        const safeGap = Number.isFinite(gapSize) ? gapSize : 0;
+        const rightBands = getBands(forward);
+        const leftBands = backward ? getBands(backward) : null;
+        const halfGapM = backward ? safeGap / 2 : 0;
+
+        const fwdMesh = StraightRoadPrimitive.createRoadMesh({
+            start: { x: 0, y: 0.015, z: 0, angle: 0 },
+            length,
+            roadType: forward,
+            material: RoadTextureBuilder.getRoadMaterial(forward),
+            cuts: cuts?.forwardCuts,
+            offsetM: halfGapM + rightBands.totalWidthM / 2,
+        });
+        if (fwdMesh) this.group.add(fwdMesh);
+
+        if (backward && leftBands) {
+            const bwdMesh = StraightRoadPrimitive.createRoadMesh({
+                start: { x: length, y: 0.015, z: 0, angle: Math.PI },
+                length,
+                roadType: backward,
+                material: RoadTextureBuilder.getRoadMaterial(backward),
+                cuts: cuts?.backwardCuts,
+                offsetM: halfGapM + leftBands.totalWidthM / 2,
+            });
+            if (bwdMesh) this.group.add(bwdMesh);
+        }
+    }
+
+    /**
+     * Add curved road meshes into this.group.
+     * Coordinates are world-space — group must be at identity when calling this.
+     */
+    #addCurvedMeshes(startX: number, startZ: number, startAngle: number, turnAngle: number, radius: number): void {
+        const { forward, backward, gapSize } = this.iRoad;
+        const safeGap = backward && Number.isFinite(gapSize) ? gapSize : 0;
+        const halfGapM = backward ? safeGap / 2 : 0;
+        const rightBands = getBands(forward);
+        const leftBands = backward ? getBands(backward) : null;
+
+        const sweepAngle = -turnAngle;
+        const turnDirection = sweepAngle < 0 ? -1 : 1;
+        const leftNormalX = Math.sin(startAngle);
+        const leftNormalZ = Math.cos(startAngle);
+
+        const fwdOffsetM = halfGapM + rightBands.totalWidthM / 2;
+        const fwdRadius = radius - fwdOffsetM * turnDirection;
+        if (fwdRadius > 0.01) {
+            const fwdMesh = CurvedRoadPrimitive.createRoadMesh({
+                start: {
+                    x: startX + leftNormalX * fwdOffsetM,
+                    y: 0.015,
+                    z: startZ + leftNormalZ * fwdOffsetM,
+                    angle: startAngle,
+                },
+                radius: fwdRadius,
+                sweepAngle,
+                roadType: forward,
+                material: RoadTextureBuilder.getRoadMaterial(forward),
+                y: 0.015,
+            });
+            if (fwdMesh) this.group.add(fwdMesh);
+        }
+
+        if (backward && leftBands) {
+            const endAngle = startAngle + turnAngle;
+            const centerX = startX + leftNormalX * radius * turnDirection;
+            const centerZ = startZ + leftNormalZ * radius * turnDirection;
+            const endLeftNormalX = Math.sin(endAngle);
+            const endLeftNormalZ = Math.cos(endAngle);
+            const endX = centerX - endLeftNormalX * radius * turnDirection;
+            const endZ = centerZ - endLeftNormalZ * radius * turnDirection;
+
+            const bwdSweep = turnAngle;
+            const bwdTurnDirection = bwdSweep < 0 ? -1 : 1;
+            const bwdStartAngle = endAngle + Math.PI;
+            const bwdLeftNormalX = Math.sin(bwdStartAngle);
+            const bwdLeftNormalZ = Math.cos(bwdStartAngle);
+            const bwdOffsetM = halfGapM + leftBands.totalWidthM / 2;
+            const bwdRadius = radius - bwdOffsetM * bwdTurnDirection;
+
+            if (bwdRadius > 0.01) {
+                const bwdMesh = CurvedRoadPrimitive.createRoadMesh({
+                    start: {
+                        x: endX + bwdLeftNormalX * bwdOffsetM,
+                        y: 0.015,
+                        z: endZ + bwdLeftNormalZ * bwdOffsetM,
+                        angle: bwdStartAngle,
+                    },
+                    radius: bwdRadius,
+                    sweepAngle: bwdSweep,
+                    roadType: backward,
+                    material: RoadTextureBuilder.getRoadMaterial(backward),
+                    y: 0.015,
+                });
+                if (bwdMesh) this.group.add(bwdMesh);
+            }
+        }
     }
 
 }

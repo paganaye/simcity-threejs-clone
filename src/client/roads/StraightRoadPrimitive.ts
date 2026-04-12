@@ -1,12 +1,11 @@
 import type { IRoadCuts } from './RoadCuts';
 import * as THREE from 'three';
-import { IPointXZ } from './RoadPrimitiveCompiler';
 import { RoadPrimitive } from './RoadPrimitive';
 import type { IRoadType } from './IRoad';
 import { getBands } from './RoadLayout';
 import type { IPoint2D } from '../../sim/IPoint';
 import type { IOrientation2D } from '../../sim/IPoint';
-
+import { RoadConstants } from '../textures/RoadBand';
 
 export class StraightRoadPrimitive extends RoadPrimitive {
     static createRoadMesh(params: {
@@ -15,7 +14,6 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         roadType: IRoadType;
         material: THREE.Material;
         cuts?: IRoadCuts;
-        y?: number;
         textureProgressV?: number;
         lineLength?: number;
         offsetM?: number;
@@ -26,9 +24,8 @@ export class StraightRoadPrimitive extends RoadPrimitive {
             roadType,
             material,
             cuts,
-            y = 0,
             textureProgressV = 0,
-            lineLength = 8,
+            lineLength = RoadConstants.yellowLineLength,
             offsetM = 0,
         } = params;
         if (length <= 0) return null;
@@ -37,16 +34,14 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         const dz = -Math.sin(start.angle) * length;
         const primitive = new StraightRoadPrimitive({
             transient: false,
-            direction: 'forward',
             start: { x: start.x, z: start.z },
             end: { x: start.x + dx, z: start.z + dz },
             roadType,
             cuts,
         });
 
-        return primitive.createMesh({
+        return primitive.buildMesh({
             material,
-            y,
             textureProgressV,
             lineLength,
             offsetM,
@@ -55,9 +50,8 @@ export class StraightRoadPrimitive extends RoadPrimitive {
 
     constructor(params: {
         transient: boolean;
-        direction: 'forward' | 'backward';
-        start: IPointXZ;
-        end: IPointXZ;
+        start: IPoint2D;
+        end: IPoint2D;
         roadType: IRoadType;
         cuts?: IRoadCuts;
     }) {
@@ -248,7 +242,7 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         lineLength?: number;
         segmentLength?: number;
     } = {}): THREE.BufferGeometry | null {
-        const { textureProgressV = 0, lineLength = 8 } = params;
+        const { textureProgressV = 0, lineLength = RoadConstants.yellowLineLength } = params;
         const dx = this.end.x - this.start.x;
         const dz = this.end.z - this.start.z;
         const length = Math.hypot(dx, dz);
@@ -278,15 +272,14 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         });
     }
 
-    override createMesh(params: {
-        material: THREE.Material;
-        y?: number;
+    private buildMesh(params: {
+        material?: THREE.Material;
         textureProgressV?: number;
         lineLength?: number;
         segmentLength?: number;
         offsetM?: number;
     }): THREE.Mesh | null {
-        const { material, y = 0, textureProgressV = 0, lineLength = 8, offsetM = 0 } = params;
+        const { textureProgressV = 0, lineLength = RoadConstants.yellowLineLength, offsetM = 0 } = params;
         const geometry = this.createGeometry({ textureProgressV, lineLength });
         if (!geometry) return null;
 
@@ -303,14 +296,25 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         const centerX = (this.start.x + this.end.x) / 2;
         const centerZ = (this.start.z + this.end.z) / 2;
 
-        const mesh = new THREE.Mesh(geometry, material);
+        const mesh = new THREE.Mesh(geometry, this.resolveMaterial(params.material));
         mesh.position.set(
             centerX + normalX * (halfOffsetM + offsetM),
-            y,
+            this.start.y ?? 0,
             centerZ + normalZ * (halfOffsetM + offsetM)
         );
         mesh.rotation.x = -Math.PI / 2;
         mesh.rotation.z = angle;
         return mesh;
+    }
+
+    override createMesh(params: {
+        scene: THREE.Object3D;
+        material?: THREE.Material;
+        textureProgressV?: number;
+        lineLength?: number;
+        segmentLength?: number;
+        offsetM?: number;
+    }): void {
+        this.replaceMesh(params.scene, this.buildMesh(params));
     }
 }

@@ -12,8 +12,9 @@ import {
     type IStraightRoadCutDef,
 } from '../roads/JunctionCuts';
 import { Page } from '../Page';
-import { IRoadCuts, RoadBuilder } from '../textures/RoadBuilder';
+import { IRoadCuts, RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 import type { IRoadType } from '../roads/IRoad';
+import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 
 type IStraightRoadDef = IStraightRoadCutDef;
 type IBoundaryKey = 'leftOuter' | 'roadLeft' | 'roadRight' | 'rightOuter';
@@ -157,9 +158,32 @@ export default class JunctionTest extends Page {
             computeMajorRoadSideCut(road1, road2, road1Cuts);
             computeMajorRoadSideCut(road1, road3, road1Cuts);
 
-            RoadBuilder.createStraightRoad({ ...road1, scene: scene3D.scene, cuts: road1Cuts });
-            RoadBuilder.createStraightRoad({ ...road2, scene: scene3D.scene, cuts: { endCut: road2Cuts } });
-            RoadBuilder.createStraightRoad({ ...road3, scene: scene3D.scene, cuts: { endCut: road3Cuts } });
+            const road1Mesh = StraightRoadPrimitive.createRoadMesh({
+                start: road1.start,
+                length: road1.length,
+                roadType: road1.style,
+                material: RoadTextureBuilder.getRoadMaterial(road1.style),
+                cuts: road1Cuts,
+            });
+            if (road1Mesh) scene3D.scene.add(road1Mesh);
+
+            const road2Mesh = StraightRoadPrimitive.createRoadMesh({
+                start: road2.start,
+                length: road2.length,
+                roadType: road2.style,
+                material: RoadTextureBuilder.getRoadMaterial(road2.style),
+                cuts: { endCut: road2Cuts },
+            });
+            if (road2Mesh) scene3D.scene.add(road2Mesh);
+
+            const road3Mesh = StraightRoadPrimitive.createRoadMesh({
+                start: road3.start,
+                length: road3.length,
+                roadType: road3.style,
+                material: RoadTextureBuilder.getRoadMaterial(road3.style),
+                cuts: { endCut: road3Cuts },
+            });
+            if (road3Mesh) scene3D.scene.add(road3Mesh);
 
 
             scene3D.isLoading.set(false);

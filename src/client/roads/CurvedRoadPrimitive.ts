@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
-import { IPointXZ } from './RoadPrimitiveCompiler';
 import { RoadPrimitive } from './RoadPrimitive';
 import type { IRoadType } from './IRoad';
 import { getBands } from './RoadLayout';
-import type { IOrientation2D } from '../../sim/IPoint';
+import type { IOrientation2D, IPoint2D } from '../../sim/IPoint';
+import { RoadConstants } from '../textures/RoadBand';
 
 // Represents a curved single road segment defined by start, mid, and end points.
 //  The curve is a circular arc passing through these three points.
 export class CurvedRoadPrimitive extends RoadPrimitive {
-    mid: IPointXZ;
+    mid: IPoint2D;
 
     static createRoadMesh(params: {
         start: IOrientation2D;
@@ -33,7 +33,7 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
             cuts,
             y = 0,
             textureProgressV = 0,
-            lineLength = 8,
+            lineLength = RoadConstants.yellowLineLength,
             segments,
             segmentLength = 2,
         } = params;
@@ -71,7 +71,7 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
             cuts,
         });
 
-        return primitive.createMesh({
+        return primitive.buildMesh({
             material,
             y,
             textureProgressV,
@@ -83,9 +83,9 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
     constructor(params: {
         transient: boolean;
         direction: 'forward' | 'backward';
-        start: IPointXZ;
-        mid: IPointXZ;
-        end: IPointXZ;
+        start: IPoint2D;
+        mid: IPoint2D;
+        end: IPoint2D;
         roadType: IRoadType;
         cuts?: IRoadCuts;
     }) {
@@ -94,7 +94,7 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
     }
 
     private getArcData(): {
-        center: IPointXZ;
+        center: IPoint2D;
         radius: number;
         startAngle: number;
         sweepAngle: number;
@@ -151,7 +151,7 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         lineLength?: number;
         segmentLength?: number;
     } = {}): THREE.BufferGeometry | null {
-        const { y = 0, textureProgressV = 0, lineLength = 8, segmentLength = 2 } = params;
+        const { y = 0, textureProgressV = 0, lineLength = RoadConstants.yellowLineLength, segmentLength = 2 } = params;
         const arc = this.getArcData();
         if (!arc || Math.abs(arc.sweepAngle) < 1e-6) return null;
 
@@ -212,8 +212,8 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         return geometry;
     }
 
-    override createMesh(params: {
-        material: THREE.Material;
+    private buildMesh(params: {
+        material?: THREE.Material;
         y?: number;
         textureProgressV?: number;
         lineLength?: number;
@@ -227,6 +227,18 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
             segmentLength: params.segmentLength,
         });
         if (!geometry) return null;
-        return new THREE.Mesh(geometry, params.material);
+        return new THREE.Mesh(geometry, this.resolveMaterial(params.material));
+    }
+
+    override createMesh(params: {
+        scene: THREE.Object3D;
+        material?: THREE.Material;
+        y?: number;
+        textureProgressV?: number;
+        lineLength?: number;
+        segmentLength?: number;
+        offsetM?: number;
+    }): void {
+        this.replaceMesh(params.scene, this.buildMesh(params));
     }
 }

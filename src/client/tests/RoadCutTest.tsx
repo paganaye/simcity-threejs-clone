@@ -2,7 +2,7 @@ import { render } from 'solid-js/web';
 import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
-import { RoadBuilder } from '../textures/RoadBuilder';
+import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 import type { IRoadType } from '../roads/IRoad';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 
@@ -33,8 +33,7 @@ export default class RoadTest extends Page {
                 start: { x: 0, y: 0, z: 10, angle: 0 },
                 length: 30,
                 roadType: road1,
-                material: RoadBuilder.getRoadMaterial(road1),
-                y: 0,
+                material: RoadTextureBuilder.getRoadMaterial(road1),
                 cuts: {
                     startCut: {
                         left: 4,
@@ -84,7 +83,7 @@ export default class RoadTest extends Page {
             //         leftSidewalk: 'grass',
             // };
 
-            // RoadBuilder.createStraightRoad({
+            // StraightRoadPrimitive.createRoadMesh({
             //     start: { x: 0, y: 0, z: 30, angle: degToRad(45) },
             //     scene: scene3D.scene,
             //     length: 15,

@@ -2,7 +2,7 @@ import { render } from 'solid-js/web';
 import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
-import { RoadBuilder } from '../textures/RoadBuilder';
+import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 import type { IRoadType } from '../roads/IRoad';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from '../roads/CurvedRoadPrimitive';
@@ -35,8 +35,7 @@ export default class RoadTest extends Page {
                 start: { x: 0, y: 0, z: 20, angle: 0 },
                 length: 10,
                 roadType: road1,
-                material: RoadBuilder.getRoadMaterial(road1),
-                y: 0,
+                material: RoadTextureBuilder.getRoadMaterial(road1),
             });
             if (straight) scene3D.scene.add(straight);
 
@@ -46,7 +45,7 @@ export default class RoadTest extends Page {
                 radius: 10,
                 sweepAngle: -Math.PI / 2,
                 roadType: road1,
-                material: RoadBuilder.getRoadMaterial(road1),
+                material: RoadTextureBuilder.getRoadMaterial(road1),
                 y: 0,
                 segmentLength: 1.5,
             });
@@ -59,7 +58,7 @@ export default class RoadTest extends Page {
                 radius: 10,
                 sweepAngle: Math.PI / 2,
                 roadType: road1,
-                material: RoadBuilder.getRoadMaterial(road1),
+                material: RoadTextureBuilder.getRoadMaterial(road1),
                 y: 0,
                 segmentLength: 1.5,
             });

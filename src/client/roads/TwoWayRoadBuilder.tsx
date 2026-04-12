@@ -2,10 +2,11 @@ import * as THREE from "three";
 import { IOrientation2D } from "../../sim/IPoint";
 import type { IRoad, IRoadType } from "../roads/IRoad";
 import type { IRoadCuts } from "./RoadCuts";
-import { RoadBuilder } from "../textures/RoadBuilder";
+import { RoadTextureBuilder } from "../textures/RoadTextureBuilder";
 import { getBands } from "./RoadLayout";
 import { StraightRoadPrimitive } from "./StraightRoadPrimitive";
 import { CurvedRoadPrimitive } from "./CurvedRoadPrimitive";
+import { RoadConstants } from "../textures/RoadBand";
 
 const DEBUG_CURVE_BUILD = true;
 
@@ -43,7 +44,7 @@ export class TwoWayRoadBuilder implements IOrientation2D {
         const halfGapM = left ? safeGap / 2 : 0;
         const dx = Math.cos(this.angle) * length;
         const dz = -Math.sin(this.angle) * length;
-        const repeat = length / RoadBuilder.LINE_LENGTH;
+        const repeat = length / RoadConstants.yellowLineLength;
         const startV = this.textureProgressV;
         const endV = startV + repeat;
 
@@ -55,8 +56,7 @@ export class TwoWayRoadBuilder implements IOrientation2D {
             start,
             length,
             roadType: right,
-            material: RoadBuilder.getRoadMaterial(right),
-            y: this.y,
+            material: RoadTextureBuilder.getRoadMaterial(right),
             textureProgressV: startV,
             cuts: cuts.forwardCuts,
             offsetM: halfGapM + rightWidthM / 2,
@@ -69,8 +69,7 @@ export class TwoWayRoadBuilder implements IOrientation2D {
                 start: end,
                 length,
                 roadType: left,
-                material: RoadBuilder.getRoadMaterial(left),
-                y: this.y,
+                material: RoadTextureBuilder.getRoadMaterial(left),
                 textureProgressV: startV,
                 cuts: cuts.backwardCuts,
                 offsetM: halfGapM + leftWidthM / 2,
@@ -127,7 +126,7 @@ export class TwoWayRoadBuilder implements IOrientation2D {
                 radius: offsetRadius,
                 sweepAngle,
                 roadType: style,
-                material: RoadBuilder.getRoadMaterial(style),
+                material: RoadTextureBuilder.getRoadMaterial(style),
                 y: this.y,
                 textureProgressV: startV,
             });
@@ -163,7 +162,7 @@ export class TwoWayRoadBuilder implements IOrientation2D {
                     radius: backwardRadius,
                     sweepAngle: backwardSweep,
                     roadType: left,
-                    material: RoadBuilder.getRoadMaterial(left),
+                    material: RoadTextureBuilder.getRoadMaterial(left),
                     y: this.y,
                     textureProgressV: startV,
                 });
@@ -187,7 +186,7 @@ export class TwoWayRoadBuilder implements IOrientation2D {
         this.z = endZ;
 
         const arcLength = radius * Math.abs(turnAngle);
-        this.textureProgressV = startV + arcLength / RoadBuilder.LINE_LENGTH;
+        this.textureProgressV = startV + arcLength / RoadConstants.yellowLineLength;
     }
 
 }

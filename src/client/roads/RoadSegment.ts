@@ -1,9 +1,15 @@
 import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
-import type { IRoad } from './IRoad';
+import type { IRoad, IRoadType } from './IRoad';
 import { TwoWayRoadBuilder } from './TwoWayRoadBuilder';
+import { RoadPrimitive } from './RoadPrimitive';
+import { StraightRoadPrimitive } from './StraightRoadPrimitive';
+import { CurvedRoadPrimitive } from './CurvedRoadPrimitive';
+import { IPoint2D } from '../../sim/IPoint';
 
 const DEBUG_ROAD_ARC = true;
+
+export type SegmentSide = 'start' | 'end';
 
 /**
  * A single straight road segment.
@@ -29,6 +35,26 @@ export class RoadSegment {
     private _arcEndX?: number;
     private _arcEndZ?: number;
     private junctionCuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts };
+    private forwardPrimitive?: RoadPrimitive;
+    private backwardPrimitive?: RoadPrimitive;
+    private startJoinArcPrimitive?: RoadPrimitive;
+    private endJoinArcPrimitive?: RoadPrimitive;
+
+    get primitives(): RoadPrimitive[] {
+        if (!this.forwardPrimitive) return [];
+        return this.backwardPrimitive ? [this.forwardPrimitive, this.backwardPrimitive] : [this.forwardPrimitive];
+    }
+
+    get joinArcPrimitives(): RoadPrimitive[] {
+        const result: RoadPrimitive[] = [];
+        if (this.startJoinArcPrimitive) {
+            result.push(this.startJoinArcPrimitive);
+        }
+        if (this.endJoinArcPrimitive) {
+            result.push(this.endJoinArcPrimitive);
+        }
+        return result;
+    }
 
     constructor(
         private readonly sceneRoot: THREE.Object3D,
@@ -86,6 +112,85 @@ export class RoadSegment {
 
     getJunctionCuts(): { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts } | undefined {
         return this.junctionCuts;
+    }
+
+    clearTransientJoinArcPrimitives(): void {
+        this.startJoinArcPrimitive = undefined;
+        this.endJoinArcPrimitive = undefined;
+    }
+
+    setTransientJoinArc(side: SegmentSide, params: {
+        id: string;
+        direction: 'forward' | 'backward';
+        start: IPoint2D;
+        mid: IPoint2D;
+        end: IPoint2D;
+        roadType: IRoadType;
+        cuts?: IRoadCuts;
+    }): void {
+        const primitive = new CurvedRoadPrimitive({
+            transient: true,
+            direction: params.direction,
+            start: params.start,
+            mid: params.mid,
+            end: params.end,
+            roadType: params.roadType,
+            cuts: params.cuts,
+        });
+        if (side === 'start') {
+            this.startJoinArcPrimitive = primitive;
+            return;
+        }
+
+        this.endJoinArcPrimitive = primitive;
+    }
+
+    private compilePrimitives(): void {
+        this.forwardPrimitive = undefined;
+        this.backwardPrimitive = undefined;
+
+        if (this.arcMidX !== undefined && this.arcMidZ !== undefined) {
+            this.forwardPrimitive = new CurvedRoadPrimitive({
+                transient: false,
+                direction: 'forward',
+                start: { x: this.startX, z: this.startZ },
+                mid: { x: this.arcMidX, z: this.arcMidZ },
+                end: { x: this.endX, z: this.endZ },
+                roadType: this.iRoad.forward,
+                cuts: this.junctionCuts?.forwardCuts,
+            });
+
+            if (this.iRoad.backward) {
+                this.backwardPrimitive = new CurvedRoadPrimitive({
+                    transient: false,
+                    direction: 'backward',
+                    start: { x: this.endX, z: this.endZ },
+                    mid: { x: this.arcMidX, z: this.arcMidZ },
+                    end: { x: this.startX, z: this.startZ },
+                    roadType: this.iRoad.backward,
+                    cuts: this.junctionCuts?.backwardCuts,
+                });
+            }
+            return;
+        }
+
+        this.forwardPrimitive = new StraightRoadPrimitive({
+            transient: false,
+            start: { x: this.startX, z: this.startZ },
+            end: { x: this.endX, z: this.endZ },
+            roadType: this.iRoad.forward,
+            cuts: this.junctionCuts?.forwardCuts,
+        });
+
+        if (this.iRoad.backward) {
+            this.backwardPrimitive = new StraightRoadPrimitive({
+                transient: false,
+                start: { x: this.endX, z: this.endZ },
+                end: { x: this.startX, z: this.startZ },
+                roadType: this.iRoad.backward,
+                cuts: this.junctionCuts?.backwardCuts,
+            });
+        }
     }
 
     /** Curve the road through a world-space control point. Keeps start and end fixed. */
@@ -151,6 +256,7 @@ export class RoadSegment {
         this._arcEndZ = undefined;
         this.group.position.set(startX, 0, startZ);
         this.group.rotation.y = angle;
+        this.compilePrimitives();
     }
 
     /** Change length and rebuild geometry. Clears any arc. */
@@ -178,6 +284,7 @@ export class RoadSegment {
         }
 
         this.#tagChildren();
+        this.compilePrimitives();
     }
 
     dispose(): void {
@@ -299,4 +406,5 @@ export class RoadSegment {
         this.angle = startAngle;
         this.length = arcAngle * radius;
     }
+
 }

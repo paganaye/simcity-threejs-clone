@@ -1,6 +1,6 @@
 import { IRoadType } from '../roads/IRoad';
-import { RoadBand } from './RoadBand';
-import { RoadBuilder } from './RoadBuilder';
+import { RoadBand, RoadConstants } from './RoadBand';
+import { RoadTextureBuilder } from './RoadTextureBuilder';
 
 
 export class BandPainter {
@@ -10,7 +10,7 @@ export class BandPainter {
     textureHeight!: number;
 
     constructor(private readonly ctx: CanvasRenderingContext2D, readonly road: IRoadType) {
-        this.roadColor = road.roadColor === 'new' ? RoadBuilder.NEW_ROAD_COLOR : RoadBuilder.OLD_ROAD_COLOR;
+        this.roadColor = road.roadColor === 'new' ? RoadConstants.NEW_ROAD_COLOR : RoadConstants.OLD_ROAD_COLOR;
     }
 
     drawBands(bands: RoadBand[]) {
@@ -31,7 +31,7 @@ export class BandPainter {
 
 
     drawBand(band: RoadBand): void {
-        let widthPx = RoadBuilder.metersToPixels(band.widthM);
+        let widthPx = RoadTextureBuilder.metersToPixels(band.widthM);
         if (widthPx <= 0) return;
 
         let drawRectPc = (color: string, x: number, y: number, w: number, h: number) => {

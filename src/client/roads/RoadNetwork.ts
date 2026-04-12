@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-import { RoadSegment } from './RoadSegment';
+import { RoadSegment, SegmentSide } from './RoadSegment';
 import { getBands } from './RoadLayout';
 import type { IRoadCuts, IExtremityCut } from './RoadCuts';
-import { RoadPrimitiveCompiler } from './RoadPrimitiveCompiler';
 import { RoadPrimitive } from './RoadPrimitive';
 
 type SegmentTrims = { start: number; end: number };
@@ -19,7 +18,6 @@ const DEBUG_JOIN_ARC = true;
 export class RoadNetwork {
     readonly segments: RoadSegment[] = [];
     private readonly transientJoinArcs: RoadSegment[] = [];
-    private readonly primitiveCompiler = new RoadPrimitiveCompiler();
     private compiledPrimitives: RoadPrimitive[] = [];
     private static readonly JOIN_EPSILON = 0.35;
     // Visual helper arcs may consume almost all of a short segment; keep a tiny remainder only.
@@ -76,17 +74,21 @@ export class RoadNetwork {
         return this.compiledPrimitives.slice();
     }
 
-    joinArc(first: RoadSegment, second: RoadSegment): boolean {
+    joinArc(first: RoadSegment, firstSide: SegmentSide,
+        second: RoadSegment, secondSide: SegmentSide): boolean {
+
         const editable = this.getEditableSegments();
         if (!editable.includes(first) || !editable.includes(second)) {
             return false;
         }
 
         let joined = false;
-        this.rebuildTransientJoins((nextPrimitives, trimsBySegment) => {
+        this.rebuildTransientJoins((trimsBySegment) => {
             const usedEndpointIds = new Set<number>();
-            const firstEndpoints = this.getEndpoints(first);
-            const secondEndpoints = this.getEndpoints(second);
+            const firstIsStart = firstSide === 'start';
+            const secondIsStart = secondSide === 'start';
+            const firstEndpoints = this.getEndpoints(first).filter((endpoint) => endpoint.isStart === firstIsStart);
+            const secondEndpoints = this.getEndpoints(second).filter((endpoint) => endpoint.isStart === secondIsStart);
 
             for (const a of firstEndpoints) {
                 const endpointAId = this.getEndpointId(a);
@@ -95,7 +97,7 @@ export class RoadNetwork {
                 for (const b of secondEndpoints) {
                     const endpointBId = this.getEndpointId(b);
                     if (usedEndpointIds.has(endpointBId)) continue;
-                    if (!this.tryCreateJoinArc(a, b, nextPrimitives, trimsBySegment)) continue;
+                    if (!this.tryCreateJoinArc(a, b, trimsBySegment)) continue;
                     usedEndpointIds.add(endpointAId);
                     usedEndpointIds.add(endpointBId);
                     joined = true;
@@ -108,7 +110,7 @@ export class RoadNetwork {
     }
 
     refreshTransientJoinArcs(): void {
-        this.rebuildTransientJoins((nextPrimitives, trimsBySegment, editable) => {
+        this.rebuildTransientJoins((trimsBySegment, editable) => {
             const usedEndpointIds = new Set<number>();
 
             for (let i = 0; i < editable.length; i++) {
@@ -128,7 +130,7 @@ export class RoadNetwork {
                         for (const b of rightEndpoints) {
                             const endpointBId = this.getEndpointId(b);
                             if (usedEndpointIds.has(endpointBId)) continue;
-                            if (!this.tryCreateJoinArc(a, b, nextPrimitives, trimsBySegment)) continue;
+                            if (!this.tryCreateJoinArc(a, b, trimsBySegment)) continue;
                             usedEndpointIds.add(endpointAId);
                             usedEndpointIds.add(endpointBId);
                             joined = true;
@@ -142,16 +144,18 @@ export class RoadNetwork {
     }
 
     private rebuildTransientJoins(
-        build: (nextPrimitives: RoadPrimitive[], trimsBySegment: Map<RoadSegment, SegmentTrims>, editable: RoadSegment[]) => void,
+        build: (trimsBySegment: Map<RoadSegment, SegmentTrims>, editable: RoadSegment[]) => void,
     ): void {
         this.clearTransientJoinArcs();
-        const nextPrimitives = this.segments.flatMap((segment) => this.primitiveCompiler.compileSegment(segment));
         const editable = this.getEditableSegments();
         const trimsBySegment = new Map<RoadSegment, SegmentTrims>();
         this.clearEditableJunctionCuts(editable);
-        build(nextPrimitives, trimsBySegment, editable);
+        for (const segment of this.segments) {
+            segment.clearTransientJoinArcPrimitives();
+        }
+        build(trimsBySegment, editable);
         this.applyTransientTrims(editable, trimsBySegment);
-        this.compiledPrimitives = nextPrimitives;
+        this.compiledPrimitives = this.segments.flatMap((segment) => [...segment.primitives, ...segment.joinArcPrimitives]);
     }
 
     private getEditableSegments(): RoadSegment[] {
@@ -205,7 +209,6 @@ export class RoadNetwork {
     private tryCreateJoinArc(
         a: Endpoint,
         b: Endpoint,
-        nextPrimitives: RoadPrimitive[],
         trimsBySegment: Map<RoadSegment, SegmentTrims>,
     ): boolean {
         const distance = Math.hypot(a.point.x - b.point.x, a.point.z - b.point.z);
@@ -347,26 +350,6 @@ export class RoadNetwork {
         this.transientJoinArcs.push(helper);
         const endpointAId = this.getEndpointId(a);
         const endpointBId = this.getEndpointId(b);
-        nextPrimitives.push(this.primitiveCompiler.compileTransientJoinArc({
-            id: `join:${endpointAId}:${endpointBId}:forward`,
-            direction: 'forward',
-            start: { x: p1.x, z: p1.z },
-            mid: { x: mid.x, z: mid.z },
-            end: { x: p2.x, z: p2.z },
-            roadType: a.segment.getIRoad().forward,
-        }));
-
-        const backwardRoad = a.segment.getIRoad().backward;
-        if (backwardRoad) {
-            nextPrimitives.push(this.primitiveCompiler.compileTransientJoinArc({
-                id: `join:${endpointAId}:${endpointBId}:backward`,
-                direction: 'backward',
-                start: { x: p2.x, z: p2.z },
-                mid: { x: mid.x, z: mid.z },
-                end: { x: p1.x, z: p1.z },
-                roadType: backwardRoad,
-            }));
-        }
 
         // Trim each straight road exactly to its own arc tangent point.
         const trimA = (p1.x - a.point.x) * a.dirAway.x + (p1.z - a.point.z) * a.dirAway.z;
@@ -375,6 +358,28 @@ export class RoadNetwork {
             helper.dispose();
             this.transientJoinArcs.pop();
             return false;
+        }
+
+        // Store join-arc primitives on segments. The owner is the segment matching primitive start.
+        a.segment.setTransientJoinArc(a.isStart ? 'start' : 'end', {
+            id: `join:${endpointAId}:${endpointBId}:forward`,
+            direction: 'forward',
+            start: { x: p1.x, z: p1.z },
+            mid: { x: mid.x, z: mid.z },
+            end: { x: p2.x, z: p2.z },
+            roadType: a.segment.getIRoad().forward,
+        });
+
+        const backwardRoad = a.segment.getIRoad().backward;
+        if (backwardRoad) {
+            b.segment.setTransientJoinArc(b.isStart ? 'start' : 'end', {
+                id: `join:${endpointAId}:${endpointBId}:backward`,
+                direction: 'backward',
+                start: { x: p2.x, z: p2.z },
+                mid: { x: mid.x, z: mid.z },
+                end: { x: p1.x, z: p1.z },
+                roadType: backwardRoad,
+            });
         }
 
         this.applyEndpointTrim(trimsBySegment, a, trimA);
@@ -424,9 +429,12 @@ export class RoadNetwork {
             arc.dispose();
         }
         this.transientJoinArcs.length = 0;
+        for (const segment of this.segments) {
+            segment.clearTransientJoinArcPrimitives();
+        }
     }
 
-    
+
     static findCrossJunction(
         first: RoadSegment,
         second: RoadSegment,
@@ -493,5 +501,5 @@ export class RoadNetwork {
         return Math.abs(normalized);
     }
 
-    
+
 }

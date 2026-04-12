@@ -1,27 +1,36 @@
 import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
 import type { IRoadType } from './IRoad';
-import { IPointXZ } from './RoadPrimitiveCompiler';
+import { IPoint2D } from '../../sim/IPoint';
+import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 
+export type PrimitiveSide = 'start' | 'end';
+
+export type PrimitiveEndPoint = {
+    side: PrimitiveSide;
+    primitive: RoadPrimitive;
+}
 
 export abstract class RoadPrimitive {
     transient: boolean;
-    direction: 'forward' | 'backward';
-    start: IPointXZ;
-    end: IPointXZ;
+    start: IPoint2D;
+    end: IPoint2D;
     roadType: IRoadType;
     cuts?: IRoadCuts;
+    join?: RoadPrimitive;
+    joinFrom?: PrimitiveEndPoint;
+    joinTo?: PrimitiveEndPoint;
+    joinRadius?: number;
+    private mesh?: THREE.Mesh;
 
     protected constructor(params: {
         transient: boolean;
-        direction: 'forward' | 'backward';
-        start: IPointXZ;
-        end: IPointXZ;
+        start: IPoint2D;
+        end: IPoint2D;
         roadType: IRoadType;
         cuts?: IRoadCuts;
     }) {
         this.transient = params.transient;
-        this.direction = params.direction;
         this.start = params.start;
         this.end = params.end;
         this.roadType = params.roadType;
@@ -35,12 +44,31 @@ export abstract class RoadPrimitive {
         segmentLength?: number;
     }): THREE.BufferGeometry | null;
 
+    clearMesh(): void {
+        if (!this.mesh) return;
+        this.mesh.geometry.dispose();
+        this.mesh.parent?.remove(this.mesh);
+        this.mesh = undefined;
+    }
+
+    protected replaceMesh(scene: THREE.Object3D, mesh: THREE.Mesh | null): void {
+        this.clearMesh();
+        if (!mesh) return;
+        this.mesh = mesh;
+        scene.add(mesh);
+    }
+
+    protected resolveMaterial(material?: THREE.Material): THREE.Material {
+        return material ?? RoadTextureBuilder.getRoadMaterial(this.roadType);
+    }
+
     abstract createMesh(params: {
-        material: THREE.Material;
+        scene: THREE.Object3D;
+        material?: THREE.Material;
         y?: number;
         textureProgressV?: number;
         lineLength?: number;
         segmentLength?: number;
         offsetM?: number;
-    }): THREE.Mesh | null;
+    }): void;
 }

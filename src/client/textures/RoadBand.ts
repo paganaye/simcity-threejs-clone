@@ -7,6 +7,22 @@ export const RoadConstants = {
     grass: '#4e9d4e',
     yellowLine: '#d5d59f',
     walkWay: '#8d8d95',
+    yellowLineLength: 8, // metres
+
+    OLD_ROAD_COLOR: 'hsl(0, 2%, 7%)',
+    NEW_ROAD_COLOR: 'hsl(0, 2%, 3.5%)',
+    TEXTURE_PPM: 10,// 1 pixel = 0.1m = 10 cm
+    NARROW_LANE_WIDTH_M: 3.0,
+    NORMAL_LANE_WIDTH_M: 3.5,
+    WIDE_LANE_WIDTH_M: 4.25,
+    YELLOW_LINE_WIDTH_M: 0.15, // 15 cm
+    TEXTURE_HEIGHT_M: 8, // This allow us to make 4m discontinous yellow line
+    EMERGENCY_LANE_WIDTH_M: 2, // metre
+    PARALLEL_PARKING_WIDTH_M: 2.4, // metre
+    PERPENDICULAR_PARKING_WIDTH_M: 5.0, // metre
+    LARGE_SIDEWALK_M: 2 // metre
+
+
 }
 
 export type RoadBandKind = 'sidewalk' | 'kerb' | 'lane' | 'laneSeparator';

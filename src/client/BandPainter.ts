@@ -1,4 +1,4 @@
-import { IRoadBand, RoadConstants } from './IRoadBand';
+import { IRoadBand } from './IRoadBand';
 import { RoadBuilder } from './RoadBuilder';
 import { IRoadType } from './roads/IRoad';
 
@@ -39,35 +39,10 @@ export class BandPainter {
             this.drawRect(color, x * widthPx, y * this.textureHeight, w * widthPx, h * this.textureHeight);
         }
 
-        switch (band.type) {
-            case 'plain':
-                drawRectPc(this.roadColor, 0, 0, 1, 1);
-                drawRectPc(band.color, 1 / 4, 0, 1 / 2, 1);
-                break;
-            case 'line':
-            case 'discontinuous':
-                drawRectPc(this.roadColor, 0, 0, 1, 1);
-                drawRectPc(band.color, 1 / 4, 0.25, 1 / 2, 0.5);
-                break;
-            case 'parallelParking':
-                drawRectPc(band.color, 0, 0, 1, 1);
-                drawRectPc(RoadConstants.whiteLine, 0, 0, 1, (1 / 32));
-                drawRectPc(RoadConstants.whiteLine, 0, (1 / 2), 1, (1 / 32));
-                drawRectPc(RoadConstants.whiteLine, 0, 0, RoadConstants.yellowLinePx, 0.1);
-                drawRectPc(RoadConstants.whiteLine, 0, 0.4, RoadConstants.yellowLinePx, 0.2);
-                drawRectPc(RoadConstants.whiteLine, 0, (1 - 0.1), RoadConstants.yellowLinePx, 0.1);
-                break;
-            case 'perpendicularParking':
-                drawRectPc(band.color, 0, 0, 1, 1);
-                drawRectPc(RoadConstants.whiteLine, 0, 0, 1, (1 / 32));
-                drawRectPc(RoadConstants.whiteLine, 0, (1 / 4), 1, (1 / 32));
-                drawRectPc(RoadConstants.whiteLine, 0, (2 / 4), 1, (1 / 32));
-                drawRectPc(RoadConstants.whiteLine, 0, (3 / 4), 1, (1 / 32));
-                break;
-            default:
-                let color = band.color = band.color;
-                if (color) drawRectPc(color, 0, 0, 1, 1);
-        }
+        band.paint({
+            roadColor: this.roadColor,
+            drawRectPc,
+        });
 
         this.currentX += widthPx;
     }

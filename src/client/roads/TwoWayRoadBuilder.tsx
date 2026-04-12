@@ -5,6 +5,8 @@ import type { IRoadCuts } from "../textures/RoadBuilder";
 import { RoadBuilder } from "../textures/RoadBuilder";
 import { getBands } from "./RoadLayout";
 
+const DEBUG_CURVE_BUILD = true;
+
 
 export class TwoWayRoadBuilder implements IOrientation2D {
     x: number;
@@ -95,7 +97,20 @@ export class TwoWayRoadBuilder implements IOrientation2D {
             const offsetStartX = this.x + leftNormalX * lateralOffsetM;
             const offsetStartZ = this.z + leftNormalZ * lateralOffsetM;
             const offsetRadius = radius - lateralOffsetM * turnDirection;
-            if (offsetRadius <= 0.01) return;
+            if (offsetRadius <= 0.01) {
+                if (DEBUG_CURVE_BUILD) {
+                    console.log('[CurvedRoad] skip-offset-arc', {
+                        side: style === right ? 'forward' : 'backward',
+                        radius,
+                        lateralOffsetM,
+                        turnAngle,
+                        turnDirection,
+                        offsetRadius,
+                        gapSize: safeGap,
+                    });
+                }
+                return;
+            }
 
             RoadBuilder.createArcRoad({
                 start: { x: offsetStartX, y: this.y, z: offsetStartZ, angle: this.angle },
@@ -136,6 +151,15 @@ export class TwoWayRoadBuilder implements IOrientation2D {
                     scene: this.scene,
                     roadType: left,
                     textureProgressV: startV,
+                });
+            } else if (DEBUG_CURVE_BUILD) {
+                console.log('[CurvedRoad] skip-backward-arc', {
+                    radius,
+                    backwardOffsetM,
+                    backwardTurnDirection,
+                    backwardRadius,
+                    turnAngle,
+                    gapSize: safeGap,
                 });
             }
         }

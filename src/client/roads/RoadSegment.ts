@@ -13,6 +13,8 @@ const DEBUG_ROAD_ARC = true;
  * the group (via gizmo) needs no geometry rebuild.
  */
 export class RoadSegment {
+    private static nextId = 1;
+    readonly id = RoadSegment.nextId++;
     readonly group = new THREE.Group();
     private iRoad: IRoad = {
         forward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
@@ -87,7 +89,7 @@ export class RoadSegment {
     }
 
     /** Curve the road through a world-space control point. Keeps start and end fixed. */
-    setArc(midX: number, midZ: number, endX?: number, endZ?: number): void {
+    setArc(midX: number, midZ: number, endX?: number, endZ?: number, forceArc = false): void {
         if (endX !== undefined && endZ !== undefined) {
             this._arcEndX = endX;
             this._arcEndZ = endZ;
@@ -101,10 +103,11 @@ export class RoadSegment {
         if (targetEndX === undefined || targetEndZ === undefined) return;
 
         // If arc control returns near the straight chord, switch back to true straight mode.
+        // Transient join arcs may force curved mode to preserve small-angle round corners.
         const chordDx = targetEndX - this.startX;
         const chordDz = targetEndZ - this.startZ;
         const chordLength = Math.hypot(chordDx, chordDz);
-        if (chordLength > 1e-6) {
+        if (!forceArc && chordLength > 1e-6) {
             const ux = chordDx / chordLength;
             const uz = chordDz / chordLength;
             const nx = -uz;

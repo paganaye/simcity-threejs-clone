@@ -5,15 +5,27 @@ import type { IRoadCuts, IExtremityCut } from '../textures/RoadBuilder';
 import { RoadPrimitiveCompiler } from './RoadPrimitiveCompiler';
 import { RoadPrimitive } from './RoadPrimitive';
 
+type SegmentTrims = { start: number; end: number };
+type JunctionCuts = { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts };
+type Endpoint = {
+    segment: RoadSegment;
+    isStart: boolean;
+    point: { x: number; z: number };
+    dirAway: { x: number; z: number };
+};
+
+const DEBUG_JOIN_ARC = true;
+
 export class RoadNetwork {
     readonly segments: RoadSegment[] = [];
     private readonly transientJoinArcs: RoadSegment[] = [];
     private readonly primitiveCompiler = new RoadPrimitiveCompiler();
     private compiledPrimitives: RoadPrimitive[] = [];
     private static readonly JOIN_EPSILON = 0.35;
-    private static readonly JOIN_TARGET_RADIUS = 2.0;
     // Visual helper arcs may consume almost all of a short segment; keep a tiny remainder only.
     private static readonly JOIN_MIN_REMAINING_LENGTH = 0.05;
+    // Keep a positive offset radius for both carriageways (avoid degenerate inner/outer arc at ~0m).
+    private static readonly JOIN_OFFSET_RADIUS_MARGIN = 0.15;
 
     private static getInteriorCarriagewayWidth(segment: RoadSegment): number {
         const road = segment.getIRoad();
@@ -21,6 +33,17 @@ export class RoadNetwork {
         if (!road.backward) return forwardWidth;
         const backwardWidth = getBands(road.backward).carriagewayWidthM;
         return Math.min(forwardWidth, backwardWidth);
+    }
+
+    private static getMinJoinCenterRadius(segment: RoadSegment): number {
+        const road = segment.getIRoad();
+        const forwardOffset = getBands(road.forward).totalWidthM / 2;
+        if (!road.backward) return forwardOffset + RoadNetwork.JOIN_OFFSET_RADIUS_MARGIN;
+
+        const backwardOffset = getBands(road.backward).totalWidthM / 2;
+        const safeGap = Number.isFinite(road.gapSize) ? Math.max(0, road.gapSize) : 0;
+        const halfGap = safeGap / 2;
+        return Math.max(halfGap + forwardOffset, halfGap + backwardOffset) + RoadNetwork.JOIN_OFFSET_RADIUS_MARGIN;
     }
 
     registerSegment(segment: RoadSegment): RoadSegment {
@@ -53,200 +76,313 @@ export class RoadNetwork {
         return this.compiledPrimitives.slice();
     }
 
-    refreshTransientJoinArcs(): void {
-        this.clearTransientJoinArcs();
-        const nextPrimitives = this.segments.flatMap((segment) => this.primitiveCompiler.compileSegment(segment));
-
-        const editable = this.segments.filter((segment) => segment.arcMidX === undefined && segment.arcMidZ === undefined);
-        const usedEndpointKeys = new Set<string>();
-        const trimsBySegment = new Map<RoadSegment, { start: number; end: number }>();
-        const maybeSetJunctionCuts = (segment: RoadSegment, cuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts }): void => {
-            const withMethod = segment as unknown as { setJunctionCuts?: (value?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts }) => void };
-            withMethod.setJunctionCuts?.(cuts);
-        };
-
-        for (const segment of editable) {
-            // Transient joins fully define temporary trims for this frame.
-            maybeSetJunctionCuts(segment, undefined);
+    joinArc(first: RoadSegment, second: RoadSegment): boolean {
+        const editable = this.getEditableSegments();
+        if (!editable.includes(first) || !editable.includes(second)) {
+            return false;
         }
 
-        type Endpoint = {
-            segment: RoadSegment;
-            key: string;
-            isStart: boolean;
-            point: { x: number; z: number };
-            dirAway: { x: number; z: number };
-        };
+        let joined = false;
+        this.rebuildTransientJoins((nextPrimitives, trimsBySegment) => {
+            const usedEndpointIds = new Set<number>();
+            const firstEndpoints = this.getEndpoints(first);
+            const secondEndpoints = this.getEndpoints(second);
 
-        const getEndpoints = (segment: RoadSegment): Endpoint[] => {
-            const dir = { x: Math.cos(segment.angle), z: -Math.sin(segment.angle) };
-            return [
-                {
-                    segment,
-                    key: `${segment.group.id}:start`,
-                    isStart: true,
-                    point: { x: segment.startX, z: segment.startZ },
-                    dirAway: { x: dir.x, z: dir.z },
-                },
-                {
-                    segment,
-                    key: `${segment.group.id}:end`,
-                    isStart: false,
-                    point: { x: segment.endX, z: segment.endZ },
-                    dirAway: { x: -dir.x, z: -dir.z },
-                },
-            ];
-        };
+            for (const a of firstEndpoints) {
+                const endpointAId = this.getEndpointId(a);
+                if (usedEndpointIds.has(endpointAId)) continue;
 
-        const applyEndpointTrim = (endpoint: Endpoint, trim: number): void => {
-            const previous = trimsBySegment.get(endpoint.segment) ?? { start: 0, end: 0 };
-            if (endpoint.isStart) {
-                previous.start = Math.max(previous.start, trim);
-            } else {
-                previous.end = Math.max(previous.end, trim);
+                for (const b of secondEndpoints) {
+                    const endpointBId = this.getEndpointId(b);
+                    if (usedEndpointIds.has(endpointBId)) continue;
+                    if (!this.tryCreateJoinArc(a, b, nextPrimitives, trimsBySegment)) continue;
+                    usedEndpointIds.add(endpointAId);
+                    usedEndpointIds.add(endpointBId);
+                    joined = true;
+                    return;
+                }
             }
-            trimsBySegment.set(endpoint.segment, previous);
-        };
+        });
 
-        for (let i = 0; i < editable.length; i++) {
-            const left = editable[i];
-            if (!left) continue;
-            for (let j = i + 1; j < editable.length; j++) {
-                const right = editable[j];
-                if (!right) continue;
+        return joined;
+    }
 
-                const leftEndpoints = getEndpoints(left);
-                const rightEndpoints = getEndpoints(right);
+    refreshTransientJoinArcs(): void {
+        this.rebuildTransientJoins((nextPrimitives, trimsBySegment, editable) => {
+            const usedEndpointIds = new Set<number>();
 
-                for (const a of leftEndpoints) {
-                    if (usedEndpointKeys.has(a.key)) continue;
-                    for (const b of rightEndpoints) {
-                        if (usedEndpointKeys.has(b.key)) continue;
+            for (let i = 0; i < editable.length; i++) {
+                const left = editable[i];
+                if (!left) continue;
+                for (let j = i + 1; j < editable.length; j++) {
+                    const right = editable[j];
+                    if (!right) continue;
 
-                        const distance = Math.hypot(a.point.x - b.point.x, a.point.z - b.point.z);
-                        if (distance > RoadNetwork.JOIN_EPSILON) continue;
+                    const leftEndpoints = this.getEndpoints(left);
+                    const rightEndpoints = this.getEndpoints(right);
 
-                        const dot = THREE.MathUtils.clamp(a.dirAway.x * b.dirAway.x + a.dirAway.z * b.dirAway.z, -1, 1);
-                        const phi = Math.acos(dot);
-                        if (phi < 0.2 || phi > Math.PI - 0.2) continue;
-
-                        const tanHalf = Math.tan(phi / 2);
-                        if (!Number.isFinite(tanHalf) || tanHalf <= 1e-6) continue;
-
-                        const maxTrimA = a.segment.length - RoadNetwork.JOIN_MIN_REMAINING_LENGTH;
-                        const maxTrimB = b.segment.length - RoadNetwork.JOIN_MIN_REMAINING_LENGTH;
-                        const maxTrim = Math.min(maxTrimA, maxTrimB);
-                        if (!Number.isFinite(maxTrim) || maxTrim <= 0) continue;
-
-                        const maxRadius = maxTrim * tanHalf;
-                        const minInteriorRadius = Math.min(
-                            RoadNetwork.getInteriorCarriagewayWidth(a.segment),
-                            RoadNetwork.getInteriorCarriagewayWidth(b.segment),
-                        );
-                        const preferredRadius = Math.max(RoadNetwork.JOIN_TARGET_RADIUS, minInteriorRadius);
-                        if (maxRadius < minInteriorRadius) continue;
-                        const radius = Math.min(preferredRadius, maxRadius);
-                        if (!Number.isFinite(radius) || radius <= 0.05) continue;
-
-                        const trim = radius / tanHalf;
-                        const node = {
-                            x: (a.point.x + b.point.x) / 2,
-                            z: (a.point.z + b.point.z) / 2,
-                        };
-                        const p1 = {
-                            x: node.x + a.dirAway.x * trim,
-                            z: node.z + a.dirAway.z * trim,
-                        };
-                        const p2 = {
-                            x: node.x + b.dirAway.x * trim,
-                            z: node.z + b.dirAway.z * trim,
-                        };
-
-                        const sceneRoot = a.segment.group.parent ?? b.segment.group.parent;
-                        if (!sceneRoot) continue;
-
-                        const chordDx = p2.x - p1.x;
-                        const chordDz = p2.z - p1.z;
-                        const chordLength = Math.hypot(chordDx, chordDz);
-                        if (chordLength <= 1e-6) continue;
-
-                        const helper = new RoadSegment(
-                            sceneRoot,
-                            p1.x,
-                            p1.z,
-                            Math.atan2(-chordDz, chordDx),
-                            chordLength,
-                            a.segment.getIRoad(),
-                        );
-
-                        const bisector = {
-                            x: a.dirAway.x + b.dirAway.x,
-                            z: a.dirAway.z + b.dirAway.z,
-                        };
-                        const bisectorLength = Math.hypot(bisector.x, bisector.z);
-                        if (!Number.isFinite(bisectorLength) || bisectorLength <= 1e-6) continue;
-
-                        const sinHalf = Math.sin(phi / 2);
-                        if (!Number.isFinite(sinHalf) || sinHalf <= 1e-6) continue;
-
-                        const centerDistance = radius / sinHalf;
-                        const center = {
-                            x: node.x + (bisector.x / bisectorLength) * centerDistance,
-                            z: node.z + (bisector.z / bisectorLength) * centerDistance,
-                        };
-
-                        const a1 = Math.atan2(p1.z - center.z, p1.x - center.x);
-                        const a2 = Math.atan2(p2.z - center.z, p2.x - center.x);
-                        let delta = a2 - a1;
-                        while (delta > Math.PI) delta -= Math.PI * 2;
-                        while (delta <= -Math.PI) delta += Math.PI * 2;
-
-                        if (Math.abs(delta) < 1e-5) continue;
-
-                        const amid = a1 + delta / 2;
-                        const mid = { x: center.x + Math.cos(amid) * radius, z: center.z + Math.sin(amid) * radius };
-                        helper.setArc(mid.x, mid.z, p2.x, p2.z);
-
-                        nextPrimitives.push(this.primitiveCompiler.compileTransientJoinArc({
-                            id: `join:${a.key}:${b.key}:forward`,
-                            direction: 'forward',
-                            start: { x: p1.x, z: p1.z },
-                            mid: { x: mid.x, z: mid.z },
-                            end: { x: p2.x, z: p2.z },
-                            roadType: a.segment.getIRoad().forward,
-                        }));
-
-                        const backwardRoad = a.segment.getIRoad().backward;
-                        if (backwardRoad) {
-                            nextPrimitives.push(this.primitiveCompiler.compileTransientJoinArc({
-                                id: `join:${a.key}:${b.key}:backward`,
-                                direction: 'backward',
-                                start: { x: p2.x, z: p2.z },
-                                mid: { x: mid.x, z: mid.z },
-                                end: { x: p1.x, z: p1.z },
-                                roadType: backwardRoad,
-                            }));
+                    for (const a of leftEndpoints) {
+                        const endpointAId = this.getEndpointId(a);
+                        if (usedEndpointIds.has(endpointAId)) continue;
+                        let joined = false;
+                        for (const b of rightEndpoints) {
+                            const endpointBId = this.getEndpointId(b);
+                            if (usedEndpointIds.has(endpointBId)) continue;
+                            if (!this.tryCreateJoinArc(a, b, nextPrimitives, trimsBySegment)) continue;
+                            usedEndpointIds.add(endpointAId);
+                            usedEndpointIds.add(endpointBId);
+                            joined = true;
+                            break;
                         }
-
-                        // Helper arcs are visual-only (not selectable/editable road segments).
-                        helper.group.userData.selectableType = undefined;
-                        delete helper.group.userData.roadSegment;
-                        helper.group.traverse((obj) => {
-                            obj.userData.selectableType = undefined;
-                            delete obj.userData.roadSegment;
-                        });
-
-                        this.transientJoinArcs.push(helper);
-                        applyEndpointTrim(a, trim);
-                        applyEndpointTrim(b, trim);
-                        usedEndpointKeys.add(a.key);
-                        usedEndpointKeys.add(b.key);
-                        break;
+                        if (joined) break;
                     }
                 }
             }
+        });
+    }
+
+    private rebuildTransientJoins(
+        build: (nextPrimitives: RoadPrimitive[], trimsBySegment: Map<RoadSegment, SegmentTrims>, editable: RoadSegment[]) => void,
+    ): void {
+        this.clearTransientJoinArcs();
+        const nextPrimitives = this.segments.flatMap((segment) => this.primitiveCompiler.compileSegment(segment));
+        const editable = this.getEditableSegments();
+        const trimsBySegment = new Map<RoadSegment, SegmentTrims>();
+        this.clearEditableJunctionCuts(editable);
+        build(nextPrimitives, trimsBySegment, editable);
+        this.applyTransientTrims(editable, trimsBySegment);
+        this.compiledPrimitives = nextPrimitives;
+    }
+
+    private getEditableSegments(): RoadSegment[] {
+        return this.segments.filter((segment) => segment.arcMidX === undefined && segment.arcMidZ === undefined);
+    }
+
+    private setJunctionCuts(segment: RoadSegment, cuts?: JunctionCuts): void {
+        const withMethod = segment as unknown as { setJunctionCuts?: (value?: JunctionCuts) => void };
+        withMethod.setJunctionCuts?.(cuts);
+    }
+
+    private clearEditableJunctionCuts(editable: RoadSegment[]): void {
+        for (const segment of editable) {
+            // Transient joins fully define temporary trims for this frame.
+            this.setJunctionCuts(segment, undefined);
+        }
+    }
+
+    private getEndpoints(segment: RoadSegment): Endpoint[] {
+        const dir = { x: Math.cos(segment.angle), z: -Math.sin(segment.angle) };
+        return [
+            {
+                segment,
+                isStart: true,
+                point: { x: segment.startX, z: segment.startZ },
+                dirAway: { x: dir.x, z: dir.z },
+            },
+            {
+                segment,
+                isStart: false,
+                point: { x: segment.endX, z: segment.endZ },
+                dirAway: { x: -dir.x, z: -dir.z },
+            },
+        ];
+    }
+
+    private getEndpointId(endpoint: Endpoint): number {
+        return endpoint.segment.id * 2 + (endpoint.isStart ? 0 : 1);
+    }
+
+    private applyEndpointTrim(trimsBySegment: Map<RoadSegment, SegmentTrims>, endpoint: Endpoint, trim: number): void {
+        const previous = trimsBySegment.get(endpoint.segment) ?? { start: 0, end: 0 };
+        if (endpoint.isStart) {
+            previous.start = Math.max(previous.start, trim);
+        } else {
+            previous.end = Math.max(previous.end, trim);
+        }
+        trimsBySegment.set(endpoint.segment, previous);
+    }
+
+    private tryCreateJoinArc(
+        a: Endpoint,
+        b: Endpoint,
+        nextPrimitives: RoadPrimitive[],
+        trimsBySegment: Map<RoadSegment, SegmentTrims>,
+    ): boolean {
+        const distance = Math.hypot(a.point.x - b.point.x, a.point.z - b.point.z);
+        if (distance > RoadNetwork.JOIN_EPSILON) return false;
+
+        const dot = THREE.MathUtils.clamp(a.dirAway.x * b.dirAway.x + a.dirAway.z * b.dirAway.z, -1, 1);
+        const phi = Math.acos(dot);
+        if (phi < 0.2 || phi > Math.PI - 0.2) return false;
+
+        const tanHalf = Math.tan(phi / 2);
+        if (!Number.isFinite(tanHalf) || tanHalf <= 1e-6) return false;
+
+        const maxTrimA = a.segment.length - RoadNetwork.JOIN_MIN_REMAINING_LENGTH;
+        const maxTrimB = b.segment.length - RoadNetwork.JOIN_MIN_REMAINING_LENGTH;
+        const maxTrim = Math.min(maxTrimA, maxTrimB);
+        if (!Number.isFinite(maxTrim) || maxTrim <= 0) return false;
+
+        const maxRadius = maxTrim * tanHalf;
+        const minInteriorRadius = Math.min(
+            RoadNetwork.getInteriorCarriagewayWidth(a.segment),
+            RoadNetwork.getInteriorCarriagewayWidth(b.segment),
+        );
+        const minCenterRadius = Math.max(
+            minInteriorRadius,
+            RoadNetwork.getMinJoinCenterRadius(a.segment),
+            RoadNetwork.getMinJoinCenterRadius(b.segment),
+        );
+        if (maxRadius < minCenterRadius) {
+            if (DEBUG_JOIN_ARC) {
+                console.log('[JoinArc] reject-radius', {
+                    endpointA: this.getEndpointId(a),
+                    endpointB: this.getEndpointId(b),
+                    phi,
+                    tanHalf,
+                    maxTrim,
+                    maxRadius,
+                    minInteriorRadius,
+                    minCenterRadius,
+                    segmentA: a.segment.id,
+                    segmentB: b.segment.id,
+                });
+            }
+            return false;
+        }
+        // Keep join curvature at the tightest valid value: the interior carriageway radius.
+        const radius = minCenterRadius;
+        if (!Number.isFinite(radius) || radius <= 0.05) return false;
+
+        if (DEBUG_JOIN_ARC) {
+            console.log('[JoinArc] accepted', {
+                endpointA: this.getEndpointId(a),
+                endpointB: this.getEndpointId(b),
+                phi,
+                tanHalf,
+                radius,
+                minInteriorRadius,
+                minCenterRadius,
+                maxRadius,
+                segmentA: a.segment.id,
+                segmentB: b.segment.id,
+            });
         }
 
+        const trim = radius / tanHalf;
+        const node = {
+            x: (a.point.x + b.point.x) / 2,
+            z: (a.point.z + b.point.z) / 2,
+        };
+        const p1 = {
+            x: node.x + a.dirAway.x * trim,
+            z: node.z + a.dirAway.z * trim,
+        };
+        const p2 = {
+            x: node.x + b.dirAway.x * trim,
+            z: node.z + b.dirAway.z * trim,
+        };
+
+        const sceneRoot = a.segment.group.parent ?? b.segment.group.parent;
+        if (!sceneRoot) return false;
+
+        const chordDx = p2.x - p1.x;
+        const chordDz = p2.z - p1.z;
+        const chordLength = Math.hypot(chordDx, chordDz);
+        if (chordLength <= 1e-6) return false;
+
+        const helper = new RoadSegment(
+            sceneRoot,
+            p1.x,
+            p1.z,
+            Math.atan2(-chordDz, chordDx),
+            chordLength,
+            a.segment.getIRoad(),
+        );
+
+        const bisector = {
+            x: a.dirAway.x + b.dirAway.x,
+            z: a.dirAway.z + b.dirAway.z,
+        };
+        const bisectorLength = Math.hypot(bisector.x, bisector.z);
+        if (!Number.isFinite(bisectorLength) || bisectorLength <= 1e-6) {
+            helper.dispose();
+            return false;
+        }
+
+        const sinHalf = Math.sin(phi / 2);
+        if (!Number.isFinite(sinHalf) || sinHalf <= 1e-6) {
+            helper.dispose();
+            return false;
+        }
+
+        const centerDistance = radius / sinHalf;
+        const center = {
+            x: node.x + (bisector.x / bisectorLength) * centerDistance,
+            z: node.z + (bisector.z / bisectorLength) * centerDistance,
+        };
+
+        const a1 = Math.atan2(p1.z - center.z, p1.x - center.x);
+        const a2 = Math.atan2(p2.z - center.z, p2.x - center.x);
+        let delta = a2 - a1;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta <= -Math.PI) delta += Math.PI * 2;
+        if (Math.abs(delta) < 1e-5) {
+            helper.dispose();
+            return false;
+        }
+
+        const amid = a1 + delta / 2;
+        const mid = { x: center.x + Math.cos(amid) * radius, z: center.z + Math.sin(amid) * radius };
+        helper.setArc(mid.x, mid.z, p2.x, p2.z, true);
+
+        // Helper arcs are visual-only (not selectable/editable road segments).
+        helper.group.userData.selectableType = undefined;
+        delete helper.group.userData.roadSegment;
+        helper.group.traverse((obj) => {
+            obj.userData.selectableType = undefined;
+            delete obj.userData.roadSegment;
+        });
+
+        this.transientJoinArcs.push(helper);
+        const endpointAId = this.getEndpointId(a);
+        const endpointBId = this.getEndpointId(b);
+        nextPrimitives.push(this.primitiveCompiler.compileTransientJoinArc({
+            id: `join:${endpointAId}:${endpointBId}:forward`,
+            direction: 'forward',
+            start: { x: p1.x, z: p1.z },
+            mid: { x: mid.x, z: mid.z },
+            end: { x: p2.x, z: p2.z },
+            roadType: a.segment.getIRoad().forward,
+        }));
+
+        const backwardRoad = a.segment.getIRoad().backward;
+        if (backwardRoad) {
+            nextPrimitives.push(this.primitiveCompiler.compileTransientJoinArc({
+                id: `join:${endpointAId}:${endpointBId}:backward`,
+                direction: 'backward',
+                start: { x: p2.x, z: p2.z },
+                mid: { x: mid.x, z: mid.z },
+                end: { x: p1.x, z: p1.z },
+                roadType: backwardRoad,
+            }));
+        }
+
+        // Trim each straight road exactly to its own arc tangent point.
+        const trimA = (p1.x - a.point.x) * a.dirAway.x + (p1.z - a.point.z) * a.dirAway.z;
+        const trimB = (p2.x - b.point.x) * b.dirAway.x + (p2.z - b.point.z) * b.dirAway.z;
+        if (trimA <= 1e-4 || trimB <= 1e-4) {
+            helper.dispose();
+            this.transientJoinArcs.pop();
+            return false;
+        }
+
+        this.applyEndpointTrim(trimsBySegment, a, trimA);
+        this.applyEndpointTrim(trimsBySegment, b, trimB);
+        return true;
+    }
+
+    private applyTransientTrims(editable: RoadSegment[], trimsBySegment: Map<RoadSegment, SegmentTrims>): void {
         const toExtremityCut = (trim: number): IExtremityCut => ({
             left: trim,
             roadLeft: trim,
@@ -267,13 +403,20 @@ export class RoadNetwork {
             }
 
             if (!forwardCuts.startCut && !forwardCuts.endCut) continue;
-            maybeSetJunctionCuts(segment, {
+            const backwardCuts: IRoadCuts = {};
+            // Backward primitive direction is reversed, so start/end cuts are swapped.
+            if (forwardCuts.startCut) {
+                backwardCuts.endCut = { ...forwardCuts.startCut };
+            }
+            if (forwardCuts.endCut) {
+                backwardCuts.startCut = { ...forwardCuts.endCut };
+            }
+
+            this.setJunctionCuts(segment, {
                 forwardCuts,
-                backwardCuts: { ...forwardCuts },
+                backwardCuts,
             });
         }
-
-        this.compiledPrimitives = nextPrimitives;
     }
 
     private clearTransientJoinArcs(): void {

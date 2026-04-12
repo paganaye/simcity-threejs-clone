@@ -15,6 +15,7 @@ const pages = {
     "Maze": "client/tests/MazeTest",
     "Path": "client/tests/PathTest",
     "Quaternion": "client/tests/QuaternionTest",
+    "Round Corner": "client/tests/RoundCornerTest",
     "Road Cut": "client/tests/RoadCutTest",
     "Road tool": "client/tests/RoadToolTest",
     "Simple Test": "client/tests/SimpleTest",

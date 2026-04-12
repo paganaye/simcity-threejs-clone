@@ -1,6 +1,9 @@
-import type { IRoad } from './roads/IRoad';
+import type { IRoad, IRoadType } from './roads/IRoad';
 import type { IRoadCuts } from './RoadBuilder';
 import { RoadSegment } from './RoadSegment';
+import type { IPoint2D } from '../sim/IPoint';
+
+export type IPointXZ = Pick<IPoint2D, 'x' | 'z'>;
 
 const DEFAULT_ROAD: IRoad = {
     forward: {
@@ -15,88 +18,93 @@ const DEFAULT_ROAD: IRoad = {
     gapSize: 0,
 };
 
+export class RoadPrimitive { }
 
-export type RoadPrimitive =
-    | {
-        type: 'straight';
-        id: string;
-        transient: boolean;
-        startX: number;
-        startZ: number;
-        endX: number;
-        endZ: number;
-        road: IRoad;
-        cuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts };
-    }
-    | {
-        type: 'arc';
-        id: string;
-        transient: boolean;
-        startX: number;
-        startZ: number;
-        midX: number;
-        midZ: number;
-        endX: number;
-        endZ: number;
-        road: IRoad;
-    };
+
 
 export class RoadPrimitiveCompiler {
-    compileSegment(segment: RoadSegment): RoadPrimitive {
+    compileSegment(segment: RoadSegment): RoadPrimitive[] {
         const candidate = segment as unknown as {
             group?: { id?: number | string };
             getIRoad?: () => IRoad;
+            getJunctionCuts?: () => { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts } | undefined;
         };
-        const id = String(candidate.group?.id ?? 'unknown');
+
         const road = candidate.getIRoad ? candidate.getIRoad() : DEFAULT_ROAD;
+        const cuts = candidate.getJunctionCuts ? candidate.getJunctionCuts() : undefined;
+        const result: RoadPrimitive[] = [];
+
         if (segment.arcMidX !== undefined && segment.arcMidZ !== undefined) {
-            return {
+            result.push({
                 type: 'arc',
-                id,
                 transient: false,
-                startX: segment.startX,
-                startZ: segment.startZ,
-                midX: segment.arcMidX,
-                midZ: segment.arcMidZ,
-                endX: segment.endX,
-                endZ: segment.endZ,
-                road,
-            };
+                direction: 'forward',
+                start: { x: segment.startX, z: segment.startZ },
+                mid: { x: segment.arcMidX, z: segment.arcMidZ },
+                end: { x: segment.endX, z: segment.endZ },
+                roadType: road.forward,
+                cuts: cuts?.forwardCuts,
+            });
+
+            if (road.backward) {
+                result.push({
+                    type: 'arc',
+                    transient: false,
+                    direction: 'backward',
+                    start: { x: segment.endX, z: segment.endZ },
+                    mid: { x: segment.arcMidX, z: segment.arcMidZ },
+                    end: { x: segment.startX, z: segment.startZ },
+                    roadType: road.backward,
+                    cuts: cuts?.backwardCuts,
+                });
+            }
+
+            return result;
         }
 
-        return {
+        result.push({
             type: 'straight',
-            id,
             transient: false,
-            startX: segment.startX,
-            startZ: segment.startZ,
-            endX: segment.endX,
-            endZ: segment.endZ,
-            road,
-        };
+            direction: 'forward',
+            start: { x: segment.startX, z: segment.startZ },
+            end: { x: segment.endX, z: segment.endZ },
+            roadType: road.forward,
+            cuts: cuts?.forwardCuts,
+        });
+
+        if (road.backward) {
+            result.push({
+                type: 'straight',
+                transient: false,
+                direction: 'backward',
+                start: { x: segment.endX, z: segment.endZ },
+                end: { x: segment.startX, z: segment.startZ },
+                roadType: road.backward,
+                cuts: cuts?.backwardCuts,
+            });
+        }
+
+        return result;
     }
 
     compileTransientJoinArc(params: {
         id: string;
-        startX: number;
-        startZ: number;
-        midX: number;
-        midZ: number;
-        endX: number;
-        endZ: number;
-        road: IRoad;
+        direction: 'forward' | 'backward';
+        start: IPointXZ;
+        mid: IPointXZ;
+        end: IPointXZ;
+        roadType: IRoadType;
+        cuts?: IRoadCuts;
     }): RoadPrimitive {
         return {
             type: 'arc',
-            id: params.id,
             transient: true,
-            startX: params.startX,
-            startZ: params.startZ,
-            midX: params.midX,
-            midZ: params.midZ,
-            endX: params.endX,
-            endZ: params.endZ,
-            road: params.road,
+            direction: params.direction,
+            start: params.start,
+            mid: params.mid,
+            end: params.end,
+            roadType: params.roadType,
+            cuts: params.cuts,
         };
     }
 }

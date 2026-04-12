@@ -54,7 +54,7 @@ export class RoadNetwork {
 
     refreshTransientJoinArcs(): void {
         this.clearTransientJoinArcs();
-        const nextPrimitives = this.segments.map((segment) => this.primitiveCompiler.compileSegment(segment));
+        const nextPrimitives = this.segments.flatMap((segment) => this.primitiveCompiler.compileSegment(segment));
 
         const editable = this.segments.filter((segment) => segment.arcMidX === undefined && segment.arcMidZ === undefined);
         const usedEndpointKeys = new Set<string>();
@@ -207,15 +207,25 @@ export class RoadNetwork {
                         helper.setArc(mid.x, mid.z, p2.x, p2.z);
 
                         nextPrimitives.push(this.primitiveCompiler.compileTransientJoinArc({
-                            id: `join:${a.key}:${b.key}`,
-                            startX: p1.x,
-                            startZ: p1.z,
-                            midX: mid.x,
-                            midZ: mid.z,
-                            endX: p2.x,
-                            endZ: p2.z,
-                            road: a.segment.getIRoad(),
+                            id: `join:${a.key}:${b.key}:forward`,
+                            direction: 'forward',
+                            start: { x: p1.x, z: p1.z },
+                            mid: { x: mid.x, z: mid.z },
+                            end: { x: p2.x, z: p2.z },
+                            roadType: a.segment.getIRoad().forward,
                         }));
+
+                        const backwardRoad = a.segment.getIRoad().backward;
+                        if (backwardRoad) {
+                            nextPrimitives.push(this.primitiveCompiler.compileTransientJoinArc({
+                                id: `join:${a.key}:${b.key}:backward`,
+                                direction: 'backward',
+                                start: { x: p2.x, z: p2.z },
+                                mid: { x: mid.x, z: mid.z },
+                                end: { x: p1.x, z: p1.z },
+                                roadType: backwardRoad,
+                            }));
+                        }
 
                         // Helper arcs are visual-only (not selectable/editable road segments).
                         helper.group.userData.selectableType = undefined;

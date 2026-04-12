@@ -4,6 +4,7 @@ import { getBands } from "./RoadLayout";
 import type { IRoadType } from "./roads/IRoad";
 import type { IOrientation2D, IPoint2D } from "../sim/IPoint";
 import { Lane } from "./IRoadBand";
+import { StraightRoadPrimitive } from './StraightRoadPrimitive';
 
 export interface ISideCuts {
     from: number; // sidewalk start cut
@@ -320,16 +321,31 @@ export class RoadBuilder {
         return geometry;
     }
 
-    static createStraightRoad(params: {
-        start: IOrientation2D;
-        scene: THREE.Object3D;
-        length: number;
-        style: IRoadType;
-        textureProgressV?: number;
-        cuts?: IRoadCuts;
-        offsetM?: number;
-    }): void {
-        const { start, scene, length, style: options, textureProgressV = 0, cuts, offsetM = 0 } = params;
+    static createStraightRoad1(
+        scene: THREE.Object3D,
+        params: StraightRoadPrimitive): void {
+        let length = 0;
+        let angle = 0;
+        let start: IOrientation2D = { ...params.start, angle }
+        this.createStraightRoad({
+            ...params,
+            scene,
+            length,
+            start,
+        })
+    }
+
+    static createStraightRoad(
+        params: {
+            start: IOrientation2D;
+            scene: THREE.Object3D;
+            length: number;
+            roadType: IRoadType;
+            textureProgressV?: number;
+            cuts?: IRoadCuts;
+            offsetM?: number;
+        }): void {
+        const { start, scene, length, roadType: options, textureProgressV = 0, cuts, offsetM = 0 } = params;
 
         const y = start.y ?? 0;
 

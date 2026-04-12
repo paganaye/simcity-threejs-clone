@@ -33,7 +33,7 @@ export default class RoadTest extends Page {
                 start: { x: 0, y: 0, z: 20, angle: 0 },
                 scene: scene3D.scene,
                 length: 10,
-                style: road1,
+                roadType: road1,
             });
 
 

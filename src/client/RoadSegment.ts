@@ -82,6 +82,10 @@ export class RoadSegment {
         this.rebuild();
     }
 
+    getJunctionCuts(): { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts } | undefined {
+        return this.junctionCuts;
+    }
+
     /** Curve the road through a world-space control point. Keeps start and end fixed. */
     setArc(midX: number, midZ: number, endX?: number, endZ?: number): void {
         if (endX !== undefined && endZ !== undefined) {

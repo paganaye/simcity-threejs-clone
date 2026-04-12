@@ -32,7 +32,7 @@ export default class RoadTest extends Page {
                 start: { x: 0, y: 0, z: 10, angle: 0 },
                 scene: scene3D.scene,
                 length: 30,
-                style: road1,
+                roadType: road1,
                 cuts: {
                     startCut: {
                         left: 4,

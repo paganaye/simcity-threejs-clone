@@ -17,10 +17,6 @@ export abstract class RoadPrimitive {
     end: IPoint2D;
     roadType: IRoadType;
     cuts?: IRoadCuts;
-    join?: RoadPrimitive;
-    joinFrom?: PrimitiveEndPoint;
-    joinTo?: PrimitiveEndPoint;
-    joinRadius?: number;
     private mesh?: THREE.Mesh;
 
     protected constructor(params: {
@@ -71,4 +67,18 @@ export abstract class RoadPrimitive {
         segmentLength?: number;
         offsetM?: number;
     }): void;
+
+    getPoint(side: PrimitiveSide) {
+        return side === 'start' ? this.start : this.end;
+    }
+
+
+    movePoint(side: PrimitiveSide, point: IPoint2D): void {
+        if (side === 'start') {
+            this.start = point;
+        } else {
+            this.end = point;
+        }
+    }
+
 }

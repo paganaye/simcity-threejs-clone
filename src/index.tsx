@@ -16,6 +16,7 @@ const pages = {
     "Path": "client/tests/PathTest",
     "Quaternion": "client/tests/QuaternionTest",
     "Round Corner": "client/tests/RoundCornerTest",
+    "Round DualWay": "client/tests/RoundDualWayTest",
     "Road Cut": "client/tests/RoadCutTest",
     "Road tool": "client/tests/RoadToolTest",
     "Simple Test": "client/tests/SimpleTest",

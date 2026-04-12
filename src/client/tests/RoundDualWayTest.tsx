@@ -7,7 +7,7 @@ import { joinPrimitives } from '../roads/joinPrimitives';
 import type { RoadPrimitive } from '../roads/RoadPrimitive';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 
-export default class RoundCornerTest extends Page {
+export default class RoundDualWayTest extends Page {
     scene3DInstance: GameScene3D | undefined;
     private minutePrimitive?: StraightRoadPrimitive;
     private secondPrimitive?: StraightRoadPrimitive;

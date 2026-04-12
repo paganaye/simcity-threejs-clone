@@ -146,51 +146,7 @@ export class RoadSegment {
     }
 
     private compilePrimitives(): void {
-        this.forwardPrimitive = undefined;
-        this.backwardPrimitive = undefined;
-
-        if (this.arcMidX !== undefined && this.arcMidZ !== undefined) {
-            this.forwardPrimitive = new CurvedRoadPrimitive({
-                transient: false,
-                direction: 'forward',
-                start: { x: this.startX, z: this.startZ },
-                mid: { x: this.arcMidX, z: this.arcMidZ },
-                end: { x: this.endX, z: this.endZ },
-                roadType: this.iRoad.forward,
-                cuts: this.junctionCuts?.forwardCuts,
-            });
-
-            if (this.iRoad.backward) {
-                this.backwardPrimitive = new CurvedRoadPrimitive({
-                    transient: false,
-                    direction: 'backward',
-                    start: { x: this.endX, z: this.endZ },
-                    mid: { x: this.arcMidX, z: this.arcMidZ },
-                    end: { x: this.startX, z: this.startZ },
-                    roadType: this.iRoad.backward,
-                    cuts: this.junctionCuts?.backwardCuts,
-                });
-            }
-            return;
-        }
-
-        this.forwardPrimitive = new StraightRoadPrimitive({
-            transient: false,
-            start: { x: this.startX, z: this.startZ },
-            end: { x: this.endX, z: this.endZ },
-            roadType: this.iRoad.forward,
-            cuts: this.junctionCuts?.forwardCuts,
-        });
-
-        if (this.iRoad.backward) {
-            this.backwardPrimitive = new StraightRoadPrimitive({
-                transient: false,
-                start: { x: this.endX, z: this.endZ },
-                end: { x: this.startX, z: this.startZ },
-                roadType: this.iRoad.backward,
-                cuts: this.junctionCuts?.backwardCuts,
-            });
-        }
+      
     }
 
     /** Curve the road through a world-space control point. Keeps start and end fixed. */

@@ -117,28 +117,28 @@ describe('GameStorage', () => {
             gapSize: 0,
         };
 
-        const straightRoad: MockRoadRecord = {
-            startX: 1,
-            startZ: 2,
-            angle: Math.PI / 6,
-            length: 7,
-            endX: 1 + Math.cos(Math.PI / 6) * 7,
-            endZ: 2 - Math.sin(Math.PI / 6) * 7,
-            getIRoad: () => roadStyle,
-            dispose: vi.fn(),
-        };
-        const arcRoad: MockRoadRecord = {
-            startX: 5,
-            startZ: 6,
-            angle: Math.PI / 3,
-            length: 12,
-            endX: 14,
-            endZ: 9,
-            arcMidX: 10,
-            arcMidZ: 4,
-            getIRoad: () => roadStyle,
-            dispose: vi.fn(),
-        };
+        // const straightRoad: MockRoadRecord = {
+        //     startX: 1,
+        //     startZ: 2,
+        //     angle: Math.PI / 6,
+        //     length: 7,
+        //     endX: 1 + Math.cos(Math.PI / 6) * 7,
+        //     endZ: 2 - Math.sin(Math.PI / 6) * 7,
+        //     getIRoad: () => roadStyle,
+        //     dispose: vi.fn(),
+        // };
+        // const arcRoad: MockRoadRecord = {
+        //     startX: 5,
+        //     startZ: 6,
+        //     angle: Math.PI / 3,
+        //     length: 12,
+        //     endX: 14,
+        //     endZ: 9,
+        //     arcMidX: 10,
+        //     arcMidZ: 4,
+        //     getIRoad: () => roadStyle,
+        //     dispose: vi.fn(),
+        // };
         const strayRoad: MockRoadRecord = {
             startX: 8,
             startZ: 3,
@@ -151,8 +151,8 @@ describe('GameStorage', () => {
         };
 
         const roadNetwork = new RoadNetwork();
-        roadNetwork.registerSegment(straightRoad as never);
-        roadNetwork.registerSegment(arcRoad as never);
+        //roadNetwork.registerSegment(straightRoad as never);
+        //roadNetwork.registerSegment(arcRoad as never);
         const sceneRoot = new THREE.Scene();
         const strayRoadNode = new THREE.Object3D();
         strayRoadNode.userData.roadSegment = strayRoad;

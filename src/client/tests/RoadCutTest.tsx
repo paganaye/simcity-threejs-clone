@@ -2,7 +2,6 @@ import { render } from 'solid-js/web';
 import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
-import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 import type { IRoadType } from '../roads/IRoad';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 
@@ -29,11 +28,11 @@ export default class RoadTest extends Page {
                 leftSidewalk: 'small',
             };
 
-            const roadMesh = StraightRoadPrimitive.createRoadMesh({
-                start: { x: 0, y: 0, z: 10, angle: 0 },
-                length: 30,
+            new StraightRoadPrimitive({
+                transient: false,
+                start: { x: 0, y: 0, z: 10 },
+                end: { x: 30, z: 10 },
                 roadType: road1,
-                material: RoadTextureBuilder.getRoadMaterial(road1),
                 cuts: {
                     startCut: {
                         left: 4,
@@ -69,9 +68,8 @@ export default class RoadTest extends Page {
                             to: 18,
                         }
                     ],
-                }
-            });
-            if (roadMesh) scene3D.scene.add(roadMesh);
+                },
+            }).createMesh(scene3D.scene);
 
             // const road2: IRoadOptions = {
             //         roadColor: 'new',

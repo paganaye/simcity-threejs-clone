@@ -17,9 +17,9 @@ import { RoadToolController } from './tools/RoadToolController';
 import { BulldozerToolController } from './tools/BulldozerToolController';
 import { SelectToolController } from './tools/SelectToolController';
 import { ActiveTool } from './tools/ToolTypes';
-import { RoadNetwork } from './roads/RoadNetwork';
 import { Signal } from './Signal';
 import type { IRoad } from './roads/IRoad';
+import { RoadNetwork } from './roads/RoadNetwork';
 
 export type ILeftPointerGesture = {
     downX: number;
@@ -735,18 +735,18 @@ export class GameScene3D {
         };
         this.roadGizmo.onRoadMoved = (x, z, angle) => {
             this.#getSelectedRoadSegment()?.moveTo(x, z, angle);
-            this.roadNetwork.refreshTransientJoinArcs();
+            this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
         };
         this.roadGizmo.onRoadResized = (newLength) => {
             const seg = this.#getSelectedRoadSegment();
             if (!seg) return;
             seg.resize(newLength);
-            this.roadNetwork.refreshTransientJoinArcs();
+            this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
             this.onRoadSegmentResized?.(seg);
         };
         this.roadGizmo.onArcChanged = (midX, midZ) => {
             this.#getSelectedRoadSegment()?.setArc(midX, midZ);
-            this.roadNetwork.refreshTransientJoinArcs();
+            this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
         };
         this.roadGizmo.onDeselect = () => {
             this.selectedInstance.set(undefined);
@@ -756,7 +756,7 @@ export class GameScene3D {
         };
         this.roadGizmo.onDragEnded = () => {
             (this.toolMap.get('road') as RoadToolController | undefined)?.onRoadDragEnded();
-            this.roadNetwork.refreshTransientJoinArcs();
+            this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
         };
     }
 

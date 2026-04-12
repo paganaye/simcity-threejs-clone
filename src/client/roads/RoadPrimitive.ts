@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
 import type { IRoadType } from './IRoad';
 import { IPoint2D } from '../../sim/IPoint';
-import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 
 export type PrimitiveSide = 'start' | 'end';
 
@@ -54,19 +53,8 @@ export abstract class RoadPrimitive {
         scene.add(mesh);
     }
 
-    protected resolveMaterial(material?: THREE.Material): THREE.Material {
-        return material ?? RoadTextureBuilder.getRoadMaterial(this.roadType);
-    }
 
-    abstract createMesh(params: {
-        scene: THREE.Object3D;
-        material?: THREE.Material;
-        y?: number;
-        textureProgressV?: number;
-        lineLength?: number;
-        segmentLength?: number;
-        offsetM?: number;
-    }): void;
+    abstract createMesh(scene: THREE.Object3D): void;
 
     getPoint(side: PrimitiveSide) {
         return side === 'start' ? this.start : this.end;

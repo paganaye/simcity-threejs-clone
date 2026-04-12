@@ -3,7 +3,6 @@ import type { IRoadCuts } from './RoadCuts';
 import type { IRoad, IRoadType } from './IRoad';
 import { RoadPrimitive } from './RoadPrimitive';
 import { getBands } from './RoadLayout';
-import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 import { StraightRoadPrimitive } from './StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from './CurvedRoadPrimitive';
 import { IPoint2D } from '../../sim/IPoint';
@@ -36,15 +35,10 @@ export class RoadSegment {
     private _arcEndX?: number;
     private _arcEndZ?: number;
     private junctionCuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts };
-    private forwardPrimitive?: RoadPrimitive;
-    private backwardPrimitive?: RoadPrimitive;
+    forwardPrimitive?: RoadPrimitive;
+    backwardPrimitive?: RoadPrimitive;
     private startJoinArcPrimitive?: RoadPrimitive;
     private endJoinArcPrimitive?: RoadPrimitive;
-
-    get primitives(): RoadPrimitive[] {
-        if (!this.forwardPrimitive) return [];
-        return this.backwardPrimitive ? [this.forwardPrimitive, this.backwardPrimitive] : [this.forwardPrimitive];
-    }
 
     get joinArcPrimitives(): RoadPrimitive[] {
         const result: RoadPrimitive[] = [];
@@ -147,7 +141,63 @@ export class RoadSegment {
     }
 
     private compilePrimitives(): void {
-      
+        this.forwardPrimitive = undefined;
+        this.backwardPrimitive = undefined;
+
+        const forwardCuts = this.junctionCuts?.forwardCuts;
+        const backwardCuts = this.junctionCuts?.backwardCuts;
+
+        const start = { x: this.startX, z: this.startZ };
+        const end = { x: this.endX, z: this.endZ };
+
+        if (
+            this._arcMidX !== undefined &&
+            this._arcMidZ !== undefined &&
+            this._arcEndX !== undefined &&
+            this._arcEndZ !== undefined
+        ) {
+            const mid = { x: this._arcMidX, z: this._arcMidZ };
+            this.forwardPrimitive = new CurvedRoadPrimitive({
+                transient: false,
+                direction: 'forward',
+                start,
+                mid,
+                end,
+                roadType: this.iRoad.forward,
+                cuts: forwardCuts,
+            });
+
+            if (this.iRoad.backward) {
+                this.backwardPrimitive = new CurvedRoadPrimitive({
+                    transient: false,
+                    direction: 'backward',
+                    start: end,
+                    mid,
+                    end: start,
+                    roadType: this.iRoad.backward,
+                    cuts: backwardCuts,
+                });
+            }
+            return;
+        }
+
+        this.forwardPrimitive = new StraightRoadPrimitive({
+            transient: false,
+            start,
+            end,
+            roadType: this.iRoad.forward,
+            cuts: forwardCuts,
+        });
+
+        if (this.iRoad.backward) {
+            this.backwardPrimitive = new StraightRoadPrimitive({
+                transient: false,
+                start: end,
+                end: start,
+                roadType: this.iRoad.backward,
+                cuts: backwardCuts,
+            });
+        }
     }
 
     /** Curve the road through a world-space control point. Keeps start and end fixed. */
@@ -369,26 +419,44 @@ export class RoadSegment {
         const leftBands = backward ? getBands(backward) : null;
         const halfGapM = backward ? safeGap / 2 : 0;
 
-        const fwdMesh = StraightRoadPrimitive.createRoadMesh({
-            start: { x: 0, y: 0.015, z: 0, angle: 0 },
-            length,
+        const shiftByNormal = (start: IPoint2D, end: IPoint2D, lateralOffsetM: number) => {
+            const dx = end.x - start.x;
+            const dz = end.z - start.z;
+            const angle = Math.atan2(-dz, dx);
+            const normalX = Math.sin(angle);
+            const normalZ = Math.cos(angle);
+            return {
+                start: { x: start.x + normalX * lateralOffsetM, y: start.y, z: start.z + normalZ * lateralOffsetM },
+                end: { x: end.x + normalX * lateralOffsetM, z: end.z + normalZ * lateralOffsetM },
+            };
+        };
+
+        const fwdOffsetM = halfGapM + rightBands.totalWidthM / 2;
+        const fwdBaseStart = { x: 0, y: 0.015, z: 0 };
+        const fwdBaseEnd = { x: length, z: 0 };
+        const fwdPoints = shiftByNormal(fwdBaseStart, fwdBaseEnd, fwdOffsetM);
+
+        new StraightRoadPrimitive({
+            transient: false,
+            start: fwdPoints.start,
+            end: fwdPoints.end,
             roadType: forward,
-            material: RoadTextureBuilder.getRoadMaterial(forward),
             cuts: cuts?.forwardCuts,
-            offsetM: halfGapM + rightBands.totalWidthM / 2,
-        });
-        if (fwdMesh) this.group.add(fwdMesh);
+        }).createMesh(this.group);
 
         if (backward && leftBands) {
-            const bwdMesh = StraightRoadPrimitive.createRoadMesh({
-                start: { x: length, y: 0.015, z: 0, angle: Math.PI },
-                length,
+            const bwdOffsetM = halfGapM + leftBands.totalWidthM / 2;
+            const bwdBaseStart = { x: length, y: 0.015, z: 0 };
+            const bwdBaseEnd = { x: 0, z: 0 };
+            const bwdPoints = shiftByNormal(bwdBaseStart, bwdBaseEnd, bwdOffsetM);
+
+            new StraightRoadPrimitive({
+                transient: false,
+                start: bwdPoints.start,
+                end: bwdPoints.end,
                 roadType: backward,
-                material: RoadTextureBuilder.getRoadMaterial(backward),
                 cuts: cuts?.backwardCuts,
-                offsetM: halfGapM + leftBands.totalWidthM / 2,
-            });
-            if (bwdMesh) this.group.add(bwdMesh);
+            }).createMesh(this.group);
         }
     }
 
@@ -403,6 +471,48 @@ export class RoadSegment {
         const rightBands = getBands(forward);
         const leftBands = backward ? getBands(backward) : null;
 
+        const createArcPrimitive = (params: {
+            start: { x: number; y?: number; z: number; angle: number };
+            radius: number;
+            sweepAngle: number;
+            roadType: IRoadType;
+            cuts?: IRoadCuts;
+            direction: 'forward' | 'backward';
+        }): CurvedRoadPrimitive | null => {
+            const safeRadius = Math.max(0.001, Math.abs(params.radius));
+            const safeSweepAngle = Number.isFinite(params.sweepAngle) ? params.sweepAngle : 0;
+            if (Math.abs(safeSweepAngle) < 1e-6) return null;
+
+            const leftNormalX = Math.sin(params.start.angle);
+            const leftNormalZ = Math.cos(params.start.angle);
+            const turnDirection = safeSweepAngle < 0 ? -1 : 1;
+            const center = {
+                x: params.start.x + leftNormalX * safeRadius * turnDirection,
+                z: params.start.z + leftNormalZ * safeRadius * turnDirection,
+            };
+
+            const curveSweepAngle = -safeSweepAngle;
+            const radialSign = -turnDirection;
+            const pointAt = (t: number) => {
+                const tangentAngle = params.start.angle + curveSweepAngle * t;
+                const leftN = { x: Math.sin(tangentAngle), z: Math.cos(tangentAngle) };
+                return {
+                    x: center.x + leftN.x * radialSign * safeRadius,
+                    z: center.z + leftN.z * radialSign * safeRadius,
+                };
+            };
+
+            return new CurvedRoadPrimitive({
+                transient: false,
+                direction: params.direction,
+                start: pointAt(0),
+                mid: pointAt(0.5),
+                end: pointAt(1),
+                roadType: params.roadType,
+                cuts: params.cuts,
+            });
+        };
+
         const sweepAngle = -turnAngle;
         const turnDirection = sweepAngle < 0 ? -1 : 1;
         const leftNormalX = Math.sin(startAngle);
@@ -411,7 +521,7 @@ export class RoadSegment {
         const fwdOffsetM = halfGapM + rightBands.totalWidthM / 2;
         const fwdRadius = radius - fwdOffsetM * turnDirection;
         if (fwdRadius > 0.01) {
-            const fwdMesh = CurvedRoadPrimitive.createRoadMesh({
+            const fwdPrimitive = createArcPrimitive({
                 start: {
                     x: startX + leftNormalX * fwdOffsetM,
                     y: 0.015,
@@ -421,10 +531,9 @@ export class RoadSegment {
                 radius: fwdRadius,
                 sweepAngle,
                 roadType: forward,
-                material: RoadTextureBuilder.getRoadMaterial(forward),
-                y: 0.015,
+                direction: 'forward',
             });
-            if (fwdMesh) this.group.add(fwdMesh);
+            fwdPrimitive?.createMesh(this.group);
         }
 
         if (backward && leftBands) {
@@ -445,7 +554,7 @@ export class RoadSegment {
             const bwdRadius = radius - bwdOffsetM * bwdTurnDirection;
 
             if (bwdRadius > 0.01) {
-                const bwdMesh = CurvedRoadPrimitive.createRoadMesh({
+                const bwdPrimitive = createArcPrimitive({
                     start: {
                         x: endX + bwdLeftNormalX * bwdOffsetM,
                         y: 0.015,
@@ -455,10 +564,9 @@ export class RoadSegment {
                     radius: bwdRadius,
                     sweepAngle: bwdSweep,
                     roadType: backward,
-                    material: RoadTextureBuilder.getRoadMaterial(backward),
-                    y: 0.015,
+                    direction: 'backward',
                 });
-                if (bwdMesh) this.group.add(bwdMesh);
+                bwdPrimitive?.createMesh(this.group);
             }
         }
     }

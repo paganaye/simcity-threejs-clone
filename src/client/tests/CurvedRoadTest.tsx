@@ -2,7 +2,6 @@ import { render } from 'solid-js/web';
 import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
-import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 import type { IRoadType } from '../roads/IRoad';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from '../roads/CurvedRoadPrimitive';
@@ -31,38 +30,68 @@ export default class RoadTest extends Page {
 
             };
 
-            const straight = StraightRoadPrimitive.createRoadMesh({
-                start: { x: 0, y: 0, z: 20, angle: 0 },
-                length: 10,
+            new StraightRoadPrimitive({
+                transient: false,
+                start: { x: 0, y: 0, z: 20 },
+                end: { x: 10, z: 20 },
                 roadType: road1,
-                material: RoadTextureBuilder.getRoadMaterial(road1),
-            });
-            if (straight) scene3D.scene.add(straight);
+            }).createMesh(scene3D.scene);
 
+            const createArcPrimitive = (params: {
+                start: { x: number; z: number; angle: number };
+                radius: number;
+                sweepAngle: number;
+                roadType: IRoadType;
+            }) => {
+                const safeRadius = Math.max(0.001, Math.abs(params.radius));
+                const safeSweepAngle = Number.isFinite(params.sweepAngle) ? params.sweepAngle : 0;
+                if (Math.abs(safeSweepAngle) < 1e-6) return null;
 
-            const arc1 = CurvedRoadPrimitive.createRoadMesh({
-                start: { x: 10, y: 0, z: 20, angle: 0 },
+                const leftNormalX = Math.sin(params.start.angle);
+                const leftNormalZ = Math.cos(params.start.angle);
+                const turnDirection = safeSweepAngle < 0 ? -1 : 1;
+                const center = {
+                    x: params.start.x + leftNormalX * safeRadius * turnDirection,
+                    z: params.start.z + leftNormalZ * safeRadius * turnDirection,
+                };
+
+                const curveSweepAngle = -safeSweepAngle;
+                const radialSign = -turnDirection;
+                const pointAt = (t: number) => {
+                    const tangentAngle = params.start.angle + curveSweepAngle * t;
+                    const leftN = { x: Math.sin(tangentAngle), z: Math.cos(tangentAngle) };
+                    return {
+                        x: center.x + leftN.x * radialSign * safeRadius,
+                        z: center.z + leftN.z * radialSign * safeRadius,
+                    };
+                };
+
+                return new CurvedRoadPrimitive({
+                    transient: false,
+                    direction: 'forward',
+                    start: pointAt(0),
+                    mid: pointAt(0.5),
+                    end: pointAt(1),
+                    roadType: params.roadType,
+                });
+            };
+
+            const arc1 = createArcPrimitive({
+                start: { x: 10, z: 20, angle: 0 },
                 radius: 10,
                 sweepAngle: -Math.PI / 2,
                 roadType: road1,
-                material: RoadTextureBuilder.getRoadMaterial(road1),
-                y: 0,
-                segmentLength: 1.5,
             });
-            if (arc1) scene3D.scene.add(arc1);
+            arc1?.createMesh(scene3D.scene);
 
 
-
-            const arc2 = CurvedRoadPrimitive.createRoadMesh({
-                start: { x: 10, y: 0, z: 20, angle: 0 },
+            const arc2 = createArcPrimitive({
+                start: { x: 10, z: 20, angle: 0 },
                 radius: 10,
                 sweepAngle: Math.PI / 2,
                 roadType: road1,
-                material: RoadTextureBuilder.getRoadMaterial(road1),
-                y: 0,
-                segmentLength: 1.5,
             });
-            if (arc2) scene3D.scene.add(arc2);
+            arc2?.createMesh(scene3D.scene);
 
             scene3D.isLoading.set(false);
             this.setCameraView(20, 40, 40, 20, 0, 20);

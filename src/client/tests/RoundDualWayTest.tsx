@@ -102,22 +102,16 @@ export default class RoundDualWayTest extends Page {
 
         this.joinPrimitive?.clearMesh();
         const joinPrimitive = joinPrimitives(
-            this.minutePrimitive,
+            this.minutePrimitive!,
             'start',
-            this.secondPrimitive,
+            this.secondPrimitive!,
             'end',
             { radius: 10 },
         );
-        this.minutePrimitive.createMesh({
-            scene: this.scene3DInstance.scene,
-        });
-        this.secondPrimitive.createMesh({
-            scene: this.scene3DInstance.scene,
-        });
+        this.minutePrimitive.createMesh(this.scene3DInstance.scene);
+        this.secondPrimitive.createMesh(this.scene3DInstance.scene);
         this.joinPrimitive = joinPrimitive ?? undefined;
-        this.joinPrimitive?.createMesh({
-            scene: this.scene3DInstance.scene,
-        });
+        this.joinPrimitive?.createMesh(this.scene3DInstance.scene);
     }
 
 

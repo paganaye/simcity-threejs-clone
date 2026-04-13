@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CustomGizmo, ROAD_SNAP, type ICustomGizmoProps, type IRoadHandle } from './CustomGizmo';
 
-type RoadHandleAxis = 'start' | 'end' | 'arc';
+export type RoadHandleAxis = 'start' | 'end' | 'arc';
 type ArcRelative = {
     t: number;
     offsetRatio: number;
@@ -13,7 +13,7 @@ const HANDLE_Y = 0.12;
 
 export class RoadGizmo extends CustomGizmo {
     getSelectedRoadHandle?: () => IRoadHandle | undefined;
-    onRoadMoved?: (x: number, z: number, angle: number) => void;
+    onRoadMoved?: (x: number, z: number, angle: number, axis: RoadHandleAxis) => void;
     onRoadResized?: (newLength: number) => void;
     onArcChanged?: (midX: number, midZ: number) => void;
     onDeselect?: () => void;
@@ -189,7 +189,7 @@ export class RoadGizmo extends CustomGizmo {
 
         const angle = Math.atan2(-dz, dx);
 
-        this.onRoadMoved?.(startX, startZ, angle);
+        this.onRoadMoved?.(startX, startZ, angle, this.activeAxis);
         this.onRoadResized?.(length);
 
         if (this.dragArcRelative) {

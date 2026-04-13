@@ -81,16 +81,16 @@ export default class RoundDualWayTest extends Page {
 
 
     #rotatePrimitiveFromStart(primitive: StraightRoadPrimitive, centerX: number, centerZ: number, length: number, angle: number): void {
-        primitive.start = { x: centerX, z: centerZ };
-        primitive.end = {
+        primitive.startPos = { x: centerX, z: centerZ };
+        primitive.endPos = {
             x: centerX + Math.cos(angle) * length,
             z: centerZ - Math.sin(angle) * length,
         };
     }
 
     #rotatePrimitiveToEnd(primitive: StraightRoadPrimitive, centerX: number, centerZ: number, length: number, angle: number): void {
-        primitive.end = { x: centerX, z: centerZ };
-        primitive.start = {
+        primitive.endPos = { x: centerX, z: centerZ };
+        primitive.startPos = {
             x: centerX - Math.cos(angle) * length,
             z: centerZ + Math.sin(angle) * length,
         };

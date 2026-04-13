@@ -159,9 +159,6 @@ export function setupEditorUI(page: ThreeEditor): void {
                             <option value={key}>{key}</option>
                         ))}
                     </select>
-                    {/* <ToolButton tool="select" content="Select" size={16} activeTool={activeTool} />
-                    <ToolButton tool="residential" content="Add" size={16} activeTool={activeTool} onclick={() => props.page.addPrimitive(props.page.selectedPrimitiveType())} />
-                    <ToolButton tool="bulldoze" content="Delete" size={16} activeTool={activeTool} onclick={() => props.page.deleteSelectedObjects()} /> */}
                 </div>
                 <div id="instructions">
                     SELECT - Left Click (click repeatedly on selected to cycle, Shift+Click to add, Ctrl/Cmd+Click to toggle)<br />

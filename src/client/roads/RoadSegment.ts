@@ -11,6 +11,10 @@ const DEBUG_ROAD_ARC = true;
 
 export type SegmentSide = 'start' | 'end';
 
+export interface SegmentEndPoint {
+    segment: RoadSegment;
+    side: SegmentSide;
+}
 /**
  * A single straight road segment.
  * The group sits at (startX, 0, startZ) with rotation.y = angle.
@@ -35,21 +39,10 @@ export class RoadSegment {
     private _arcEndX?: number;
     private _arcEndZ?: number;
     private junctionCuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts };
-    forwardPrimitive?: RoadPrimitive;
+    forwardPrimitive!: RoadPrimitive;
     backwardPrimitive?: RoadPrimitive;
-    private startJoinArcPrimitive?: RoadPrimitive;
-    private endJoinArcPrimitive?: RoadPrimitive;
-
-    get joinArcPrimitives(): RoadPrimitive[] {
-        const result: RoadPrimitive[] = [];
-        if (this.startJoinArcPrimitive) {
-            result.push(this.startJoinArcPrimitive);
-        }
-        if (this.endJoinArcPrimitive) {
-            result.push(this.endJoinArcPrimitive);
-        }
-        return result;
-    }
+    startJoinArcPrimitive?: RoadPrimitive;
+    endJoinArcPrimitive?: RoadPrimitive;
 
     constructor(
         private readonly sceneRoot: THREE.Object3D,
@@ -73,6 +66,13 @@ export class RoadSegment {
         this.group.rotation.y = angle;
         sceneRoot.add(this.group);
         this.rebuild();
+    }
+
+    get start(): SegmentEndPoint {
+        return { side: 'start', segment: this };
+    }
+    get end(): SegmentEndPoint {
+        return { side: 'end', segment: this };
     }
 
     get endX(): number {
@@ -141,8 +141,8 @@ export class RoadSegment {
     }
 
     private compilePrimitives(): void {
-        this.forwardPrimitive = undefined;
-        this.backwardPrimitive = undefined;
+        this.forwardPrimitive = undefined as any;
+        this.backwardPrimitive = undefined as any;
 
         const forwardCuts = this.junctionCuts?.forwardCuts;
         const backwardCuts = this.junctionCuts?.backwardCuts;

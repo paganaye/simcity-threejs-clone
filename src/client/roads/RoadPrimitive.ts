@@ -12,8 +12,8 @@ export type PrimitiveEndPoint = {
 
 export abstract class RoadPrimitive {
     transient: boolean;
-    start: IPoint2D;
-    end: IPoint2D;
+    startPos: IPoint2D;
+    endPos: IPoint2D;
     roadType: IRoadType;
     cuts?: IRoadCuts;
     private mesh?: THREE.Mesh;
@@ -26,10 +26,18 @@ export abstract class RoadPrimitive {
         cuts?: IRoadCuts;
     }) {
         this.transient = params.transient;
-        this.start = params.start;
-        this.end = params.end;
+        this.startPos = params.start;
+        this.endPos = params.end;
         this.roadType = params.roadType;
         this.cuts = params.cuts;
+    }
+    
+    get start(): PrimitiveEndPoint {
+        return { side: 'start', primitive: this };
+    }
+    
+    get end(): PrimitiveEndPoint {
+        return { side: 'end', primitive: this };
     }
 
     abstract createGeometry(params?: {
@@ -57,15 +65,15 @@ export abstract class RoadPrimitive {
     abstract createMesh(scene: THREE.Object3D): void;
 
     getPoint(side: PrimitiveSide) {
-        return side === 'start' ? this.start : this.end;
+        return side === 'start' ? this.startPos : this.endPos;
     }
 
 
     movePoint(side: PrimitiveSide, point: IPoint2D): void {
         if (side === 'start') {
-            this.start = point;
+            this.startPos = point;
         } else {
-            this.end = point;
+            this.endPos = point;
         }
     }
 

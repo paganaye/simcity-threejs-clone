@@ -203,8 +203,8 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         segmentLength?: number;
     } = {}): THREE.BufferGeometry | null {
         const { textureProgressV = 0, lineLength = RoadConstants.yellowLineLength } = params;
-        const dx = this.end.x - this.start.x;
-        const dz = this.end.z - this.start.z;
+        const dx = this.endPos.x - this.startPos.x;
+        const dz = this.endPos.z - this.startPos.z;
         const length = Math.hypot(dx, dz);
         if (length <= 0) return null;
 
@@ -237,8 +237,8 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         const geometry = this.createGeometry({ textureProgressV, lineLength });
         if (!geometry) return null;
 
-        const dx = this.end.x - this.start.x;
-        const dz = this.end.z - this.start.z;
+        const dx = this.endPos.x - this.startPos.x;
+        const dz = this.endPos.z - this.startPos.z;
         const angle = Math.atan2(-dz, dx);
 
         const bands = getBands(this.roadType);
@@ -247,13 +247,13 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         const halfOffsetM = carriagewayCenter - widthM / 2;
         const normalX = Math.sin(angle);
         const normalZ = Math.cos(angle);
-        const centerX = (this.start.x + this.end.x) / 2;
-        const centerZ = (this.start.z + this.end.z) / 2;
+        const centerX = (this.startPos.x + this.endPos.x) / 2;
+        const centerZ = (this.startPos.z + this.endPos.z) / 2;
         const material = RoadTextureBuilder.getRoadMaterial(this.roadType);
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.set(
             centerX + normalX * (halfOffsetM + offsetM),
-            this.start.y ?? 0,
+            this.startPos.y ?? 0,
             centerZ + normalZ * (halfOffsetM + offsetM)
         );
         mesh.rotation.x = -Math.PI / 2;

@@ -38,9 +38,9 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         startAngle: number;
         sweepAngle: number;
     } | null {
-        const a = this.start;
+        const a = this.startPos;
         const b = this.mid;
-        const c = this.end;
+        const c = this.endPos;
         const d = 2 * (a.x * (b.z - c.z) + b.x * (c.z - a.z) + c.x * (a.z - b.z));
         if (Math.abs(d) < 1e-6) return null;
 

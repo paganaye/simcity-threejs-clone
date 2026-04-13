@@ -9,8 +9,8 @@ export type JoinPrimitiveOptions = {
 };
 
 function directionAwayFromSide(primitive: RoadPrimitive, side: PrimitiveSide): IPoint2D | null {
-    const dx = primitive.end.x - primitive.start.x;
-    const dz = primitive.end.z - primitive.start.z;
+    const dx = primitive.endPos.x - primitive.startPos.x;
+    const dz = primitive.endPos.z - primitive.startPos.z;
     const length = Math.hypot(dx, dz);
     if (!Number.isFinite(length) || length <= 1e-6) return null;
 
@@ -58,8 +58,8 @@ export function joinPrimitives(
         return null;
     }
 
-    const firstLength = Math.hypot(first.end.x - first.start.x, first.end.z - first.start.z);
-    const secondLength = Math.hypot(second.end.x - second.start.x, second.end.z - second.start.z);
+    const firstLength = Math.hypot(first.endPos.x - first.startPos.x, first.endPos.z - first.startPos.z);
+    const secondLength = Math.hypot(second.endPos.x - second.startPos.x, second.endPos.z - second.startPos.z);
     const maxTrim = Math.max(0, Math.min(firstLength, secondLength) - 0.001);
 
     const requestedRadius = normalizedRadius ?? 6;

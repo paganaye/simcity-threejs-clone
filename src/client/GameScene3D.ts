@@ -8,10 +8,10 @@ import { Painter } from '../sim/Painter';
 import GUI from 'lil-gui';
 import { Page } from './Page';
 import { IFloorSize } from './GameUIComponent';
-import { RoadGizmo } from './editor/RoadGizmo';
+import { RoadGizmo, RoadHandleAxis } from './editor/RoadGizmo';
 import type { CustomGizmo } from './editor/CustomGizmo';
 import { ISelectedInstance, ObjectGizmo } from './editor/ObjectGizmo';
-import { RoadSegment } from './roads/RoadSegment';
+import { RoadSegment, SegmentSide } from './roads/RoadSegment';
 import { ToolController } from './tools/ToolController';
 import { RoadToolController } from './tools/RoadToolController';
 import { BulldozerToolController } from './tools/BulldozerToolController';
@@ -76,7 +76,7 @@ export class GameScene3D {
     isSpacePanModifierDown = false;
     /** Called by the road gizmo after each resize (drag of end handle). */
     onRoadSegmentResized?: (segment: RoadSegment) => void;
-    readonly roadNetwork = new RoadNetwork();
+    readonly roadNetwork = new RoadNetwork(this);
     private currentToolController?: ToolController;
     private readonly toolMap = new Map<ActiveTool, ToolController>();
     size: IFloorSize;
@@ -732,20 +732,21 @@ export class GameScene3D {
                 midZ: roadSegment.arcMidZ,
             };
         };
-        this.roadGizmo.onRoadMoved = (x, z, angle) => {
+        this.roadGizmo.onRoadMoved = (x, z, angle, axis: RoadHandleAxis) => {
+            let side: SegmentSide | undefined = (axis === 'start' ? 'start' : axis === 'end' ? 'end' : undefined);
             this.#getSelectedRoadSegment()?.moveTo(x, z, angle);
-            this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
+            this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment(), side);
         };
         this.roadGizmo.onRoadResized = (newLength) => {
             const seg = this.#getSelectedRoadSegment();
             if (!seg) return;
             seg.resize(newLength);
-            this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
+            //this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
             this.onRoadSegmentResized?.(seg);
         };
         this.roadGizmo.onArcChanged = (midX, midZ) => {
             this.#getSelectedRoadSegment()?.setArc(midX, midZ);
-            this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
+            //this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
         };
         this.roadGizmo.onDeselect = () => {
             this.selectedInstance.set(undefined);

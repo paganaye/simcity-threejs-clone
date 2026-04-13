@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-import type { PrimitiveEndPoint, PrimitiveSide, RoadPrimitive } from './RoadPrimitive';
-import { joinPrimitives } from './joinPrimitives';
+import type { PrimitiveEndPoint } from './RoadPrimitive';
 import { RoadSegment, SegmentEndPoint, SegmentSide } from './RoadSegment';
 import { GameScene3D } from '../GameScene3D';
+import { JoiningRoadPrimitive } from './JoiningRoadPrimitive';
 
 const DEFAULT_JOIN_RADIUS = 8;
+const JOIN_EPSILON = 0.45;
 
 export class RoadNetwork {
     readonly segments: RoadSegment[] = [];
@@ -34,18 +35,14 @@ export class RoadNetwork {
             if (touchingSegments.selectedSide.side == 'start' && touchingSegments.otherSide.side == 'start') {
                 this.tryJoiningPrimitives(
                     sceneRoot,
-                    road.forwardPrimitive,
-                    'start',
-                    other.backwardPrimitive,
-                    'end');
+                    { primitive: road.forwardPrimitive!, side: 'start' },
+                    { primitive: other.backwardPrimitive!, side: 'end' }
+                );
                 this.tryJoiningPrimitives(
                     sceneRoot,
-                    road.backwardPrimitive,
-                    'start',
-                    other.backwardPrimitive,
-                    'end');
-
-
+                    { primitive: road.backwardPrimitive!, side: 'start' },
+                    { primitive: other.forwardPrimitive!, side: 'end' }
+                );
             }
             //debugger;
             // if (road.forwardPrimitive && other.backwardPrimitive) {
@@ -94,13 +91,11 @@ export class RoadNetwork {
 
     tryJoiningPrimitives(
         sceneRoot: THREE.Object3D,
-        first: RoadPrimitive | undefined | null,
-        firstSide: PrimitiveSide,
-        second: RoadPrimitive | undefined | null,
-        secondSide: PrimitiveSide,
+        first: PrimitiveEndPoint | undefined | null,
+        second: PrimitiveEndPoint | undefined | null,
     ): boolean {
         if (!first || !second) return false;
-        const joined = joinPrimitives(sceneRoot, first, firstSide, second, secondSide, { radius: DEFAULT_JOIN_RADIUS });
+        const joined = JoiningRoadPrimitive.joinPrimitives(sceneRoot, first, second, second.primitive.roadType, { radius: DEFAULT_JOIN_RADIUS });
         if (!joined) return false;
         joined.refreshMesh();
         return true;
@@ -115,6 +110,11 @@ export class RoadNetwork {
         otherSide: SegmentEndPoint
         distance: number;
     } | null {
+        const getPoint = (endPoint: SegmentEndPoint): { x: number; z: number } =>
+            endPoint.side === 'start'
+                ? { x: endPoint.segment.startX, z: endPoint.segment.startZ }
+                : { x: endPoint.segment.endX, z: endPoint.segment.endZ };
+
         const endpointPairs = [
             [selected.start, other.start],
             [selected.start, other.end],
@@ -123,9 +123,11 @@ export class RoadNetwork {
         ];
         let best: { selectedSide: SegmentEndPoint; otherSide: SegmentEndPoint; distance: number } | null = null;
         for (const pair of endpointPairs) {
+            const a = getPoint(pair[0]);
+            const b = getPoint(pair[1]);
             let distance = Math.hypot(
-                pair[0].segment.endX - pair[1].segment.endX,
-                pair[0].segment.endZ - pair[1].segment.endZ,
+                a.x - b.x,
+                a.z - b.z,
             );
             if (!best || distance < best.distance) {
                 best = {
@@ -135,7 +137,7 @@ export class RoadNetwork {
                 };
             }
         }
-        if (!best) return null;
+        if (!best || best.distance > JOIN_EPSILON) return null;
         return best;
     }
 }

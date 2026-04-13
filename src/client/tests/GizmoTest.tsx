@@ -93,22 +93,6 @@ export default class GizmoTest extends Page {
   }
 
 
-  override loop(_elapsed: number): void {
-    //if (this.gizmo && this.proxy && this.snapCallback) {
-    // this.gizmo.syncPoseFromProxy();
-
-    // // Apply snapping to proxy position and rotation
-    // const snapped = this.snapCallback(
-    //   this.proxy.position.x,
-    //   this.proxy.position.z,
-    //   this.proxy.rotation.y
-    // );
-    // this.proxy.position.x = snapped.x;
-    // this.proxy.position.z = snapped.z;
-    // this.proxy.rotation.y = snapped.angle;
-    //}
-  }
-
   override cleanup(): void {
     this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown, true);
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove, true);

@@ -49,10 +49,8 @@ export class RoadToolController extends ToolController {
         if (currentPoint.distanceTo(this.potentialRoadStart.point) > 0.1) {
             this.newRoadSegment = new RoadSegment(
                 this.scene3D.scene,
-                this.potentialRoadStart.snappedX,
-                this.potentialRoadStart.snappedZ,
-                0,
-                MIN_ROAD_LENGTH,
+                { x: this.potentialRoadStart.snappedX, z: this.potentialRoadStart.snappedZ },
+                { x: this.potentialRoadStart.snappedX + MIN_ROAD_LENGTH, z: this.potentialRoadStart.snappedZ },
                 this.scene3D.lastSelectedRoad,
             );
             this.scene3D.selectRoadSegment(this.newRoadSegment);

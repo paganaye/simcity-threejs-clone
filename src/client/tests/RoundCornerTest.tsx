@@ -5,6 +5,7 @@ import { Page } from '../Page';
 import type { IRoadType } from '../roads/IRoad';
 //import type { RoadPrimitive } from '../roads/RoadPrimitive';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
+import { JoiningRoadPrimitive } from '../roads/JoiningRoadPrimitive';
 
 export default class RoundCornerTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -21,7 +22,7 @@ export default class RoundCornerTest extends Page {
         const handleUILoaded = async (): Promise<void> => {
             await scene3D.init(this);
 
-            const roadStyle: IRoadType = {
+            const roadType: IRoadType = {
                 roadColor: 'old',
                 lanes: 1,
                 rightKerb: 'line',
@@ -38,20 +39,17 @@ export default class RoundCornerTest extends Page {
                 transient: false,
                 start: { x: centerX, z: centerZ },
                 end: { x: centerX + 30, z: centerZ },
-                roadType: roadStyle,
+                roadType: roadType,
             });
             this.secondPrimitive = new StraightRoadPrimitive({
                 parent: scene3D.scene,
                 transient: false,
                 start: { x: centerX, z: centerZ - 40 },
                 end: { x: centerX, z: centerZ },
-                roadType: roadStyle,
+                roadType: roadType,
             });
 
-            this.minutePrimitive.createMesh();
-            this.secondPrimitive.createMesh();
-
-
+            JoiningRoadPrimitive.joinPrimitives(scene3D.scene, this.minutePrimitive.start, this.secondPrimitive.end, roadType);
             console.log('[CurvedRoadTest] Two road primitives rotate like clock hands.');
 
             scene3D.isLoading.set(false);
@@ -71,7 +69,7 @@ export default class RoundCornerTest extends Page {
         const centerZ = 24;
 
         if (this.minutePrimitive && this.secondPrimitive && this.scene3DInstance) {
-            elapsed /= 5; // convert to seconds
+            elapsed /= 45; // convert to seconds
             const minuteAngle = elapsed * 0.5;
             const secondAngle = elapsed * 2.6;
             this.#rotatePrimitiveFromStart(this.minutePrimitive, centerX, centerZ, 30, minuteAngle);

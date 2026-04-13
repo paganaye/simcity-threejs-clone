@@ -1,331 +1,329 @@
-// import * as THREE from "three";
-// import { Page } from "../Page";
-// import { Character } from "../Character";
-// //import { CharacterPath } from "../CharacterPath";
-// import { MazeBuilder, type GridPoint } from "./MazeBuilder";
-// //import { PathFinder } from "./PathFinder";
-// import { Population } from "../Population";
+import * as THREE from "three";
+import { Page } from "../Page";
+//import { CharacterPath } from "../CharacterPath";
+import { MazeBuilder, type GridPoint } from "./MazeBuilder";
+import { Character } from "../characters/Character";
+import { Population } from "../characters/Population";
+//import { PathFinder } from "./PathFinder";
 
-// export default class MazeTest extends Page {
-//   private maze: boolean[][] = [];
-//   private wallMesh?: THREE.InstancedMesh;
-//   private floorMesh?: THREE.Mesh;
-//   private walkerMesh?: THREE.InstancedMesh;
-//   private readonly walkerScale = new THREE.Vector3(1, 1, 1);
-//   private walkerLastElapsed = 0;
-//   private walkerWalkData?: Float32Array;
-//   private walkerPhaseData?: Float32Array;
-//   private walkerCadenceData?: Float32Array;
-//   private walkerWalkAttr?: THREE.InstancedBufferAttribute;
-//   private readonly walkerCount = 4;
-//   private readonly population = new Population();
-//   private readonly walkers: Character[] = Array.from({ length: this.walkerCount }, () => this.population.newCharacter());
-//   private readonly walkerCurrentCells: GridPoint[] = [];
-//   private readonly walkerTargetCells: GridPoint[] = [];
-//   private readonly mazeBuilder = new MazeBuilder();
-//   //private readonly pathFinder = new PathFinder();
-//   private readonly mazeWidth = 41;
-//   private readonly mazeHeight = 41;
-//   private readonly wallHeight = 1;
-//   private onKeyDown?: (event: KeyboardEvent) => void;
 
-//   run(): Promise<void> | void {
-//     this.walkers.forEach((walker, i) => {
-//       walker.path = new CharacterPath({ speed: 1.4 + i * 0.15, turnSpeed: 10 });
-//     });
+export default class MazeTest extends Page {
+    private maze: boolean[][] = [];
+    private wallMesh?: THREE.InstancedMesh;
+    private floorMesh?: THREE.Mesh;
+    private walkerMesh?: THREE.InstancedMesh;
+    // private readonly walkerScale = new THREE.Vector3(1, 1, 1);
+    private walkerLastElapsed = 0;
+    private walkerWalkData?: Float32Array;
+    private walkerPhaseData?: Float32Array;
+    private walkerCadenceData?: Float32Array;
+    private walkerWalkAttr?: THREE.InstancedBufferAttribute;
+    private readonly walkerCount = 4;
+    private readonly population = new Population();
+    private readonly walkers: Character[] = Array.from({ length: this.walkerCount }, () => this.population.newCharacter());
+    // private readonly walkerTargetCells: GridPoint[] = [];
+    private readonly mazeBuilder = new MazeBuilder();
+    //private readonly pathFinder = new PathFinder();
+    private readonly mazeWidth = 41;
+    private readonly mazeHeight = 41;
+    private readonly wallHeight = 1;
+    private onKeyDown?: (event: KeyboardEvent) => void;
 
-//     this.generateAndRenderMaze();
+    run(): Promise<void> | void {
+        this.walkers.forEach((_walker, _i) => {
+            //walker.path = new CharacterPath({ speed: 1.4 + i * 0.15, turnSpeed: 10 });
+        });
 
-//     this.onKeyDown = (event: KeyboardEvent) => {
-//       if (event.key.toLowerCase() === "r") {
-//         this.generateAndRenderMaze();
-//       }
-//     };
-//     window.addEventListener("keydown", this.onKeyDown);
+        this.generateAndRenderMaze();
 
-//     // Recenter camera to frame the maze nicely.
-//     this.camera.position.set(0, 22, 22);
-//     this.camera.lookAt(0, 0, 0);
-//     this.controls?.target.set(0, 0, 0);
-//     this.controls?.update();
-//   }
+        this.onKeyDown = (event: KeyboardEvent) => {
+            if (event.key.toLowerCase() === "r") {
+                this.generateAndRenderMaze();
+            }
+        };
+        window.addEventListener("keydown", this.onKeyDown);
 
-//   override loop(elapsed: number): void {
-//     Character.updateAnimation(elapsed);
+        // Recenter camera to frame the maze nicely.
+        this.camera.position.set(0, 22, 22);
+        this.camera.lookAt(0, 0, 0);
+    }
 
-//     if (!this.walkerMesh || !this.walkerWalkData || !this.walkerWalkAttr) {
-//       return;
-//     }
+    override loop(elapsed: number): void {
+        Character.updateAnimation(elapsed);
 
-//     const delta = this.walkerLastElapsed === 0 ? 0 : elapsed - this.walkerLastElapsed;
-//     this.walkerLastElapsed = elapsed;
+        if (!this.walkerMesh || !this.walkerWalkData || !this.walkerWalkAttr) {
+            return;
+        }
 
-//     if (delta <= 0) {
-//       return;
-//     }
+        const delta = this.walkerLastElapsed === 0 ? 0 : elapsed - this.walkerLastElapsed;
+        this.walkerLastElapsed = elapsed;
 
-//     for (let i = 0; i < this.walkerCount; i++) {
-//       const path = this.walkers[i].path;
-//       if (!path) {
-//         continue;
-//       }
+        if (delta <= 0) {
+            return;
+        }
 
-//       const update = path.update(delta, (x, y) => this.cellToWorld(x, y));
-//       this.updateWalkerMatrix(i, update.position, update.heading);
-//       // this.setWalkerWalking(i, update.isWalking);
+        for (let i = 0; i < this.walkerCount; i++) {
+            //const path = this.walkers[i].path;
+            // if (!path) {
+            //     continue;
+            // }
 
-//       if (update.reachedEnd) {
-//         this.setupWalkerPath(i, this.walkerTargetCells[i]);
-//       }
-//     }
-//     this.walkerWalkAttr.needsUpdate = true;
-//   }
+            // const update = path.update(delta, (x, y) => this.cellToWorld(x, y));
+            // this.updateWalkerMatrix(i, update.position, update.heading);
+            // // this.setWalkerWalking(i, update.isWalking);
 
-//   override cleanup(): void {
-//     if (this.onKeyDown) {
-//       window.removeEventListener("keydown", this.onKeyDown);
-//       this.onKeyDown = undefined;
-//     }
+            // if (update.reachedEnd) {
+            //     this.setupWalkerPath(i, this.walkerTargetCells[i]);
+            // }
+        }
+        this.walkerWalkAttr.needsUpdate = true;
+    }
 
-//     if (this.wallMesh) {
-//       this.scene.remove(this.wallMesh);
-//       this.wallMesh.geometry.dispose();
-//       if (Array.isArray(this.wallMesh.material)) {
-//         this.wallMesh.material.forEach((m) => m.dispose());
-//       } else {
-//         this.wallMesh.material.dispose();
-//       }
-//       this.wallMesh = undefined;
-//     }
+    override cleanup(): void {
+        if (this.onKeyDown) {
+            window.removeEventListener("keydown", this.onKeyDown);
+            this.onKeyDown = undefined;
+        }
 
-//     if (this.floorMesh) {
-//       this.scene.remove(this.floorMesh);
-//       this.floorMesh.geometry.dispose();
-//       if (Array.isArray(this.floorMesh.material)) {
-//         this.floorMesh.material.forEach((m) => m.dispose());
-//       } else {
-//         this.floorMesh.material.dispose();
-//       }
-//       this.floorMesh = undefined;
-//     }
+        if (this.wallMesh) {
+            this.scene.remove(this.wallMesh);
+            this.wallMesh.geometry.dispose();
+            if (Array.isArray(this.wallMesh.material)) {
+                this.wallMesh.material.forEach((m) => m.dispose());
+            } else {
+                this.wallMesh.material.dispose();
+            }
+            this.wallMesh = undefined;
+        }
 
-//     if (this.walkerMesh) {
-//       this.scene.remove(this.walkerMesh);
-//       this.walkerMesh.geometry.dispose();
-//       if (Array.isArray(this.walkerMesh.material)) {
-//         this.walkerMesh.material.forEach((m) => m.dispose());
-//       } else {
-//         this.walkerMesh.material.dispose();
-//       }
-//       this.walkerMesh = undefined;
-//       this.walkerWalkData = undefined;
-//       this.walkerPhaseData = undefined;
-//       this.walkerCadenceData = undefined;
-//       this.walkerWalkAttr = undefined;
-//     }
-//   }
+        if (this.floorMesh) {
+            this.scene.remove(this.floorMesh);
+            this.floorMesh.geometry.dispose();
+            if (Array.isArray(this.floorMesh.material)) {
+                this.floorMesh.material.forEach((m) => m.dispose());
+            } else {
+                this.floorMesh.material.dispose();
+            }
+            this.floorMesh = undefined;
+        }
 
-//   private generateAndRenderMaze(): void {
-//     this.maze = this.mazeBuilder.buildDFS(this.mazeWidth, this.mazeHeight);
-//     const quarterWidth = Math.floor(this.mazeWidth / 4);
-//     const quarterHeight = Math.floor(this.mazeHeight / 4);
+        if (this.walkerMesh) {
+            this.scene.remove(this.walkerMesh);
+            this.walkerMesh.geometry.dispose();
+            if (Array.isArray(this.walkerMesh.material)) {
+                this.walkerMesh.material.forEach((m) => m.dispose());
+            } else {
+                this.walkerMesh.material.dispose();
+            }
+            this.walkerMesh = undefined;
+            this.walkerWalkData = undefined;
+            this.walkerPhaseData = undefined;
+            this.walkerCadenceData = undefined;
+            this.walkerWalkAttr = undefined;
+        }
+    }
 
-//     for (let y = 1; y < this.maze.length - 1; y++) {
-//       for (let x = 1; x < this.maze[y].length - 1; x++) {
-//         if (x % quarterWidth === 0 || y % quarterHeight === 0) {
-//           this.maze[y][x] = false;
-//         }
-//       }
-//     }
-//     this.renderMaze(this.maze);
-//     this.setupWalkerPaths();
-//     this.walkerLastElapsed = 0;
-//   }
+    private generateAndRenderMaze(): void {
+        this.maze = this.mazeBuilder.buildDFS(this.mazeWidth, this.mazeHeight);
+        const quarterWidth = Math.floor(this.mazeWidth / 4);
+        const quarterHeight = Math.floor(this.mazeHeight / 4);
 
-//   private renderMaze(grid: boolean[][]): void {
-//     if (this.wallMesh) {
-//       this.scene.remove(this.wallMesh);
-//       this.wallMesh.geometry.dispose();
-//       if (Array.isArray(this.wallMesh.material)) {
-//         this.wallMesh.material.forEach((m) => m.dispose());
-//       } else {
-//         this.wallMesh.material.dispose();
-//       }
-//       this.wallMesh = undefined;
-//     }
+        for (let y = 1; y < this.maze.length - 1; y++) {
+            for (let x = 1; x < this.maze[y].length - 1; x++) {
+                if (x % quarterWidth === 0 || y % quarterHeight === 0) {
+                    this.maze[y][x] = false;
+                }
+            }
+        }
+        this.renderMaze(this.maze);
+        this.setupWalkerPaths();
+        this.walkerLastElapsed = 0;
+    }
 
-//     if (this.floorMesh) {
-//       this.scene.remove(this.floorMesh);
-//       this.floorMesh.geometry.dispose();
-//       if (Array.isArray(this.floorMesh.material)) {
-//         this.floorMesh.material.forEach((m) => m.dispose());
-//       } else {
-//         this.floorMesh.material.dispose();
-//       }
-//       this.floorMesh = undefined;
-//     }
+    private renderMaze(grid: boolean[][]): void {
+        if (this.wallMesh) {
+            this.scene.remove(this.wallMesh);
+            this.wallMesh.geometry.dispose();
+            if (Array.isArray(this.wallMesh.material)) {
+                this.wallMesh.material.forEach((m) => m.dispose());
+            } else {
+                this.wallMesh.material.dispose();
+            }
+            this.wallMesh = undefined;
+        }
 
-//     const height = grid.length;
-//     const width = grid[0]?.length ?? 0;
+        if (this.floorMesh) {
+            this.scene.remove(this.floorMesh);
+            this.floorMesh.geometry.dispose();
+            if (Array.isArray(this.floorMesh.material)) {
+                this.floorMesh.material.forEach((m) => m.dispose());
+            } else {
+                this.floorMesh.material.dispose();
+            }
+            this.floorMesh = undefined;
+        }
 
-//     const wallCount = grid.reduce((sum, row) => sum + row.filter(Boolean).length, 0);
-//     const wallGeometry = new THREE.BoxGeometry(1, this.wallHeight, 1);
-//     const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
-//     const walls = new THREE.InstancedMesh(wallGeometry, wallMaterial, wallCount);
+        const height = grid.length;
+        const width = grid[0]?.length ?? 0;
 
-//     const offsetX = -(width - 1) / 2;
-//     const offsetZ = -(height - 1) / 2;
-//     const matrix = new THREE.Matrix4();
-//     const pos = new THREE.Vector3();
-//     const quat = new THREE.Quaternion();
-//     const scale = new THREE.Vector3(1, 1, 1);
+        const wallCount = grid.reduce((sum, row) => sum + row.filter(Boolean).length, 0);
+        const wallGeometry = new THREE.BoxGeometry(1, this.wallHeight, 1);
+        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
+        const walls = new THREE.InstancedMesh(wallGeometry, wallMaterial, wallCount);
 
-//     let index = 0;
-//     for (let y = 0; y < height; y++) {
-//       for (let x = 0; x < width; x++) {
-//         if (!grid[y][x]) {
-//           continue;
-//         }
-//         pos.set(offsetX + x, this.wallHeight / 2, offsetZ + y);
-//         matrix.compose(pos, quat, scale);
-//         walls.setMatrixAt(index++, matrix);
-//       }
-//     }
-//     walls.instanceMatrix.needsUpdate = true;
-//     this.wallMesh = walls;
-//     this.scene.add(walls);
+        const offsetX = -(width - 1) / 2;
+        const offsetZ = -(height - 1) / 2;
+        const matrix = new THREE.Matrix4();
+        const pos = new THREE.Vector3();
+        const quat = new THREE.Quaternion();
+        const scale = new THREE.Vector3(1, 1, 1);
 
-//     const floorGeometry = new THREE.PlaneGeometry(width, height);
-//     const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x2e2e2e, side: THREE.DoubleSide });
-//     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-//     floor.rotation.x = -Math.PI / 2;
-//     floor.position.set(0, 0, 0);
-//     this.floorMesh = floor;
-//     this.scene.add(floor);
-//   }
+        let index = 0;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (!grid[y][x]) {
+                    continue;
+                }
+                pos.set(offsetX + x, this.wallHeight / 2, offsetZ + y);
+                matrix.compose(pos, quat, scale);
+                walls.setMatrixAt(index++, matrix);
+            }
+        }
+        walls.instanceMatrix.needsUpdate = true;
+        this.wallMesh = walls;
+        this.scene.add(walls);
 
-//   private setupWalkerPaths(): void {
-//     this.ensureWalkerMesh();
+        const floorGeometry = new THREE.PlaneGeometry(width, height);
+        const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x2e2e2e, side: THREE.DoubleSide });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.set(0, 0, 0);
+        this.floorMesh = floor;
+        this.scene.add(floor);
+    }
 
-//     for (let i = 0; i < this.walkerCount; i++) {
-//       const start = this.pickRandomWalkableCell();
-//       this.setupWalkerPath(i, start);
-//     }
+    private setupWalkerPaths(): void {
+        this.ensureWalkerMesh();
 
-//     if (this.walkerWalkAttr) {
-//       this.walkerWalkAttr.needsUpdate = true;
-//     }
-//   }
+        for (let i = 0; i < this.walkerCount; i++) {
+            const start = this.pickRandomWalkableCell();
+            this.setupWalkerPath(i, start);
+        }
 
-//   private setupWalkerPath(index: number, startCell?: GridPoint): void {
-//     const start = startCell ?? this.walkerTargetCells[index] ?? this.pickRandomWalkableCell();
-//     const goal = this.pickRandomWalkableCell(start);
+        if (this.walkerWalkAttr) {
+            this.walkerWalkAttr.needsUpdate = true;
+        }
+    }
 
-//     //const path = this.pathFinder.findPathBFS(this.maze, start, goal);
-//     const walkerPath = this.walkers[index].path;
-//     if (!walkerPath) {
-//       return;
-//     }
-// //    const state = walkerPath.setPath(path, (x, y) => this.cellToWorld(x, y));
+    private setupWalkerPath(_index: number, _startCell?: GridPoint): void {
+        // const start = startCell ?? this.walkerTargetCells[index] ?? this.pickRandomWalkableCell();
+        // const goal = this.pickRandomWalkableCell(start);
 
-//     this.walkerCurrentCells[index] = start;
-//     this.walkerTargetCells[index] = goal;
+        //const path = this.pathFinder.findPathBFS(this.maze, start, goal);
+        // const walkerPath = this.walkers[index].path;
+        // if (!walkerPath) {
+        //     return;
+        // }
+        //    const state = walkerPath.setPath(path, (x, y) => this.cellToWorld(x, y));
 
-//     // Spread walkers a bit along the route to avoid complete overlap.
-//     const warmupSteps = Math.min(index * 18, 80);
-//     for (let i = 0; i < warmupSteps; i++) {
-//       const warm = walkerPath.update(1 / 60, (x, y) => this.cellToWorld(x, y));
-//       if (warm.reachedEnd) {
-//         break;
-//       }
-//     }
+        // this.walkerCurrentCells[index] = start;
+        // this.walkerTargetCells[index] = goal;
 
-//     const update = walkerPath.update(0, (x, y) => this.cellToWorld(x, y));
-//     this.updateWalkerMatrix(index, update.position, update.heading);
-//     // this.setWalkerWalking(index, state.isWalking);
-//   }
+        // // Spread walkers a bit along the route to avoid complete overlap.
+        // const warmupSteps = Math.min(index * 18, 80);
+        // for (let i = 0; i < warmupSteps; i++) {
+        //     const warm = walkerPath.update(1 / 60, (x, y) => this.cellToWorld(x, y));
+        //     if (warm.reachedEnd) {
+        //         break;
+        //     }
+        // }
 
-//   private pickRandomWalkableCell(except?: GridPoint): GridPoint {
-//     const h = this.maze.length;
-//     const w = this.maze[0]?.length ?? 0;
+        // const update = walkerPath.update(0, (x, y) => this.cellToWorld(x, y));
+        // this.updateWalkerMatrix(index, update.position, update.heading);
+        // // this.setWalkerWalking(index, state.isWalking);
+    }
 
-//     for (let tries = 0; tries < 200; tries++) {
-//       const x = Math.floor(Math.random() * w);
-//       const y = Math.floor(Math.random() * h);
-//       if (this.maze[y]?.[x]) {
-//         continue;
-//       }
-//       if (except && except.x === x && except.y === y) {
-//         continue;
-//       }
-//       return { x, y };
-//     }
+    private pickRandomWalkableCell(except?: GridPoint): GridPoint {
+        const h = this.maze.length;
+        const w = this.maze[0]?.length ?? 0;
 
-//     for (let y = 0; y < h; y++) {
-//       for (let x = 0; x < w; x++) {
-//         if (this.maze[y][x]) {
-//           continue;
-//         }
-//         if (except && except.x === x && except.y === y) {
-//           continue;
-//         }
-//         return { x, y };
-//       }
-//     }
+        for (let tries = 0; tries < 200; tries++) {
+            const x = Math.floor(Math.random() * w);
+            const y = Math.floor(Math.random() * h);
+            if (this.maze[y]?.[x]) {
+                continue;
+            }
+            if (except && except.x === x && except.y === y) {
+                continue;
+            }
+            return { x, y };
+        }
 
-//     return except ?? { x: 0, y: 0 };
-//   }
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                if (this.maze[y][x]) {
+                    continue;
+                }
+                if (except && except.x === x && except.y === y) {
+                    continue;
+                }
+                return { x, y };
+            }
+        }
 
-//   private ensureWalkerMesh(): void {
-//     if (this.walkerMesh) {
-//       return;
-//     }
+        return except ?? { x: 0, y: 0 };
+    }
 
-//     const geometry = Character.createGeometry();
-//     const material = Character.createMaterial();
-//     this.walkerMesh = new THREE.InstancedMesh(geometry, material, this.walkerCount);
-//     this.scene.add(this.walkerMesh);
+    private ensureWalkerMesh(): void {
+        if (this.walkerMesh) {
+            return;
+        }
 
-//     this.walkerWalkData = new Float32Array(this.walkerCount);
-//     this.walkerPhaseData = new Float32Array(this.walkerCount);
-//     this.walkerCadenceData = new Float32Array(this.walkerCount);
-//     for (let i = 0; i < this.walkerCount; i++) {
-//       this.walkers[i].writeInstanceAnimationData(i, this.walkerWalkData, this.walkerPhaseData, this.walkerCadenceData);
-//     }
-//     this.walkerWalkAttr = new THREE.InstancedBufferAttribute(this.walkerWalkData, 1);
+        const geometry = Character.createGeometry();
+        const material = Character.createMaterial();
+        this.walkerMesh = new THREE.InstancedMesh(geometry, material, this.walkerCount);
+        this.scene.add(this.walkerMesh);
 
-//     geometry.setAttribute("aWalk", this.walkerWalkAttr);
-//     geometry.setAttribute("aPhase", new THREE.InstancedBufferAttribute(this.walkerPhaseData, 1));
-//     geometry.setAttribute("aCadence", new THREE.InstancedBufferAttribute(this.walkerCadenceData, 1));
-//   }
+        this.walkerWalkData = new Float32Array(this.walkerCount);
+        this.walkerPhaseData = new Float32Array(this.walkerCount);
+        this.walkerCadenceData = new Float32Array(this.walkerCount);
+        for (let i = 0; i < this.walkerCount; i++) {
+            this.walkers[i].writeInstanceAnimationData(i, this.walkerWalkData, this.walkerPhaseData, this.walkerCadenceData);
+        }
+        this.walkerWalkAttr = new THREE.InstancedBufferAttribute(this.walkerWalkData, 1);
 
-//   // private setWalkerWalking(index: number, isWalking: boolean): void {
-//   //   if (!this.walkerWalkData || !this.walkerWalkAttr) {
-//   //     return;
-//   //   }
-//   //   const walker = this.walkers[index];
-//   //   //walker.isWalking = isWalking;
-//   //   walker.writeInstanceAnimationData(index, this.walkerWalkData);
-//   // }
+        geometry.setAttribute("aWalk", this.walkerWalkAttr);
+        geometry.setAttribute("aPhase", new THREE.InstancedBufferAttribute(this.walkerPhaseData, 1));
+        geometry.setAttribute("aCadence", new THREE.InstancedBufferAttribute(this.walkerCadenceData, 1));
+    }
 
-//   private updateWalkerMatrix(index: number, position: THREE.Vector3, heading: number): void {
-//     if (!this.walkerMesh) {
-//       return;
-//     }
-//     const matrix = new THREE.Matrix4();
-//     const quat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), heading);
-//     this.walkerScale.set(1, 1, 1);
-//     matrix.compose(position, quat, this.walkerScale);
-//     this.walkerMesh.setMatrixAt(index, matrix);
-//     this.walkerMesh.instanceMatrix.needsUpdate = true;
-//   }
+    // private setWalkerWalking(index: number, isWalking: boolean): void {
+    //   if (!this.walkerWalkData || !this.walkerWalkAttr) {
+    //     return;
+    //   }
+    //   const walker = this.walkers[index];
+    //   //walker.isWalking = isWalking;
+    //   walker.writeInstanceAnimationData(index, this.walkerWalkData);
+    // }
 
-//   private cellToWorld(x: number, y: number): THREE.Vector3 {
-//     const width = this.maze[0]?.length ?? this.mazeWidth;
-//     const height = this.maze.length || this.mazeHeight;
-//     const offsetX = -(width - 1) / 2;
-//     const offsetZ = -(height - 1) / 2;
-//     return new THREE.Vector3(offsetX + x, 0, offsetZ + y);
-//   }
+    // private updateWalkerMatrix(index: number, position: THREE.Vector3, heading: number): void {
+    //     if (!this.walkerMesh) {
+    //         return;
+    //     }
+    //     const matrix = new THREE.Matrix4();
+    //     const quat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), heading);
+    //     this.walkerScale.set(1, 1, 1);
+    //     matrix.compose(position, quat, this.walkerScale);
+    //     this.walkerMesh.setMatrixAt(index, matrix);
+    //     this.walkerMesh.instanceMatrix.needsUpdate = true;
+    // }
 
-// }
+    // private cellToWorld(x: number, y: number): THREE.Vector3 {
+    //     const width = this.maze[0]?.length ?? this.mazeWidth;
+    //     const height = this.maze.length || this.mazeHeight;
+    //     const offsetX = -(width - 1) / 2;
+    //     const offsetZ = -(height - 1) / 2;
+    //     return new THREE.Vector3(offsetX + x, 0, offsetZ + y);
+    // }
+
+}

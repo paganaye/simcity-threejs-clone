@@ -18,7 +18,7 @@ export default class RoadTool extends Page {
         const handleUILoaded = async (): Promise<void> => {
             await scene3D.init(this);
 
-            const roadStyle: IRoad = {
+            const roadType: IRoad = {
                 forward: {
                     roadColor: 'old',
                     lanes: 1,
@@ -40,9 +40,9 @@ export default class RoadTool extends Page {
                 gapSize: 0,
             };
 
-            const main = new RoadSegment(scene3D.scene, 4, 18, 0, 30, roadStyle);
-            //const branchA = new RoadSegment(scene3D.scene, 12, 30, Math.PI / 4, 22, roadStyle);
-            //const branchB = new RoadSegment(scene3D.scene, 20, 2, -Math.PI / 4, 22, roadStyle);
+            const main = new RoadSegment(scene3D.scene, { x: 4, z: 18 }, { x: 34, z: 18 }, roadType);
+            //const branchA = new RoadSegment(scene3D.scene, { x: 12, z: 30 }, { x: 12 + Math.cos(Math.PI / 4) * 22, z: 30 - Math.sin(Math.PI / 4) * 22 }, roadType);
+            //const branchB = new RoadSegment(scene3D.scene, { x: 20, z: 2 }, { x: 20 + Math.cos(-Math.PI / 4) * 22, z: 2 - Math.sin(-Math.PI / 4) * 22 }, roadType);
             scene3D.roadNetwork.registerSegment(main);
             //scene3D.roadNetwork.registerSegment(branchA);
             //scene3D.roadNetwork.registerSegment(branchB);

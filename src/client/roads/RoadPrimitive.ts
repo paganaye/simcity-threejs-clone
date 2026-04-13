@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
 import type { IRoadType } from './IRoad';
 import { IPoint2D } from '../../sim/IPoint';
+import { JoiningRoadPrimitive } from './JoiningRoadPrimitive';
 
 export type PrimitiveSide = 'start' | 'end';
 
@@ -11,15 +12,16 @@ export type PrimitiveEndPoint = {
 }
 
 export abstract class RoadPrimitive {
-    refreshMesh() {
-        throw new Error('Method not implemented.');
-    }
     transient: boolean;
     startPos: IPoint2D;
     endPos: IPoint2D;
     roadType: IRoadType;
     cuts?: IRoadCuts;
-    private mesh?: THREE.Mesh;
+
+    startJoinPrimitive?: JoiningRoadPrimitive | null;
+    endJoinPrimitive?: JoiningRoadPrimitive | null;
+
+    private mesh?: THREE.Mesh | null;
 
     protected constructor(params: {
         parent: THREE.Object3D;
@@ -34,6 +36,29 @@ export abstract class RoadPrimitive {
         this.endPos = params.end;
         this.roadType = params.roadType;
         this.cuts = params.cuts;
+    }
+
+    protected initializeMesh(parent: THREE.Object3D): void {
+        this.mesh = this.createMesh();
+        if (this.mesh) parent.add(this.mesh);
+    }
+
+    protected disposeMesh(): void {
+        if (!this.mesh) return;
+        this.mesh.geometry.dispose();
+        this.mesh.parent?.remove(this.mesh);
+        this.mesh = null;
+    }
+
+    dispose(): void {
+        this.disposeMesh();
+    }
+
+    refreshMesh() {
+        let scene = this.mesh?.parent;
+        this.disposeMesh();
+        this.mesh = this.createMesh();
+        if (this.mesh && scene) scene.add(this.mesh);
     }
 
     get start(): PrimitiveEndPoint {
@@ -66,7 +91,7 @@ export abstract class RoadPrimitive {
     // }
 
 
-    protected abstract createMesh(scene: THREE.Object3D): void;
+    protected abstract createMesh(): THREE.Mesh | null;
 
     getPoint(side: PrimitiveSide) {
         return side === 'start' ? this.startPos : this.endPos;
@@ -79,17 +104,21 @@ export abstract class RoadPrimitive {
         } else {
             this.endPos = point;
         }
+        this.onRoadMoved();
     }
 
     move(start: IPoint2D, end: IPoint2D): void {
         this.startPos = start;
         this.endPos = end;
-        this.onRoadChanged();
+        this.onRoadMoved();
     }
 
-    onRoadChanged(): void {
-        let scene = this.mesh?.parent;
-        if (scene) this.refreshMesh();
+    onRoadMoved(): void {
+        this.startJoinPrimitive?.onRoadMoved();
+        this.endJoinPrimitive?.onRoadMoved();
+        this.refreshMesh();
+
+
         //this.replaceMesh(this.mesh?.parent ?? new THREE.Object3D(), this.buildMesh());
         // #rebuildMeshes(): void {
         //     if(!this.scene3DInstance || !this.minutePrimitive || !this.secondPrimitive) return;
@@ -109,6 +138,6 @@ export abstract class RoadPrimitive {
         //     this.joinPrimitive?.createMesh(this.scene3DInstance.scene);
         // }
 
-    }
 
+    }
 }

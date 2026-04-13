@@ -7,32 +7,34 @@ import type { IPoint2D } from '../../sim/IPoint';
 import { RoadConstants } from '../textures/RoadBand';
 import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 
+export interface CurvedRoadPrimitiveParams {
+    parent: THREE.Object3D;
+    transient: boolean;
+    start: IPoint2D;
+    mid: IPoint2D;
+    end: IPoint2D;
+    roadType: IRoadType;
+    cuts?: IRoadCuts;
+}
+
 // Represents a curved single road segment defined by start, mid, and end points.
 //  The curve is a circular arc passing through these three points.
 export class CurvedRoadPrimitive extends RoadPrimitive {
+
     mid: IPoint2D;
 
-    constructor(params: {
-        parent: THREE.Object3D;
-        transient: boolean;
-        direction: 'forward' | 'backward';
-        start: IPoint2D;
-        mid: IPoint2D;
-        end: IPoint2D;
-        roadType: IRoadType;
-        cuts?: IRoadCuts;
-    }) {
+    constructor(params: CurvedRoadPrimitiveParams) {
         super(params);
         this.mid = params.mid;
+        this.initializeMesh(params.parent);
     }
 
-    protected createMesh(_scene: THREE.Object3D): THREE.Mesh | null {
+    protected createMesh(): THREE.Mesh | null {
         const geometry = this.createGeometry();
         if (!geometry) return null;
         const material = RoadTextureBuilder.getRoadMaterial(this.roadType);
         return new THREE.Mesh(geometry, material);
     }
-
 
     private getArcData(): {
         center: IPoint2D;
@@ -149,3 +151,6 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
     }
 
 }
+
+
+

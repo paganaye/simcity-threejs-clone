@@ -159,28 +159,31 @@ export default class JunctionTest extends Page {
             computeMajorRoadSideCut(road1, road3, road1Cuts);
 
             new StraightRoadPrimitive({
+                parent: scene3D.scene,
                 transient: false,
                 start: road1.start,
                 end: { x: road1.start.x + Math.cos(road1.start.angle) * road1.length, z: road1.start.z - Math.sin(road1.start.angle) * road1.length },
                 roadType: road1.style,
                 cuts: road1Cuts,
-            }).createMesh(scene3D.scene);
+            });
 
             new StraightRoadPrimitive({
+                parent: scene3D.scene,
                 transient: false,
                 start: road2.start,
                 end: { x: road2.start.x + Math.cos(road2.start.angle) * road2.length, z: road2.start.z - Math.sin(road2.start.angle) * road2.length },
                 roadType: road2.style,
                 cuts: { endCut: road2Cuts },
-            }).createMesh(scene3D.scene);
+            });
 
             new StraightRoadPrimitive({
+                parent: scene3D.scene,
                 transient: false,
                 start: road3.start,
                 end: { x: road3.start.x + Math.cos(road3.start.angle) * road3.length, z: road3.start.z - Math.sin(road3.start.angle) * road3.length },
                 roadType: road3.style,
                 cuts: { endCut: road3Cuts },
-            }).createMesh(scene3D.scene);
+            });
 
 
             scene3D.isLoading.set(false);

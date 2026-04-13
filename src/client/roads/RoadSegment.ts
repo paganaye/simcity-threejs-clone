@@ -38,6 +38,8 @@ export class RoadSegment {
     // Stored end position when arc is active (world space).
     private _arcEndX?: number;
     private _arcEndZ?: number;
+    private _angle: number;
+    private _length: number;
     private junctionCuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts };
     forwardPrimitive!: RoadPrimitive;
     backwardPrimitive?: RoadPrimitive;
@@ -46,12 +48,17 @@ export class RoadSegment {
 
     constructor(
         private readonly sceneRoot: THREE.Object3D,
-        public startX: number,
-        public startZ: number,
-        public angle: number,
-        public length: number,
+        start: IPoint2D,
+        end: IPoint2D,
         initialRoad?: IRoad,
     ) {
+        this.startX = start.x;
+        this.startZ = start.z;
+        const dx = end.x - start.x;
+        const dz = end.z - start.z;
+        this._angle = Math.atan2(-dz, dx);
+        this._length = Math.hypot(dx, dz);
+
         if (initialRoad) {
             this.iRoad = {
                 forward: { ...initialRoad.forward },
@@ -62,17 +69,28 @@ export class RoadSegment {
         this.group.userData.selectableType = 'road';
         this.group.userData.roadSegment = this;
         this.group.userData.iRoad = this.iRoad;
-        this.group.position.set(startX, 0, startZ);
-        this.group.rotation.y = angle;
+        this.group.position.set(this.startX, 0, this.startZ);
+        this.group.rotation.y = this.angle;
         sceneRoot.add(this.group);
         this.rebuild();
     }
+
+    public startX: number;
+    public startZ: number;
 
     get start(): SegmentEndPoint {
         return { side: 'start', segment: this };
     }
     get end(): SegmentEndPoint {
         return { side: 'end', segment: this };
+    }
+
+    get angle(): number {
+        return this._angle;
+    }
+
+    get length(): number {
+        return this._length;
     }
 
     get endX(): number {
@@ -126,7 +144,6 @@ export class RoadSegment {
         const primitive = new CurvedRoadPrimitive({
             parent: this.group,
             transient: true,
-            direction: params.direction,
             start: params.start,
             mid: params.mid,
             end: params.end,
@@ -161,7 +178,6 @@ export class RoadSegment {
             this.forwardPrimitive = new CurvedRoadPrimitive({
                 parent: this.group,
                 transient: false,
-                direction: 'forward',
                 start,
                 mid,
                 end,
@@ -173,7 +189,6 @@ export class RoadSegment {
                 this.backwardPrimitive = new CurvedRoadPrimitive({
                     parent: this.group,
                     transient: false,
-                    direction: 'backward',
                     start: end,
                     mid,
                     end: start,
@@ -249,8 +264,8 @@ export class RoadSegment {
     #setStraightFromEndpoints(endX: number, endZ: number): void {
         const dx = endX - this.startX;
         const dz = endZ - this.startZ;
-        this.length = Math.hypot(dx, dz);
-        this.angle = Math.atan2(-dz, dx);
+        this._length = Math.hypot(dx, dz);
+        this._angle = Math.atan2(-dz, dx);
         this._arcMidX = undefined;
         this._arcMidZ = undefined;
         this._arcEndX = undefined;
@@ -261,7 +276,7 @@ export class RoadSegment {
     moveTo(startX: number, startZ: number, angle: number): void {
         this.startX = startX;
         this.startZ = startZ;
-        this.angle = angle;
+        this._angle = angle;
         this._arcMidX = undefined;
         this._arcMidZ = undefined;
         this._arcEndX = undefined;
@@ -277,7 +292,7 @@ export class RoadSegment {
         this._arcMidZ = undefined;
         this._arcEndX = undefined;
         this._arcEndZ = undefined;
-        this.length = newLength;
+        this._length = newLength;
         this.rebuild();
     }
 
@@ -412,8 +427,8 @@ export class RoadSegment {
         this.#addCurvedMeshes(p1x, p1z, startAngle, turnAngle, radius);
 
         // Keep stored state consistent with the arc geometry.
-        this.angle = startAngle;
-        this.length = arcAngle * radius;
+        this._angle = startAngle;
+        this._length = arcAngle * radius;
     }
 
     /** Add straight road meshes into this.group (local coords: start at origin, angle=0). */
@@ -441,15 +456,14 @@ export class RoadSegment {
         const fwdBaseEnd = { x: length, z: 0 };
         const fwdPoints = shiftByNormal(fwdBaseStart, fwdBaseEnd, fwdOffsetM);
 
-        let mesh = new StraightRoadPrimitive({
+        this.forwardPrimitive = new StraightRoadPrimitive({
             parent: this.group,
             transient: false,
             start: fwdPoints.start,
             end: fwdPoints.end,
             roadType: forward,
             cuts: cuts?.forwardCuts,
-        }).createMesh();
-        if (mesh) this.group.add(mesh!);
+        });
 
         if (backward && leftBands) {
             const bwdOffsetM = halfGapM + leftBands.totalWidthM / 2;
@@ -457,15 +471,15 @@ export class RoadSegment {
             const bwdBaseEnd = { x: 0, z: 0 };
             const bwdPoints = shiftByNormal(bwdBaseStart, bwdBaseEnd, bwdOffsetM);
 
-            let mesh = new StraightRoadPrimitive({
+            this.backwardPrimitive = new StraightRoadPrimitive({
                 parent: this.group,
                 transient: false,
                 start: bwdPoints.start,
                 end: bwdPoints.end,
                 roadType: backward,
                 cuts: cuts?.backwardCuts,
-            }).createMesh();
-            if (mesh) this.group.add(mesh!);
+            });
+
         }
     }
 
@@ -514,7 +528,6 @@ export class RoadSegment {
             return new CurvedRoadPrimitive({
                 parent: this.group,
                 transient: false,
-                direction: params.direction,
                 start: pointAt(0),
                 mid: pointAt(0.5),
                 end: pointAt(1),

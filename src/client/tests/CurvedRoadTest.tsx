@@ -31,11 +31,12 @@ export default class RoadTest extends Page {
             };
 
             new StraightRoadPrimitive({
+                parent: scene3D.scene,
                 transient: false,
                 start: { x: 0, y: 0, z: 20 },
                 end: { x: 10, z: 20 },
                 roadType: road1,
-            }).createMesh(scene3D.scene);
+            });
 
             const createArcPrimitive = (params: {
                 start: { x: number; z: number; angle: number };
@@ -67,8 +68,8 @@ export default class RoadTest extends Page {
                 };
 
                 return new CurvedRoadPrimitive({
+                    parent: scene3D.scene,
                     transient: false,
-                    direction: 'forward',
                     start: pointAt(0),
                     mid: pointAt(0.5),
                     end: pointAt(1),
@@ -82,7 +83,7 @@ export default class RoadTest extends Page {
                 sweepAngle: -Math.PI / 2,
                 roadType: road1,
             });
-            arc1?.createMesh(scene3D.scene);
+            
 
 
             const arc2 = createArcPrimitive({
@@ -91,8 +92,9 @@ export default class RoadTest extends Page {
                 sweepAngle: Math.PI / 2,
                 roadType: road1,
             });
-            arc2?.createMesh(scene3D.scene);
-
+            
+            void arc1;
+            void arc2;
             scene3D.isLoading.set(false);
             this.setCameraView(20, 40, 40, 20, 0, 20);
         };

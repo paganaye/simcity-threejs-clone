@@ -29,6 +29,7 @@ export default class RoadTest extends Page {
             };
 
             new StraightRoadPrimitive({
+                parent: scene3D.scene,
                 transient: false,
                 start: { x: 0, y: 0, z: 10 },
                 end: { x: 30, z: 10 },
@@ -69,7 +70,7 @@ export default class RoadTest extends Page {
                         }
                     ],
                 },
-            }).createMesh(scene3D.scene);
+            });
 
             // const road2: IRoadOptions = {
             //         roadColor: 'new',

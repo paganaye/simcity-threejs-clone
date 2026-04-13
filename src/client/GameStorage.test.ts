@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { GameStorage } from './GameStorage';
 import { RoadNetwork } from './roads/RoadNetwork';
+import { GameScene3D } from './GameScene3D';
 
 vi.mock('./RoadSegment', () => {
     class MockRoadSegment {
@@ -95,7 +96,7 @@ describe('GameStorage', () => {
     });
 
     it('saves registered roads and restores them on load', () => {
-        const roadStyle = {
+        const roadType = {
             forward: {
                 roadColor: 'old' as const,
                 lanes: 1,
@@ -124,7 +125,7 @@ describe('GameStorage', () => {
         //     length: 7,
         //     endX: 1 + Math.cos(Math.PI / 6) * 7,
         //     endZ: 2 - Math.sin(Math.PI / 6) * 7,
-        //     getIRoad: () => roadStyle,
+        //     getIRoad: () => roadType,
         //     dispose: vi.fn(),
         // };
         // const arcRoad: MockRoadRecord = {
@@ -136,7 +137,7 @@ describe('GameStorage', () => {
         //     endZ: 9,
         //     arcMidX: 10,
         //     arcMidZ: 4,
-        //     getIRoad: () => roadStyle,
+        //     getIRoad: () => roadType,
         //     dispose: vi.fn(),
         // };
         const strayRoad: MockRoadRecord = {
@@ -146,11 +147,11 @@ describe('GameStorage', () => {
             length: 5,
             endX: 8 + Math.cos(Math.PI / 4) * 5,
             endZ: 3 - Math.sin(Math.PI / 4) * 5,
-            getIRoad: () => roadStyle,
+            getIRoad: () => roadType,
             dispose: vi.fn(),
         };
-
-        const roadNetwork = new RoadNetwork();
+        let x = new GameScene3D({ x: 40, z: 40 });
+        const roadNetwork = new RoadNetwork(x);
         //roadNetwork.registerSegment(straightRoad as never);
         //roadNetwork.registerSegment(arcRoad as never);
         const sceneRoot = new THREE.Scene();

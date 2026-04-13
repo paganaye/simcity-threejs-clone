@@ -246,10 +246,11 @@ export class GameStorage {
         for (const road of save.roads) {
             const segment = this.scene.roadNetwork.registerSegment(new RoadSegment(
                 this.scene.scene,
-                road.startX,
-                road.startZ,
-                road.angle,
-                road.length,
+                { x: road.startX, z: road.startZ },
+                {
+                    x: road.startX + Math.cos(road.angle) * road.length,
+                    z: road.startZ - Math.sin(road.angle) * road.length,
+                },
                 road.iRoad,
             ));
             if (

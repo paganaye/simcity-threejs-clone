@@ -3,15 +3,13 @@ import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
 import type { IRoadType } from '../roads/IRoad';
-import { joinPrimitives } from '../roads/joinPrimitives';
-import type { RoadPrimitive } from '../roads/RoadPrimitive';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 
 export default class RoundDualWayTest extends Page {
     scene3DInstance: GameScene3D | undefined;
     private minutePrimitive?: StraightRoadPrimitive;
     private secondPrimitive?: StraightRoadPrimitive;
-    private joinPrimitive?: RoadPrimitive;
+    // private joinPrimitive?: RoadPrimitive;
 
     async run() {
         const mapSize = { x: 48, z: 48 };
@@ -22,7 +20,7 @@ export default class RoundDualWayTest extends Page {
         const handleUILoaded = async (): Promise<void> => {
             await scene3D.init(this);
 
-            const roadStyle: IRoadType = {
+            const roadType: IRoadType = {
                 roadColor: 'old',
                 lanes: 1,
                 rightKerb: 'line',
@@ -35,16 +33,18 @@ export default class RoundDualWayTest extends Page {
             const centerX = 24;
             const centerZ = 24;
             this.minutePrimitive = new StraightRoadPrimitive({
+                parent: scene3D.scene,
                 transient: false,
                 start: { x: centerX, z: centerZ },
                 end: { x: centerX + 30, z: centerZ },
-                roadType: roadStyle,
+                roadType: roadType,
             });
             this.secondPrimitive = new StraightRoadPrimitive({
+                parent: scene3D.scene,
                 transient: false,
                 start: { x: centerX, z: centerZ - 40 },
                 end: { x: centerX, z: centerZ },
-                roadType: roadStyle,
+                roadType: roadType,
             });
 
             this.#rebuildMeshes();
@@ -100,18 +100,19 @@ export default class RoundDualWayTest extends Page {
         if (!this.scene3DInstance || !this.minutePrimitive || !this.secondPrimitive) return;
 
 
-        this.joinPrimitive?.clearMesh();
-        const joinPrimitive = joinPrimitives(
-            this.minutePrimitive!,
-            'start',
-            this.secondPrimitive!,
-            'end',
-            { radius: 10 },
-        );
-        this.minutePrimitive.createMesh(this.scene3DInstance.scene);
-        this.secondPrimitive.createMesh(this.scene3DInstance.scene);
-        this.joinPrimitive = joinPrimitive ?? undefined;
-        this.joinPrimitive?.createMesh(this.scene3DInstance.scene);
+
+        // const joinPrimitive = joinPrimitives(
+        //     this.scene3DInstance.scene,
+        //     this.minutePrimitive!,
+        //     'start',
+        //     this.secondPrimitive!,
+        //     'end',
+        //     { radius: 10 },
+        // );
+        //this.minutePrimitive.createMesh();
+        //this.secondPrimitive.createMesh();
+        // this.joinPrimitive = joinPrimitive ?? undefined;
+        //this.joinPrimitive?.createMesh(this.scene3DInstance.scene);
     }
 
 

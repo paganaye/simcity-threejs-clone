@@ -198,8 +198,9 @@ export abstract class Page {
             this.statsFPS?.begin();
             this.statsMS?.begin();
             this.statsMB?.begin();
+            let deltaSeconds = clock.getDelta();
+            if (deltaSeconds > 0.16) deltaSeconds = 0.16; // for debugging, cap delta to avoid huge jumps
 
-            const deltaSeconds = clock.getDelta();
             const elapsedTime = clock.elapsedTime;
             this.loop(elapsedTime);
             this.cameraRotateGizmo?.update(deltaSeconds, this.camera);

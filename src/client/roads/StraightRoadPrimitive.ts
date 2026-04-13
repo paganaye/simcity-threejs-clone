@@ -7,16 +7,18 @@ import type { IPoint2D } from '../../sim/IPoint';
 import { RoadConstants } from '../textures/RoadBand';
 import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 
+export interface StraightRoadPrimitiveParams {
+    parent: THREE.Object3D;
+    transient: boolean;
+    start: IPoint2D;
+    end: IPoint2D;
+    roadType: IRoadType;
+    cuts?: IRoadCuts;
+}
 export class StraightRoadPrimitive extends RoadPrimitive {
-    constructor(params: {
-        parent: THREE.Object3D;
-        transient: boolean;
-        start: IPoint2D;
-        end: IPoint2D;
-        roadType: IRoadType;
-        cuts?: IRoadCuts;
-    }) {
+    constructor(params: StraightRoadPrimitiveParams) {
         super(params);
+        this.initializeMesh(params.parent);
     }
 
     private static clampExtremityValue(value: number, length: number): number {
@@ -234,7 +236,7 @@ export class StraightRoadPrimitive extends RoadPrimitive {
     }
 
 
-    override createMesh(): THREE.Mesh | null {
+    protected override createMesh(): THREE.Mesh | null {
         const textureProgressV = 0, lineLength = RoadConstants.yellowLineLength, offsetM = 0;
         const geometry = this.createGeometry({ textureProgressV, lineLength });
         if (!geometry) return null;

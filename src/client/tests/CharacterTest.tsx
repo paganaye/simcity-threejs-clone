@@ -10,6 +10,7 @@ export default class CharacterTest extends Page {
       count: 120,
       childRatio: 0.18
     });
+    this.camera.position.set(8, 8, 8);
   }
 
   override loop(elapsed: number): void {

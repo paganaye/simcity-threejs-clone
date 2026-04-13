@@ -78,7 +78,6 @@ export class GameScene3D {
     onRoadSegmentResized?: (segment: RoadSegment) => void;
     readonly roadNetwork = new RoadNetwork();
     private currentToolController?: ToolController;
-    private currentTool: ActiveTool = 'select';
     private readonly toolMap = new Map<ActiveTool, ToolController>();
     size: IFloorSize;
     isLoading = new Signal(true);
@@ -90,6 +89,7 @@ export class GameScene3D {
     population = new Signal(0);
     simTime = new Signal(0);
     cityName = new Signal('My City');
+
     lastSelectedRoad: IRoad = {
         forward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
         backward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
@@ -154,7 +154,6 @@ export class GameScene3D {
 
     setActiveTool(tool: ActiveTool): void {
         this.activeTool.set(tool);
-        this.currentTool = tool;
         this.currentToolController = this.toolMap.get(tool);
         this.currentToolController?.onToolChanged(tool);
     }
@@ -169,7 +168,7 @@ export class GameScene3D {
         this.toolMap.set('select', selectController);
 
         this.isCustomGizmoSelectableObject = (obj) =>
-            this.currentTool !== 'bulldoze' && obj.userData?.selectableType === 'road';
+            this.activeTool.get() !== 'bulldoze' && obj.userData?.selectableType === 'road';
 
         this.onRoadSegmentResized = (seg) => roadController.onRoadSegmentResized(seg);
 

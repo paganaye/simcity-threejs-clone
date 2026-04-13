@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import type { PrimitiveSide, RoadPrimitive } from './RoadPrimitive';
 import { joinPrimitives } from './joinPrimitives';
 import { RoadSegment } from './RoadSegment';
@@ -19,25 +20,31 @@ export class RoadNetwork {
         const sceneRoot = road.group.parent;
         if (!sceneRoot) return;
 
-        const selectedPrimitives = this.#getSegmentPrimitives(road);
-        if (!selectedPrimitives.length) return;
+        for (const other of this.segments) {
+            if (other === road) continue;
 
-        const sides: PrimitiveSide[] = ['start', 'end'];
-        for (const side of sides) {
-            const candidate = this.#findBestJoinCandidate(road, selectedPrimitives, side);
-            if (!candidate) continue;
+            const touchingSides = this.#findTouchingSides(road, other);
+            if (!touchingSides) continue;
 
-            const joined = joinPrimitives(
-                candidate.first,
-                candidate.firstSide,
-                candidate.second,
-                candidate.secondSide,
-                { radius: DEFAULT_JOIN_RADIUS },
-            );
-            if (!joined) continue;
+            if (road.forwardPrimitive && other.backwardPrimitive) {
+                this.#tryRenderJoin(
+                    sceneRoot,
+                    road.forwardPrimitive,
+                    this.#primitiveSideFromSegmentSide(touchingSides.selectedSide, 'forward'),
+                    other.backwardPrimitive,
+                    this.#primitiveSideFromSegmentSide(touchingSides.otherSide, 'backward'),
+                );
+            }
 
-            joined.createMesh(sceneRoot);
-            this.transientJoinPrimitives.push(joined);
+            if (road.backwardPrimitive && other.forwardPrimitive) {
+                this.#tryRenderJoin(
+                    sceneRoot,
+                    road.backwardPrimitive,
+                    this.#primitiveSideFromSegmentSide(touchingSides.selectedSide, 'backward'),
+                    other.forwardPrimitive,
+                    this.#primitiveSideFromSegmentSide(touchingSides.otherSide, 'forward'),
+                );
+            }
         }
     }
 
@@ -72,64 +79,72 @@ export class RoadNetwork {
         this.transientJoinPrimitives.length = 0;
     }
 
-    #getSegmentPrimitives(segment: RoadSegment): RoadPrimitive[] {
-        const result: RoadPrimitive[] = [];
-        if (segment.forwardPrimitive) result.push(segment.forwardPrimitive);
-        if (segment.backwardPrimitive) result.push(segment.backwardPrimitive);
-        return result;
+    #tryRenderJoin(
+        sceneRoot: THREE.Object3D,
+        first: RoadPrimitive,
+        firstSide: PrimitiveSide,
+        second: RoadPrimitive,
+        secondSide: PrimitiveSide,
+    ): void {
+        const joined = joinPrimitives(first, firstSide, second, secondSide, { radius: DEFAULT_JOIN_RADIUS });
+        if (!joined) return;
+        joined.createMesh(sceneRoot);
+        this.transientJoinPrimitives.push(joined);
     }
 
-    #findBestJoinCandidate(
-        selectedSegment: RoadSegment,
-        selectedPrimitives: RoadPrimitive[],
-        selectedSide: PrimitiveSide,
-    ):
-        | {
-            first: RoadPrimitive;
-            firstSide: PrimitiveSide;
-            second: RoadPrimitive;
-            secondSide: PrimitiveSide;
+    #primitiveSideFromSegmentSide(
+        segmentSide: PrimitiveSide,
+        direction: 'forward' | 'backward',
+    ): PrimitiveSide {
+        if (direction === 'forward') {
+            return segmentSide;
+        }
+        return segmentSide === 'start' ? 'end' : 'start';
+    }
+
+    #findTouchingSides(
+        selected: RoadSegment,
+        other: RoadSegment,
+    ): { selectedSide: PrimitiveSide; otherSide: PrimitiveSide } | null {
+        const endpointPairs: Array<{
+            selectedSide: PrimitiveSide;
+            otherSide: PrimitiveSide;
             distance: number;
-        }
-        | null {
-        let best:
-            | {
-                first: RoadPrimitive;
-                firstSide: PrimitiveSide;
-                second: RoadPrimitive;
-                secondSide: PrimitiveSide;
-                distance: number;
-            }
-            | null = null;
+        }> = [
+            {
+                selectedSide: 'start',
+                otherSide: 'start',
+                distance: Math.hypot(selected.startX - other.startX, selected.startZ - other.startZ),
+            },
+            {
+                selectedSide: 'start',
+                otherSide: 'end',
+                distance: Math.hypot(selected.startX - other.endX, selected.startZ - other.endZ),
+            },
+            {
+                selectedSide: 'end',
+                otherSide: 'start',
+                distance: Math.hypot(selected.endX - other.startX, selected.endZ - other.startZ),
+            },
+            {
+                selectedSide: 'end',
+                otherSide: 'end',
+                distance: Math.hypot(selected.endX - other.endX, selected.endZ - other.endZ),
+            },
+        ];
 
-        const sides: PrimitiveSide[] = ['start', 'end'];
-
-        for (const otherSegment of this.segments) {
-            if (otherSegment === selectedSegment) continue;
-            const otherPrimitives = this.#getSegmentPrimitives(otherSegment);
-            if (!otherPrimitives.length) continue;
-
-            for (const first of selectedPrimitives) {
-                const firstPoint = first.getPoint(selectedSide);
-                for (const second of otherPrimitives) {
-                    for (const secondSide of sides) {
-                        const secondPoint = second.getPoint(secondSide);
-                        const distance = Math.hypot(firstPoint.x - secondPoint.x, firstPoint.z - secondPoint.z);
-                        if (distance > JOIN_EPSILON) continue;
-                        if (!best || distance < best.distance) {
-                            best = {
-                                first,
-                                firstSide: selectedSide,
-                                second,
-                                secondSide,
-                                distance,
-                            };
-                        }
-                    }
-                }
+        let best: { selectedSide: PrimitiveSide; otherSide: PrimitiveSide; distance: number } | null = null;
+        for (const pair of endpointPairs) {
+            if (pair.distance > JOIN_EPSILON) continue;
+            if (!best || pair.distance < best.distance) {
+                best = pair;
             }
         }
 
-        return best;
+        if (!best) return null;
+        return {
+            selectedSide: best.selectedSide,
+            otherSide: best.otherSide,
+        };
     }
 }

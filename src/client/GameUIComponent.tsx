@@ -2,6 +2,7 @@ import { JSX, Show, onMount } from 'solid-js';
 import { Page } from './Page';
 import { SelectedObjectPanel } from './SelectedObjectPanel';
 import { GameScene3D } from './GameScene3D';
+import { ActiveTool } from './tools/ToolTypes';
 
 export interface IFloorPos {
     x: number;
@@ -56,7 +57,7 @@ export function GameUIComponent(props: {
             <div id="instructions">
                 Lorem, ipsum<br />
                 sit amet <br />
-                ea esse 
+                ea esse
             </div>
             <div id="version">v0.3.0</div>
         </div>
@@ -71,3 +72,14 @@ export function UIButton(propsBtn: { icon: string; selected: boolean; onclick: (
     </button>;
 }
 
+
+export function ToolButton(toolProps: { scene: GameScene3D, tool: ActiveTool; icon: string; }) {
+    return <UIButton
+        icon={toolProps.icon}
+        selected={toolProps.scene?.activeTool.get() === toolProps.tool}
+        onclick={() => {
+            toolProps.scene?.activeTool.set(toolProps.tool);
+            toolProps.scene?.setActiveTool(toolProps.tool);
+        }
+        } />;
+}    

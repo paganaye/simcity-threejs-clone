@@ -1,6 +1,6 @@
 import { render } from 'solid-js/web';
 import { GameScene3D } from '../GameScene3D';
-import { GameUIComponent } from '../GameUIComponent';
+import { GameUIComponent, ToolButton } from '../GameUIComponent';
 import { Page } from '../Page';
 import { RoadSegment } from '../roads/RoadSegment';
 import type { IRoad } from '../roads/IRoad';
@@ -13,7 +13,7 @@ export default class RoadTool extends Page {
         const mapSize = { x: 40, z: 40 };
         const scene3D = new GameScene3D(mapSize);
         this.scene3DInstance = scene3D;
-
+        scene3D.setActiveTool('road');
 
         const handleUILoaded = async (): Promise<void> => {
             await scene3D.init(this);
@@ -21,7 +21,7 @@ export default class RoadTool extends Page {
             const roadStyle: IRoad = {
                 forward: {
                     roadColor: 'old',
-                    lanes: 2,
+                    lanes: 1,
                     rightKerb: 'line',
                     rightSidewalk: 'grass',
                     laneWidth: 'normal',
@@ -30,7 +30,7 @@ export default class RoadTool extends Page {
                 },
                 backward: {
                     roadColor: 'old',
-                    lanes: 2,
+                    lanes: 1,
                     rightKerb: 'line',
                     rightSidewalk: 'grass',
                     laneWidth: 'normal',
@@ -58,8 +58,17 @@ export default class RoadTool extends Page {
         };
 
 
+
+
+
         render(() => <GameUIComponent page={this}
             scene3D={scene3D}
+            toolbar={<>
+                <ToolButton scene={scene3D} tool="select" icon="select-color" />
+                <ToolButton scene={scene3D} tool="bulldoze" icon="bulldozer-color" />
+                <ToolButton scene={scene3D} tool="road" icon="road-color" />
+            </>}
+
             mapSize={mapSize} onUILoaded={handleUILoaded} />, this.appContainer);
 
     }
@@ -75,5 +84,4 @@ export default class RoadTool extends Page {
 
 
 }
-
 

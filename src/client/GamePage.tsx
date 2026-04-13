@@ -3,10 +3,8 @@ import { createSignal } from 'solid-js';
 import { GameScene3D } from "./GameScene3D";
 import { Page } from './Page';
 import { Population } from './characters/Population';
-import { GameUIComponent, UIButton } from './GameUIComponent';
-import { Signal } from './Signal';
+import { GameUIComponent, ToolButton } from './GameUIComponent';
 import { placeRandomBuildings } from './placeRandomBuildings';
-import { ActiveTool } from './tools/ToolTypes';
 import { GameStorage } from './GameStorage';
 
 export default class GamePage extends Page {
@@ -45,7 +43,6 @@ export default class GamePage extends Page {
         this.scene3DInstance = scene3D;
         this.gameStorage = new GameStorage(scene3D, () => this.population3D);
 
-        const activeTool = new Signal<ActiveTool>('select');
         const [saveName, setSaveName] = createSignal(this.gameStorage.getDefaultName());
         const [saveNames, setSaveNames] = createSignal<string[]>([]);
         const [saveMessage, setSaveMessage] = createSignal('');
@@ -96,26 +93,16 @@ export default class GamePage extends Page {
         };
 
 
-        let ToolButton = (toolProps: { tool: ActiveTool; icon: string; }) => {
-            return <UIButton
-                icon={toolProps.icon}
-                selected={activeTool.get() === toolProps.tool}
-                onclick={() => {
-                    activeTool.set(toolProps.tool);
-                    this.scene3DInstance?.setActiveTool(toolProps.tool);
-                }} />;
-        }
-
 
         render(() => <GameUIComponent
             scene3D={scene3D}
             mapSize={mapSize}
             toolbar={<>
-                <ToolButton tool="select" icon="select-color" />
-                <ToolButton tool="bulldoze" icon="bulldozer-color" />
-                <ToolButton tool="residential" icon="house-color" />
-                <ToolButton tool="road" icon="road-color" />
-                <ToolButton tool="power-plant" icon="power-color" />
+                <ToolButton scene={scene3D} tool="select" icon="select-color" />
+                <ToolButton scene={scene3D} tool="bulldoze" icon="bulldozer-color" />
+                <ToolButton scene={scene3D} tool="residential" icon="house-color" />
+                <ToolButton scene={scene3D} tool="road" icon="road-color" />
+                <ToolButton scene={scene3D} tool="power-plant" icon="power-color" />
 
             </>}
             rightPanel={<>

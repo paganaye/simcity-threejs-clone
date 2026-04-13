@@ -1,8 +1,6 @@
 import * as THREE from "three";
 import { IPoint3D } from "../../sim/IPoint";
 
-export type ActiveTool = "select" | "bulldoze" | "residential" | "commercial" | "industrial" | "road" | "power-plant" | "power-line";
-
 export const simpleGeometries = {
     'Box': THREE.BoxGeometry,
     'Sphere': THREE.SphereGeometry,

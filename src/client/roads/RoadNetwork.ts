@@ -100,9 +100,9 @@ export class RoadNetwork {
         secondSide: PrimitiveSide,
     ): boolean {
         if (!first || !second) return false;
-        const joined = joinPrimitives(first, firstSide, second, secondSide, { radius: DEFAULT_JOIN_RADIUS });
+        const joined = joinPrimitives(sceneRoot, first, firstSide, second, secondSide, { radius: DEFAULT_JOIN_RADIUS });
         if (!joined) return false;
-        joined.createMesh(sceneRoot);
+        joined.refreshMesh();
         return true;
     }
 

@@ -3,15 +3,14 @@ import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
 import type { IRoadType } from '../roads/IRoad';
-import { joinPrimitives } from '../roads/joinPrimitives';
-import type { RoadPrimitive } from '../roads/RoadPrimitive';
+//import type { RoadPrimitive } from '../roads/RoadPrimitive';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 
 export default class RoundCornerTest extends Page {
     scene3DInstance: GameScene3D | undefined;
     private minutePrimitive?: StraightRoadPrimitive;
     private secondPrimitive?: StraightRoadPrimitive;
-    private joinPrimitive?: RoadPrimitive;
+    //    private joinPrimitive?: RoadPrimitive;
 
     async run() {
         const mapSize = { x: 48, z: 48 };
@@ -35,19 +34,23 @@ export default class RoundCornerTest extends Page {
             const centerX = 24;
             const centerZ = 24;
             this.minutePrimitive = new StraightRoadPrimitive({
+                parent: scene3D.scene,
                 transient: false,
                 start: { x: centerX, z: centerZ },
                 end: { x: centerX + 30, z: centerZ },
                 roadType: roadStyle,
             });
             this.secondPrimitive = new StraightRoadPrimitive({
+                parent: scene3D.scene,
                 transient: false,
                 start: { x: centerX, z: centerZ - 40 },
                 end: { x: centerX, z: centerZ },
                 roadType: roadStyle,
             });
 
-            this.#rebuildMeshes();
+            this.minutePrimitive.createMesh();
+            this.secondPrimitive.createMesh();
+
 
             console.log('[CurvedRoadTest] Two road primitives rotate like clock hands.');
 
@@ -73,7 +76,6 @@ export default class RoundCornerTest extends Page {
             const secondAngle = elapsed * 2.6;
             this.#rotatePrimitiveFromStart(this.minutePrimitive, centerX, centerZ, 30, minuteAngle);
             this.#rotatePrimitiveToEnd(this.secondPrimitive, centerX, centerZ, 40, secondAngle);
-            this.#rebuildMeshes();
         }
 
         this.scene3DInstance?.drawFrame(elapsed);
@@ -81,38 +83,19 @@ export default class RoundCornerTest extends Page {
 
 
     #rotatePrimitiveFromStart(primitive: StraightRoadPrimitive, centerX: number, centerZ: number, length: number, angle: number): void {
-        primitive.startPos = { x: centerX, z: centerZ };
-        primitive.endPos = {
+        primitive.move({ x: centerX, z: centerZ }, {
             x: centerX + Math.cos(angle) * length,
             z: centerZ - Math.sin(angle) * length,
-        };
+        });
     }
 
     #rotatePrimitiveToEnd(primitive: StraightRoadPrimitive, centerX: number, centerZ: number, length: number, angle: number): void {
-        primitive.endPos = { x: centerX, z: centerZ };
-        primitive.startPos = {
+        primitive.move({
             x: centerX - Math.cos(angle) * length,
             z: centerZ + Math.sin(angle) * length,
-        };
+        }, { x: centerX, z: centerZ });
     }
 
-    #rebuildMeshes(): void {
-        if (!this.scene3DInstance || !this.minutePrimitive || !this.secondPrimitive) return;
-
-
-        this.joinPrimitive?.clearMesh();
-        const joinPrimitive = joinPrimitives(
-            this.minutePrimitive,
-            'start',
-            this.secondPrimitive,
-            'end',
-            { radius: 10 },
-        );
-        this.minutePrimitive.createMesh(this.scene3DInstance.scene);
-        this.secondPrimitive.createMesh(this.scene3DInstance.scene);
-        this.joinPrimitive = joinPrimitive ?? undefined;
-        this.joinPrimitive?.createMesh(this.scene3DInstance.scene);
-    }
 
 
 

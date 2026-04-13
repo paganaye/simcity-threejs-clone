@@ -22,6 +22,7 @@ function directionAwayFromSide(primitive: RoadPrimitive, side: PrimitiveSide): I
 }
 
 export function joinPrimitives(
+    parent: THREE.Object3D,
     first: RoadPrimitive,
     firstSide: PrimitiveSide,
     second: RoadPrimitive,
@@ -122,6 +123,7 @@ export function joinPrimitives(
     second.movePoint(secondSide, start);
 
     return new CurvedRoadPrimitive({
+        parent,
         transient: true,
         direction: 'forward',
         start,

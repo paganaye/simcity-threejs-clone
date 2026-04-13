@@ -12,14 +12,8 @@ import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 export class CurvedRoadPrimitive extends RoadPrimitive {
     mid: IPoint2D;
 
-    private static createRoadMesh(primitive: CurvedRoadPrimitive): THREE.Mesh | null {
-        const geometry = primitive.createGeometry();
-        if (!geometry) return null;
-        const material = RoadTextureBuilder.getRoadMaterial(primitive.roadType);
-        return new THREE.Mesh(geometry, material);
-    }
-
     constructor(params: {
+        parent: THREE.Object3D;
         transient: boolean;
         direction: 'forward' | 'backward';
         start: IPoint2D;
@@ -31,6 +25,14 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         super(params);
         this.mid = params.mid;
     }
+
+    protected createMesh(_scene: THREE.Object3D): THREE.Mesh | null {
+        const geometry = this.createGeometry();
+        if (!geometry) return null;
+        const material = RoadTextureBuilder.getRoadMaterial(this.roadType);
+        return new THREE.Mesh(geometry, material);
+    }
+
 
     private getArcData(): {
         center: IPoint2D;
@@ -146,11 +148,4 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         return geometry;
     }
 
-    private buildMesh(): THREE.Mesh | null {
-        return CurvedRoadPrimitive.createRoadMesh(this);
-    }
-
-    override createMesh(scene: THREE.Object3D): void {
-        this.replaceMesh(scene, this.buildMesh());
-    }
 }

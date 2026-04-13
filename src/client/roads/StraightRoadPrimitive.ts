@@ -9,6 +9,7 @@ import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 
 export class StraightRoadPrimitive extends RoadPrimitive {
     constructor(params: {
+        parent: THREE.Object3D;
         transient: boolean;
         start: IPoint2D;
         end: IPoint2D;
@@ -232,7 +233,8 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         });
     }
 
-    private buildMesh(): THREE.Mesh | null {
+
+    override createMesh(): THREE.Mesh | null {
         const textureProgressV = 0, lineLength = RoadConstants.yellowLineLength, offsetM = 0;
         const geometry = this.createGeometry({ textureProgressV, lineLength });
         if (!geometry) return null;
@@ -259,9 +261,5 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         mesh.rotation.x = -Math.PI / 2;
         mesh.rotation.z = angle;
         return mesh;
-    }
-
-    override createMesh(scene: THREE.Object3D): void {
-        this.replaceMesh(scene, this.buildMesh());
     }
 }

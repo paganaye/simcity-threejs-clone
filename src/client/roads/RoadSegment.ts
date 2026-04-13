@@ -124,6 +124,7 @@ export class RoadSegment {
         cuts?: IRoadCuts;
     }): void {
         const primitive = new CurvedRoadPrimitive({
+            parent: this.group,
             transient: true,
             direction: params.direction,
             start: params.start,
@@ -158,6 +159,7 @@ export class RoadSegment {
         ) {
             const mid = { x: this._arcMidX, z: this._arcMidZ };
             this.forwardPrimitive = new CurvedRoadPrimitive({
+                parent: this.group,
                 transient: false,
                 direction: 'forward',
                 start,
@@ -169,6 +171,7 @@ export class RoadSegment {
 
             if (this.iRoad.backward) {
                 this.backwardPrimitive = new CurvedRoadPrimitive({
+                    parent: this.group,
                     transient: false,
                     direction: 'backward',
                     start: end,
@@ -182,6 +185,7 @@ export class RoadSegment {
         }
 
         this.forwardPrimitive = new StraightRoadPrimitive({
+            parent: this.group,
             transient: false,
             start,
             end,
@@ -191,6 +195,7 @@ export class RoadSegment {
 
         if (this.iRoad.backward) {
             this.backwardPrimitive = new StraightRoadPrimitive({
+                parent: this.group,
                 transient: false,
                 start: end,
                 end: start,
@@ -436,13 +441,15 @@ export class RoadSegment {
         const fwdBaseEnd = { x: length, z: 0 };
         const fwdPoints = shiftByNormal(fwdBaseStart, fwdBaseEnd, fwdOffsetM);
 
-        new StraightRoadPrimitive({
+        let mesh = new StraightRoadPrimitive({
+            parent: this.group,
             transient: false,
             start: fwdPoints.start,
             end: fwdPoints.end,
             roadType: forward,
             cuts: cuts?.forwardCuts,
-        }).createMesh(this.group);
+        }).createMesh();
+        if (mesh) this.group.add(mesh!);
 
         if (backward && leftBands) {
             const bwdOffsetM = halfGapM + leftBands.totalWidthM / 2;
@@ -450,13 +457,15 @@ export class RoadSegment {
             const bwdBaseEnd = { x: 0, z: 0 };
             const bwdPoints = shiftByNormal(bwdBaseStart, bwdBaseEnd, bwdOffsetM);
 
-            new StraightRoadPrimitive({
+            let mesh = new StraightRoadPrimitive({
+                parent: this.group,
                 transient: false,
                 start: bwdPoints.start,
                 end: bwdPoints.end,
                 roadType: backward,
                 cuts: cuts?.backwardCuts,
-            }).createMesh(this.group);
+            }).createMesh();
+            if (mesh) this.group.add(mesh!);
         }
     }
 
@@ -503,6 +512,7 @@ export class RoadSegment {
             };
 
             return new CurvedRoadPrimitive({
+                parent: this.group,
                 transient: false,
                 direction: params.direction,
                 start: pointAt(0),
@@ -533,7 +543,7 @@ export class RoadSegment {
                 roadType: forward,
                 direction: 'forward',
             });
-            fwdPrimitive?.createMesh(this.group);
+            fwdPrimitive?.refreshMesh();
         }
 
         if (backward && leftBands) {
@@ -566,7 +576,7 @@ export class RoadSegment {
                     roadType: backward,
                     direction: 'backward',
                 });
-                bwdPrimitive?.createMesh(this.group);
+                bwdPrimitive?.refreshMesh();
             }
         }
     }

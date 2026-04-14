@@ -176,12 +176,21 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
             return null;
         }
 
-        const firstLength = Math.hypot(first.primitive.endPos.x - first.primitive.startPos.x, first.primitive.endPos.z - first.primitive.startPos.z);
-        const secondLength = Math.hypot(second.primitive.endPos.x - second.primitive.startPos.x, second.primitive.endPos.z - second.primitive.startPos.z);
-        const maxTrim = Math.max(0, Math.min(firstLength, secondLength) - 0.001);
+        const firstOpposite = first.side === 'start' ? first.primitive.endPos : first.primitive.startPos;
+        const secondOpposite = second.side === 'start' ? second.primitive.endPos : second.primitive.startPos;
+        const firstMaxTrim = (firstOpposite.x - node.x) * d1.x + (firstOpposite.z - node.z) * d1.z;
+        const secondMaxTrim = (secondOpposite.x - node.x) * d2.x + (secondOpposite.z - node.z) * d2.z;
+        const maxTrim = Math.max(0, Math.min(firstMaxTrim, secondMaxTrim) - 0.001);
         const trim = THREE.MathUtils.clamp(requestedRadius / tanHalf, 0, maxTrim);
         if (!Number.isFinite(trim) || trim <= 1e-6) {
-            this.debug('computeJoinGeometry: trim invalid', { trim, maxTrim, requestedRadius, tanHalf });
+            this.debug('computeJoinGeometry: trim invalid', {
+                trim,
+                maxTrim,
+                firstMaxTrim,
+                secondMaxTrim,
+                requestedRadius,
+                tanHalf,
+            });
             return null;
         }
 

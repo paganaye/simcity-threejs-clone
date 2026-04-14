@@ -69,7 +69,7 @@ export default class RoundCornerTest extends Page {
         const centerZ = 24;
 
         if (this.minutePrimitive && this.secondPrimitive && this.scene3DInstance) {
-            elapsed /= 45; // convert to seconds
+            elapsed /= 2; // slow down a bit
             const minuteAngle = elapsed * 0.5;
             const secondAngle = elapsed * 2.6;
             this.#rotatePrimitiveFromStart(this.minutePrimitive, centerX, centerZ, 30, minuteAngle);

@@ -244,7 +244,7 @@ export class GameStorage {
 
         }
         for (const road of save.roads) {
-            const segment = this.scene.roadNetwork.registerSegment(new RoadSegment(
+            const segment = this.scene.roadNetwork.addSegment(new RoadSegment(
                 this.scene.scene,
                 { x: road.startX, z: road.startZ },
                 {

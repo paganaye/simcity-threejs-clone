@@ -4,7 +4,7 @@ import type { IRoadType } from './IRoad';
 import { IPoint2D } from '../../sim/Geometry';
 import { JoiningRoadPrimitive } from './JoiningRoadPrimitive';
 
-export type PrimitiveSide = 'start' | 'end';
+export type PrimitiveSide = 'entry' | 'exit';
 
 export type PrimitiveEndPoint = {
     side: PrimitiveSide;
@@ -20,6 +20,7 @@ export abstract class RoadPrimitive {
 
     startJoinPrimitive?: JoiningRoadPrimitive | null;
     endJoinPrimitive?: JoiningRoadPrimitive | null;
+    isDisposed: boolean = false;
 
     private mesh?: THREE.Mesh | null;
 
@@ -54,10 +55,24 @@ export abstract class RoadPrimitive {
     }
 
     dispose(): void {
+        if (this.isDisposed) return;
+        this.isDisposed = true;
+
+        const startJoin = this.startJoinPrimitive;
+        const endJoin = this.endJoinPrimitive;
+        this.startJoinPrimitive = null;
+        this.endJoinPrimitive = null;
+
+        startJoin?.dispose();
+        endJoin?.dispose();
         this.disposeMesh();
+        this.onDispose();
     }
 
-    refreshMesh() {
+    onDispose(): void {
+    }
+
+    recreateMesh() {
         let scene = this.mesh?.parent;
         this.disposeMesh();
         this.mesh = this.createMesh();
@@ -68,12 +83,14 @@ export abstract class RoadPrimitive {
     }
 
     get start(): PrimitiveEndPoint {
-        return { side: 'start', primitive: this };
+        return { side: 'entry', primitive: this };
     }
 
     get end(): PrimitiveEndPoint {
-        return { side: 'end', primitive: this };
+        return { side: 'exit', primitive: this };
     }
+
+
 
     abstract createGeometry(params?: {
         y?: number;
@@ -85,12 +102,12 @@ export abstract class RoadPrimitive {
     protected abstract createMesh(): THREE.Mesh | null;
 
     getPoint(side: PrimitiveSide) {
-        return side === 'start' ? this.startPos : this.endPos;
+        return side === 'entry' ? this.startPos : this.endPos;
     }
 
 
     movePoint(side: PrimitiveSide, point: IPoint2D): void {
-        if (side === 'start') {
+        if (side === 'entry') {
             this.startPos = point;
         } else {
             this.endPos = point;
@@ -107,7 +124,7 @@ export abstract class RoadPrimitive {
     onRoadMoved(): void {
         this.startJoinPrimitive?.onRoadMoved();
         this.endJoinPrimitive?.onRoadMoved();
-        this.refreshMesh();
+        this.recreateMesh();
 
 
         //this.replaceMesh(this.mesh?.parent ?? new THREE.Object3D(), this.buildMesh());

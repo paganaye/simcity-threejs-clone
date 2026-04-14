@@ -769,7 +769,7 @@ export class GameScene3D {
         this.roadGizmo.onRoadMoved = (x, z, angle, axis: RoadHandleAxis) => {
             let side: SegmentSide | undefined = (axis === 'start' ? 'start' : axis === 'end' ? 'end' : undefined);
             this.#getSelectedRoadSegment()?.moveTo({ x, z }, angle);
-            this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment(), side);
+            this.roadNetwork.checkJoiningArcs(this.#getSelectedRoadSegment(), side);
         };
         this.roadGizmo.onRoadResized = (newLength) => {
             const seg = this.#getSelectedRoadSegment();
@@ -789,7 +789,7 @@ export class GameScene3D {
         };
         this.roadGizmo.onDragEnded = () => {
             (this.toolMap.get('road') as RoadToolController | undefined)?.onRoadDragEnded();
-            this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
+            this.roadNetwork.checkJoiningArcs(this.#getSelectedRoadSegment());
         };
     }
 

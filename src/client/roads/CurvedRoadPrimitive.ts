@@ -3,7 +3,7 @@ import type { IRoadCuts } from './RoadCuts';
 import { RoadPrimitive } from './RoadPrimitive';
 import type { IRoadType } from './IRoad';
 import { getBands } from './RoadLayout';
-import type { IPoint2D } from '../../sim/Geometry';
+import { computeArcFromThreePoints, type IPoint2D } from '../../sim/Geometry';
 import { RoadConstants } from '../textures/RoadBand';
 import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 
@@ -39,61 +39,9 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         return new THREE.Mesh(geometry, material);
     }
 
-    private getArcData(): {
-        center: IPoint2D;
-        radius: number;
-        startAngle: number;
-        sweepAngle: number;
-    } | null {
-        const a = this.startPos;
-        const b = this.mid;
-        const c = this.endPos;
-        const d = 2 * (a.x * (b.z - c.z) + b.x * (c.z - a.z) + c.x * (a.z - b.z));
-        if (Math.abs(d) < 1e-6) return null;
-
-        const aa = a.x * a.x + a.z * a.z;
-        const bb = b.x * b.x + b.z * b.z;
-        const cc = c.x * c.x + c.z * c.z;
-
-        const ux = (aa * (b.z - c.z) + bb * (c.z - a.z) + cc * (a.z - b.z)) / d;
-        const uz = (aa * (c.x - b.x) + bb * (a.x - c.x) + cc * (b.x - a.x)) / d;
-        const radius = Math.hypot(a.x - ux, a.z - uz);
-        if (!Number.isFinite(radius) || radius <= 1e-6) return null;
-
-        const normalizeAngle = (value: number): number => {
-            let result = value;
-            while (result <= -Math.PI) result += Math.PI * 2;
-            while (result > Math.PI) result -= Math.PI * 2;
-            return result;
-        };
-        const positiveDelta = (from: number, to: number): number => {
-            let delta = to - from;
-            while (delta < 0) delta += Math.PI * 2;
-            while (delta >= Math.PI * 2) delta -= Math.PI * 2;
-            return delta;
-        };
-
-        const startAngle = Math.atan2(a.z - uz, a.x - ux);
-        const midAngle = Math.atan2(b.z - uz, b.x - ux);
-        const endAngle = Math.atan2(c.z - uz, c.x - ux);
-        const ccwSweep = positiveDelta(startAngle, endAngle);
-        const ccwToMid = positiveDelta(startAngle, midAngle);
-
-        const sweepAngle = ccwToMid <= ccwSweep
-            ? ccwSweep
-            : -positiveDelta(endAngle, startAngle);
-
-        return {
-            center: { x: ux, z: uz },
-            radius,
-            startAngle: normalizeAngle(startAngle),
-            sweepAngle: normalizeAngle(sweepAngle),
-        };
-    }
-
     override createGeometry(): THREE.BufferGeometry | null {
         const y = 0, textureProgressV = 0, lineLength = RoadConstants.yellowLineLength, segmentLength = 2;
-        const arc = this.getArcData();
+        const arc = computeArcFromThreePoints(this.startPos, this.mid, this.endPos);
         if (!arc || Math.abs(arc.sweepAngle) < 1e-6) return null;
 
         const bands = getBands(this.roadType);

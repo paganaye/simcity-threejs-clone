@@ -9,7 +9,8 @@ type ArcRelative = {
 
 export type IRoadGizmoProps = ICustomGizmoProps;
 
-const HANDLE_Y = 0.12;
+const HANDLE_SIZE = 0.6;
+const HANDLE_Y = 0.01;
 
 export class RoadGizmo extends CustomGizmo {
     getSelectedRoadHandle?: () => IRoadHandle | undefined;
@@ -341,21 +342,22 @@ export class RoadGizmo extends CustomGizmo {
         });
     }
 
+
     #build() {
         this.root.visible = false;
 
-        const startHandle = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.6), this.axisMaterials.start);
+        const startHandle = new THREE.Mesh(new THREE.BoxGeometry(HANDLE_SIZE, HANDLE_Y, HANDLE_SIZE), this.axisMaterials.start);
         startHandle.name = 'startHandle';
         startHandle.userData.axis = 'start';
         startHandle.renderOrder = 1002;
 
-        const endHandle = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.6), this.axisMaterials.end);
+        const endHandle = new THREE.Mesh(new THREE.BoxGeometry(HANDLE_SIZE, HANDLE_Y, HANDLE_SIZE), this.axisMaterials.end);
         endHandle.name = 'endHandle';
         endHandle.userData.axis = 'end';
         endHandle.renderOrder = 1002;
 
         // Diamond (lozenge) for arc control — a square box rotated 45° on Y.
-        const arcHandle = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.6), this.axisMaterials.arc);
+        const arcHandle = new THREE.Mesh(new THREE.BoxGeometry(HANDLE_SIZE, HANDLE_Y, HANDLE_SIZE), this.axisMaterials.arc);
         arcHandle.rotation.y = Math.PI / 4;
         arcHandle.name = 'arcHandle';
         arcHandle.userData.axis = 'arc';

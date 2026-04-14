@@ -2,7 +2,7 @@
 import { appConstants } from '../../AppConstants.jsx';
 import { IPoint2D } from '../../sim/Geometry.js';
 import { ICarInfo } from '../../sim/SimCars.js';
-import { calculateArc, calculateTurnArc, DEG_120, DEG_180, DEG_270, DEG_60, DEG_90, getAngle, getCornerAngle, getDistance, lerp, lerpPoint } from '../../sim/utils.js';
+import { calculateArc, calculateTurnArc, DEG_120, DEG_180, DEG_270, DEG_60, DEG_90, getAngle, getCornerAngle, distance2D, lerp, lerpPoint } from '../../sim/Geometry.js';
 import { Car3D } from './Car3D.js';
 
 
@@ -213,7 +213,7 @@ export class StraightSegment extends CarSegment {
     ) {
         super()
         this.angle = getAngle(origin, target);
-        this.segmentLength = getDistance(origin, target);
+        this.segmentLength = distance2D(origin, target);
 
         let dz = (target.x - origin.x) * appConstants.LANE_OFFSET;
         let dx = (origin.z - target.z) * appConstants.LANE_OFFSET;

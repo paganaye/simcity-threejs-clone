@@ -14,16 +14,16 @@ export class RoadNetwork {
 
     *endPoints(): Iterable<PrimitiveEndPoint> {
         for (let segment of this.segments) {
-            yield { primitive: segment.forwardPrimitive, side: 'start' };
-            yield { primitive: segment.forwardPrimitive, side: 'end' };
+            yield { primitive: segment.forwardPrimitive, side: 'entry' };
+            yield { primitive: segment.forwardPrimitive, side: 'exit' };
             if (segment.backwardPrimitive) {
-                yield { primitive: segment.backwardPrimitive, side: 'start' };
-                yield { primitive: segment.backwardPrimitive, side: 'end' };
+                yield { primitive: segment.backwardPrimitive, side: 'entry' };
+                yield { primitive: segment.backwardPrimitive, side: 'exit' };
             }
         }
     }
 
-    refreshTransientJoinArcs(road: RoadSegment | undefined, _side?: SegmentSide | undefined): void {
+    checkJoiningArcs(road: RoadSegment | undefined, _side?: SegmentSide | undefined): void {
         if (!road) return;
         const sceneRoot = this.scene.scene;
 
@@ -32,42 +32,26 @@ export class RoadNetwork {
 
             const touchingSegments = this.#findTouchingSegments(road, other);
             if (!touchingSegments) continue;
-            if (touchingSegments.selectedSide.side == 'start' && touchingSegments.otherSide.side == 'start') {
+
+            if (touchingSegments.selectedSide.side == 'start' && touchingSegments.otherSide.side == 'end') {
+                // this.tryJoiningPrimitives(
+                //     sceneRoot,
+                //     { primitive: road.forwardPrimitive!, side: 'start' },
+                //     { primitive: other.backwardPrimitive!, side: 'end' }
+                // );
                 this.tryJoiningPrimitives(
                     sceneRoot,
-                    { primitive: road.forwardPrimitive!, side: 'start' },
-                    { primitive: other.backwardPrimitive!, side: 'end' }
+                    { primitive: road.backwardPrimitive!, side: 'entry' },
+                    { primitive: other.forwardPrimitive!, side: 'exit' }
                 );
-                this.tryJoiningPrimitives(
-                    sceneRoot,
-                    { primitive: road.backwardPrimitive!, side: 'start' },
-                    { primitive: other.forwardPrimitive!, side: 'end' }
-                );
+            } else {
+
             }
-            //debugger;
-            // if (road.forwardPrimitive && other.backwardPrimitive) {
-            //     this.#tryRenderJoin(
-            //         sceneRoot,
 
-
-            //         other.backwardPrimitive,
-            //         this.#primitiveSideFromSegmentSide(touchingSides.otherSide, 'backward'),
-            //     );
-            // }
-
-            // if (road.backwardPrimitive && other.forwardPrimitive) {
-            //     this.#tryRenderJoin(
-            //         sceneRoot,
-            //         road.backwardPrimitive,
-            //         this.#primitiveSideFromSegmentSide(touchingSides.selectedSide, 'backward'),
-            //         other.forwardPrimitive,
-            //         this.#primitiveSideFromSegmentSide(touchingSides.otherSide, 'forward'),
-            //     );
-            // }
         }
     }
 
-    registerSegment(segment: RoadSegment): RoadSegment {
+    addSegment(segment: RoadSegment): RoadSegment {
         if (!this.segments.includes(segment)) {
             this.segments.push(segment);
         }
@@ -89,7 +73,7 @@ export class RoadNetwork {
         this.segments.length = 0;
     }
 
-    tryJoiningPrimitives(
+     tryJoiningPrimitives(
         sceneRoot: THREE.Object3D,
         first: PrimitiveEndPoint | undefined | null,
         second: PrimitiveEndPoint | undefined | null,
@@ -97,7 +81,7 @@ export class RoadNetwork {
         if (!first || !second) return false;
         const joined = JoiningRoadPrimitive.joinPrimitives(sceneRoot, first, second, second.primitive.roadType, { radius: DEFAULT_JOIN_RADIUS });
         if (!joined) return false;
-        joined.refreshMesh();
+        //joined.recreateMesh();
         return true;
     }
 

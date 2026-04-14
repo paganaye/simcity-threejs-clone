@@ -6,19 +6,19 @@ import type { IDualRoadType, IRoadType } from '../roads/IRoad';
 import { RoadSegment } from '../roads/RoadSegment';
 
 export default class RoundDualWayTest extends Page {
-    scene3DInstance: GameScene3D | undefined;
+    gameScene3D: GameScene3D | undefined;
     private minuteSegment?: RoadSegment;
     private secondSegment?: RoadSegment;
     //    private joinSegment?: RoadSegment;
 
     async run() {
         const mapSize = { x: 48, z: 48 };
-        const scene3D = new GameScene3D(mapSize);
-        this.scene3DInstance = scene3D;
+        const gameScene3D = new GameScene3D(mapSize);
+        this.gameScene3D = gameScene3D;
 
 
         const handleUILoaded = async (): Promise<void> => {
-            await scene3D.init(this);
+            await gameScene3D.init(this);
 
             // 2-way road configuration (forward and backward)
             const roadType: IRoadType = {
@@ -38,28 +38,31 @@ export default class RoundDualWayTest extends Page {
 
             const centerX = 24;
             const centerZ = 24;
+
             this.minuteSegment = new RoadSegment(
-                scene3D.scene,
+                gameScene3D,
                 { x: centerX, z: centerZ },
                 { x: centerX + 30, z: centerZ },
                 dualWayRoad,
             );
+
             this.secondSegment = new RoadSegment(
-                scene3D.scene,
+                gameScene3D,
                 { x: centerX, z: centerZ - 40 },
                 { x: centerX, z: centerZ },
                 dualWayRoad,
             );
 
+            this.gameScene3D?.roadNetwork.checkJoiningArcs(this.minuteSegment);
             console.log('[RoundDualWayTest] Two road segments (2-way) rotate like clock hands.');
 
-            scene3D.isLoading.set(false);
+            gameScene3D.isLoading.set(false);
             this.setCameraView(24, 44, 44, centerX, 0, centerZ);
         };
 
 
         render(() => <GameUIComponent page={this}
-            scene3D={scene3D}
+            scene3D={gameScene3D}
             mapSize={mapSize} onUILoaded={handleUILoaded} />, this.appContainer);
 
     }
@@ -69,15 +72,16 @@ export default class RoundDualWayTest extends Page {
         const centerX = 24;
         const centerZ = 24;
 
-        if (this.minuteSegment && this.secondSegment && this.scene3DInstance) {
+        if (this.minuteSegment && this.secondSegment && this.gameScene3D) {
             elapsed /= 2; // slow down a bit
             const minuteAngle = elapsed * 0.5;
             const secondAngle = elapsed * 2.6;
             this.#rotateSegmentFromStart(this.minuteSegment, centerX, centerZ, minuteAngle);
             this.#rotateSegmentToEnd(this.secondSegment, centerX, centerZ, secondAngle);
+            this.gameScene3D?.roadNetwork.checkJoiningArcs(this.minuteSegment);
         }
 
-        this.scene3DInstance?.drawFrame(elapsed);
+        this.gameScene3D?.drawFrame(elapsed);
     }
 
 

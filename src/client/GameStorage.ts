@@ -1,7 +1,7 @@
 import { GameScene3D } from "./GameScene3D";
 import type { ModelName } from "./AssetManager";
 import type { Population } from "./characters/Population";
-import type { IRoad } from "./roads/IRoad";
+import type { IDualRoadType } from "./roads/IRoad";
 import { RoadSegment } from "./roads/RoadSegment";
 import * as THREE from 'three';
 
@@ -25,7 +25,7 @@ export interface ISerializedRoad {
     startZ: number;
     angle: number;
     length: number;
-    iRoad?: IRoad;
+    iRoad?: IDualRoadType;
     endX?: number;
     endZ?: number;
     arcMidX?: number;

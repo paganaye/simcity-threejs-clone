@@ -3,7 +3,7 @@ import type * as THREE from "three";
 import type { ISelectedInstance } from "./editor/ObjectGizmo";
 import type { Character, CharacterSelectionInfo } from "./characters/Character";
 import type { RoadSegment } from "./roads/RoadSegment";
-import type { IRoad, IRoadType } from "./roads/IRoad";
+import type { IDualRoadType, IRoadType } from "./roads/IRoad";
 import { KerbType, SideWalkType } from "./textures/RoadBand";
 
 function RoadOptionsInput(props: {
@@ -92,17 +92,17 @@ export function SelectedObjectPanel(props: {
     const shoulderOptions: KerbType[] = ["parallelParking", "perpendicularParking", "emergencyLane", "line", "none"];
     const sidewalkOptions: SideWalkType[] = ["small", "large", "grass", "none"];
     const laneWidthOptions = ["narrow", "normal", "wide"] as const;
-    const [roadDraft, setRoadDraft] = createSignal<IRoad>({
+    const [roadDraft, setRoadDraft] = createSignal<IDualRoadType>({
         forward: { roadColor: 'old', lanes: 1, rightKerb: "none", rightSidewalk: "small", laneWidth: "normal", leftKerb: "none", leftSidewalk: "none" },
         backward: { roadColor: 'old', lanes: 1, rightKerb: "none", rightSidewalk: "small", laneWidth: "normal", leftKerb: "none", leftSidewalk: "none" },
         gapSize: 0,
     });
-    const oneWayDraft = (): IRoad | undefined => {
+    const oneWayDraft = (): IDualRoadType | undefined => {
         const draft = roadDraft();
         return draft.backward ? undefined : draft;
     };
 
-    const twoWayDraft = (): IRoad | undefined => {
+    const twoWayDraft = (): IDualRoadType | undefined => {
         const draft = roadDraft();
         return draft.backward ? draft : undefined;
     };
@@ -118,7 +118,7 @@ export function SelectedObjectPanel(props: {
         });
     });
 
-    const commitRoadDraft = (next: IRoad): void => {
+    const commitRoadDraft = (next: IDualRoadType): void => {
         setRoadDraft(next);
         const road = selectedRoad();
         if (!road) return;

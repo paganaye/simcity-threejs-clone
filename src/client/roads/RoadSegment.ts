@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
-import type { IRoad, IRoadType } from './IRoad';
+import type { IDualRoadType, IRoadType } from './IRoad';
 import { RoadPrimitive } from './RoadPrimitive';
 import { getBands } from './RoadLayout';
 import { StraightRoadPrimitive } from './StraightRoadPrimitive';
@@ -26,7 +26,7 @@ export class RoadSegment {
     private static nextId = 1;
     readonly id = RoadSegment.nextId++;
     readonly group = new THREE.Group();
-    private iRoad: IRoad = {
+    private dualRoadType: IDualRoadType = {
         forward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
         backward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
         gapSize: 0
@@ -50,7 +50,7 @@ export class RoadSegment {
         private readonly sceneRoot: THREE.Object3D,
         start: IPoint2D,
         end: IPoint2D,
-        initialRoad?: IRoad,
+        dualRoadType?: IDualRoadType,
     ) {
         this.startX = start.x;
         this.startZ = start.z;
@@ -59,16 +59,16 @@ export class RoadSegment {
         this._angle = Math.atan2(-dz, dx);
         this._length = Math.hypot(dx, dz);
 
-        if (initialRoad) {
-            this.iRoad = {
-                forward: { ...initialRoad.forward },
-                backward: initialRoad.backward ? { ...initialRoad.backward } : undefined,
-                gapSize: Number.isFinite(initialRoad.gapSize) ? initialRoad.gapSize : 0
+        if (dualRoadType) {
+            this.dualRoadType = {
+                forward: { ...dualRoadType.forward },
+                backward: dualRoadType.backward ? { ...dualRoadType.backward } : undefined,
+                gapSize: Number.isFinite(dualRoadType.gapSize) ? dualRoadType.gapSize : 0
             };
         }
         this.group.userData.selectableType = 'road';
         this.group.userData.roadSegment = this;
-        this.group.userData.iRoad = this.iRoad;
+        this.group.userData.iRoad = this.dualRoadType;
         this.group.position.set(this.startX, 0, this.startZ);
         this.group.rotation.y = this.angle;
         sceneRoot.add(this.group);
@@ -104,17 +104,17 @@ export class RoadSegment {
     get arcMidX(): number | undefined { return this._arcMidX; }
     get arcMidZ(): number | undefined { return this._arcMidZ; }
 
-    getIRoad(): IRoad {
-        return this.iRoad;
+    getIRoad(): IDualRoadType {
+        return this.dualRoadType;
     }
 
-    setIRoad(nextRoad: IRoad): void {
-        this.iRoad = {
+    setIRoad(nextRoad: IDualRoadType): void {
+        this.dualRoadType = {
             forward: { ...nextRoad.forward },
             backward: nextRoad.backward ? { ...nextRoad.backward } : undefined,
             gapSize: Number.isFinite(nextRoad.gapSize) ? nextRoad.gapSize : 0,
         };
-        this.group.userData.iRoad = this.iRoad;
+        this.group.userData.iRoad = this.dualRoadType;
         this.rebuild();
     }
 
@@ -159,6 +159,9 @@ export class RoadSegment {
     }
 
     private compilePrimitives(): void {
+        if (this.forwardPrimitive) this.forwardPrimitive.dispose();
+        if (this.backwardPrimitive) this.backwardPrimitive.dispose();
+
         this.forwardPrimitive = undefined as any;
         this.backwardPrimitive = undefined as any;
 
@@ -181,18 +184,18 @@ export class RoadSegment {
                 start,
                 mid,
                 end,
-                roadType: this.iRoad.forward,
+                roadType: this.dualRoadType.forward,
                 cuts: forwardCuts,
             });
 
-            if (this.iRoad.backward) {
+            if (this.dualRoadType.backward) {
                 this.backwardPrimitive = new CurvedRoadPrimitive({
                     parent: this.group,
                     transient: false,
                     start: end,
                     mid,
                     end: start,
-                    roadType: this.iRoad.backward,
+                    roadType: this.dualRoadType.backward,
                     cuts: backwardCuts,
                 });
             }
@@ -204,17 +207,17 @@ export class RoadSegment {
             transient: false,
             start,
             end,
-            roadType: this.iRoad.forward,
+            roadType: this.dualRoadType.forward,
             cuts: forwardCuts,
         });
 
-        if (this.iRoad.backward) {
+        if (this.dualRoadType.backward) {
             this.backwardPrimitive = new StraightRoadPrimitive({
                 parent: this.group,
                 transient: false,
                 start: end,
                 end: start,
-                roadType: this.iRoad.backward,
+                roadType: this.dualRoadType.backward,
                 cuts: backwardCuts,
             });
         }
@@ -433,7 +436,7 @@ export class RoadSegment {
 
     /** Add straight road meshes into this.group (local coords: start at origin, angle=0). */
     #addStraightMeshes(length: number, cuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts }): void {
-        const { forward, backward, gapSize } = this.iRoad;
+        const { forward, backward, gapSize } = this.dualRoadType;
         const safeGap = Number.isFinite(gapSize) ? gapSize : 0;
         const rightBands = getBands(forward);
         const leftBands = backward ? getBands(backward) : null;
@@ -488,7 +491,7 @@ export class RoadSegment {
      * Coordinates are world-space — group must be at identity when calling this.
      */
     #addCurvedMeshes(startX: number, startZ: number, startAngle: number, turnAngle: number, radius: number): void {
-        const { forward, backward, gapSize } = this.iRoad;
+        const { forward, backward, gapSize } = this.dualRoadType;
         const safeGap = backward && Number.isFinite(gapSize) ? gapSize : 0;
         const halfGapM = backward ? safeGap / 2 : 0;
         const rightBands = getBands(forward);

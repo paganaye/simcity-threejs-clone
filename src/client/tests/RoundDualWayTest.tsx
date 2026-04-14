@@ -2,7 +2,7 @@ import { render } from 'solid-js/web';
 import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
-import type { IRoad } from '../roads/IRoad';
+import type { IDualRoadType, IRoadType } from '../roads/IRoad';
 import { RoadSegment } from '../roads/RoadSegment';
 
 export default class RoundDualWayTest extends Page {
@@ -21,25 +21,18 @@ export default class RoundDualWayTest extends Page {
             await scene3D.init(this);
 
             // 2-way road configuration (forward and backward)
-            const dualWayRoad: IRoad = {
-                forward: {
-                    roadColor: 'old',
-                    lanes: 1,
-                    rightKerb: 'line',
-                    rightSidewalk: 'grass',
-                    laneWidth: 'normal',
-                    leftKerb: 'line',
-                    leftSidewalk: 'small',
-                },
-                backward: {
-                    roadColor: 'old',
-                    lanes: 1,
-                    rightKerb: 'line',
-                    rightSidewalk: 'grass',
-                    laneWidth: 'normal',
-                    leftKerb: 'line',
-                    leftSidewalk: 'small',
-                },
+            const roadType: IRoadType = {
+                roadColor: 'old',
+                lanes: 2,
+                rightKerb: 'line',
+                rightSidewalk: 'grass',
+                laneWidth: 'normal',
+                leftKerb: 'line',
+                leftSidewalk: 'small',
+            };
+            const dualWayRoad: IDualRoadType = {
+                forward: roadType,
+                backward: roadType,
                 gapSize: 1,
             };
 

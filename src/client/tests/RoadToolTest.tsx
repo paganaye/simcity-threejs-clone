@@ -3,7 +3,7 @@ import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent, ToolButton } from '../GameUIComponent';
 import { Page } from '../Page';
 import { RoadSegment } from '../roads/RoadSegment';
-import type { IRoad } from '../roads/IRoad';
+import type { IDualRoadType } from '../roads/IRoad';
 
 export default class RoadTool extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -18,7 +18,7 @@ export default class RoadTool extends Page {
         const handleUILoaded = async (): Promise<void> => {
             await scene3D.init(this);
 
-            const roadType: IRoad = {
+            const roadType: IDualRoadType = {
                 forward: {
                     roadColor: 'old',
                     lanes: 1,

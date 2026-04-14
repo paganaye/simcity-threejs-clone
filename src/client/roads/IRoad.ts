@@ -10,7 +10,7 @@ export interface IRoadType {
     leftSidewalk: SideWalkType;
 }
 
-export type IRoad = {
+export type IDualRoadType = {
     forward: IRoadType;
     backward?: IRoadType;
     gapSize: number; // metre
@@ -32,7 +32,7 @@ export type IRoadShape =
 export interface IRoadInstruction {
     id: string;
     shape: IRoadShape;
-    road: IRoad;
+    road: IDualRoadType;
 }
 
 export interface IRoadNetwork {

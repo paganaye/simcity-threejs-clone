@@ -1,5 +1,5 @@
 import { Lane, RoadBand, BandType, roadBands, laneSeparators } from '../textures/RoadBand';
-import type { IRoad, IRoadType } from './IRoad';
+import type { IDualRoadType, IRoadType } from './IRoad';
 
 
 
@@ -12,7 +12,7 @@ export interface IRoadBands {
 }
 
 export interface IJunctionArm {
-    road: IRoad;
+    road: IDualRoadType;
     angleRad: number;
     crossSection: IRoadBands;
 }

@@ -18,7 +18,7 @@ import { BulldozerToolController } from './tools/BulldozerToolController';
 import { SelectToolController } from './tools/SelectToolController';
 import { ActiveTool } from './tools/ToolTypes';
 import { Signal } from './Signal';
-import type { IRoad } from './roads/IRoad';
+import type { IDualRoadType } from './roads/IRoad';
 import { RoadNetwork } from './roads/RoadNetwork';
 
 export type ILeftPointerGesture = {
@@ -90,7 +90,7 @@ export class GameScene3D {
     simTime = new Signal(0);
     cityName = new Signal('My City');
 
-    lastSelectedRoad: IRoad = {
+    lastSelectedRoad: IDualRoadType = {
         forward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
         backward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
         gapSize: 0,

@@ -14,6 +14,7 @@ export interface CurvedRoadPrimitiveParams {
     mid: IPoint2D;
     end: IPoint2D;
     roadType: IRoadType;
+    lateralOffsetM?: number;
     cuts?: IRoadCuts;
 }
 
@@ -22,10 +23,12 @@ export interface CurvedRoadPrimitiveParams {
 export class CurvedRoadPrimitive extends RoadPrimitive {
 
     mid: IPoint2D;
+    lateralOffsetM: number;
 
     constructor(params: CurvedRoadPrimitiveParams) {
         super(params);
         this.mid = params.mid;
+        this.lateralOffsetM = params.lateralOffsetM ?? 0;
         this.initializeMesh(params.parent);
     }
 
@@ -98,12 +101,18 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         if (widthM <= 0) return null;
 
         const halfWidth = widthM / 2;
+        // Positive lateral offset means "right side" of the road direction.
+        // For CCW arcs, right side is outward (larger radius).
+        // For CW arcs, right side is inward (smaller radius).
+        const radiusShift = arc.sweepAngle > 0 ? this.lateralOffsetM : -this.lateralOffsetM;
+        const centerRadius = arc.radius + radiusShift;
         const minInnerRadius = 0.2;
-        const innerRadius = Math.max(minInnerRadius, arc.radius - halfWidth);
-        const outerRadius = arc.radius + halfWidth;
+        const safeCenterRadius = Math.max(minInnerRadius + halfWidth, centerRadius);
+        const innerRadius = Math.max(minInnerRadius, safeCenterRadius - halfWidth);
+        const outerRadius = safeCenterRadius + halfWidth;
 
         const safeSegmentLength = Math.max(0.1, segmentLength);
-        const arcLength = arc.radius * Math.abs(arc.sweepAngle);
+        const arcLength = safeCenterRadius * Math.abs(arc.sweepAngle);
         const subdivisionCount = Math.max(2, Math.ceil(arcLength / safeSegmentLength));
 
         const vertices: number[] = [];

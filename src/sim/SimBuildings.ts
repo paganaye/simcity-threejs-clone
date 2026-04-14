@@ -22,7 +22,7 @@ export class SimBuildings {
 
     }
 
-  
+
     getBuildingChanged(): IBuildingChangedWithId[] {
         let result = new Array(...this.buildingChanged.values())
         return result;
@@ -35,7 +35,9 @@ export class SimBuildings {
 }
 
 export class SimBuilding {
-    constructor(readonly city: Sim, readonly id: number, readonly model: ModelId) { }
+    constructor(readonly city: Sim, readonly id: number, readonly model: ModelId) {
+
+    }
 
     getBuildingChange() {
         return this.city.simBuildings.buildingChanged.get(this);

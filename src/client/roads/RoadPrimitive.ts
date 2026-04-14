@@ -41,7 +41,7 @@ export abstract class RoadPrimitive {
     protected initializeMesh(parent: THREE.Object3D): void {
         this.mesh = this.createMesh();
         if (this.mesh) {
-            this.mesh.userData = this;
+            this.mesh.userData.owner = this;
             parent.add(this.mesh);
         }
     }
@@ -62,15 +62,8 @@ export abstract class RoadPrimitive {
         this.disposeMesh();
         this.mesh = this.createMesh();
         if (this.mesh) {
-            this.mesh.userData = this;
+            this.mesh.userData.owner = this;
             if (scene) scene.add(this.mesh);
-        }
-    }
-
-    setMeshUserData(data: Record<string, unknown>): void {
-        Object.assign(this as unknown as Record<string, unknown>, data);
-        if (this.mesh) {
-            this.mesh.userData = this;
         }
     }
 
@@ -88,21 +81,6 @@ export abstract class RoadPrimitive {
         lineLength?: number;
         segmentLength?: number;
     }): THREE.BufferGeometry | null;
-
-    // private clearMesh(): void {
-    //     if (!this.mesh) return;
-    //     this.mesh.geometry.dispose();
-    //     this.mesh.parent?.remove(this.mesh);
-    //     this.mesh = undefined;
-    // }
-
-    // private replaceMesh(scene: THREE.Object3D, mesh: THREE.Mesh | null): void {
-    //     this.clearMesh();
-    //     if (!mesh) return;
-    //     this.mesh = mesh;
-    //     scene.add(mesh);
-    // }
-
 
     protected abstract createMesh(): THREE.Mesh | null;
 

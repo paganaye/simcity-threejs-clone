@@ -10,7 +10,7 @@ import { Page } from './Page';
 import { IFloorSize } from './GameUIComponent';
 import { RoadGizmo, RoadHandleAxis } from './editor/RoadGizmo';
 import type { CustomGizmo } from './editor/CustomGizmo';
-import { ISelectedInstance, ObjectGizmo } from './editor/ObjectGizmo';
+import { ObjectGizmo } from './editor/ObjectGizmo';
 import { RoadSegment, SegmentSide } from './roads/RoadSegment';
 import { ToolController } from './tools/ToolController';
 import { RoadToolController } from './tools/RoadToolController';
@@ -20,6 +20,7 @@ import { ActiveTool } from './tools/ToolTypes';
 import { Signal } from './Signal';
 import type { IDualRoadType } from './roads/IRoad';
 import { RoadNetwork } from './roads/RoadNetwork';
+import { ISelectedObject } from './editor/ISelectedObject';
 
 export type ILeftPointerGesture = {
     downX: number;
@@ -83,8 +84,7 @@ export class GameScene3D {
     isLoading = new Signal(true);
     isPaused = new Signal(false);
     activeTool = new Signal<ActiveTool>('select');
-    selectedInstance = new Signal<ISelectedInstance | undefined>(undefined);
-    selectedCustomObject = new Signal<THREE.Object3D | undefined>(undefined);
+    selectedObject = new Signal<ISelectedObject | undefined>(undefined);
     simMoney = new Signal(0);
     population = new Signal(0);
     simTime = new Signal(0);
@@ -176,13 +176,45 @@ export class GameScene3D {
     }
 
     #getSelectedRoadSegment(): RoadSegment | undefined {
-        return this.selectedCustomObject.get()?.userData?.roadSegment as RoadSegment | undefined;
+        const selected = this.selectedObject.get();
+        if (!selected) return undefined;
+        return this.#getRoadSegmentFromObject(selected.object3D);
+    }
+
+    #getRoadSegmentFromObject(obj: THREE.Object3D | undefined): RoadSegment | undefined {
+        if (!obj) return undefined;
+
+        const directSegment = obj.userData?.roadSegment as RoadSegment | undefined;
+        if (directSegment) {
+            return directSegment;
+        }
+
+        const owner = obj.userData?.owner;
+        if (!owner) {
+            return undefined;
+        }
+
+        return this.roadNetwork.segments.find((segment) =>
+            segment.forwardPrimitive === owner
+            || segment.backwardPrimitive === owner
+            || segment.startJoinArcPrimitive === owner
+            || segment.endJoinArcPrimitive === owner
+        );
+    }
+
+    #isSelectedBuilding(): boolean {
+        const selected = this.selectedObject.get();
+        return Boolean(
+            selected
+            && selected.object3D instanceof THREE.InstancedMesh
+            && selected.instanceId != null
+            && selected.object3D.userData?.selectableType === 'building'
+        );
     }
 
     clearSelection(): void {
         delete this.scene.userData.roadSegment;
-        this.selectedInstance.set(undefined);
-        this.selectedCustomObject.set(undefined);
+        this.selectedObject.set(undefined);
         this.currentGizmo = undefined;
         this.roadGizmo.clearSelection();
         this.objectGizmo.clearSelection();
@@ -190,16 +222,16 @@ export class GameScene3D {
     }
 
     deleteCurrentSelection(): boolean {
-        const selectedRoad = this.selectedCustomObject.get()?.userData?.roadSegment as RoadSegment | undefined;
+        const selectedRoad = this.#getSelectedRoadSegment();
         if (selectedRoad) {
             this.roadNetwork.removeSegment(selectedRoad);
             this.clearSelection();
             return true;
         }
 
-        const selected = this.selectedInstance.get();
-        if (selected?.selectableType === 'building') {
-            const removed = this.worldMap3D.removeBuilding(selected.mesh, selected.instanceId);
+        const selected = this.selectedObject.get();
+        if (selected && selected.object3D instanceof THREE.InstancedMesh && selected.instanceId != null && selected.object3D.userData?.selectableType === 'building') {
+            const removed = this.worldMap3D.removeBuilding(selected.object3D, selected.instanceId);
             if (removed) {
                 this.clearSelection();
                 return true;
@@ -215,9 +247,8 @@ export class GameScene3D {
             return;
         }
 
-        this.selectedInstance.set(undefined);
+        this.selectedObject.set({ kind: 'road', object3D: this.scene, roadSegment: segment });
         this.scene.userData.roadSegment = segment;
-        this.selectedCustomObject.set(this.scene);
         this.currentGizmo = this.roadGizmo;
         this.objectGizmo.clearSelection();
         this.lastSelectedRoad = segment.getIRoad();
@@ -244,38 +275,43 @@ export class GameScene3D {
         this.raycaster.setFromCamera(mouse, this.camera);
         const hits = this.raycaster.intersectObjects(this.scene.children, true);
 
-        let selected: ISelectedInstance | undefined;
+        let selected: ISelectedObject | undefined;
         let selectedRoadSegment: RoadSegment | undefined;
         for (const hit of hits) {
             if (hit.object === this.transformProxy) continue;
+            const roadSegment = this.#getRoadSegmentFromObject(hit.object);
+            if (roadSegment) {
+                selectedRoadSegment = roadSegment;
+                break;
+            }
+
             const selectableType = hit.object.userData?.selectableType as ('building' | 'character' | 'road' | undefined);
             if (!selectableType) continue;
-            if (selectableType === 'road') {
-                selectedRoadSegment = hit.object.userData?.roadSegment as RoadSegment | undefined;
-                if (selectedRoadSegment) break;
-                continue;
-            }
+            if (selectableType === 'road') continue;
             if (hit.instanceId == null) continue;
             const obj = hit.object as THREE.InstancedMesh;
-            selected = { mesh: obj, instanceId: hit.instanceId, selectableType };
+            selected = {
+                kind: selectableType === 'character' ? 'character' : 'building',
+                object3D: obj,
+                instanceId: hit.instanceId,
+            };
             break;
         }
 
         if (selectedRoadSegment) {
             this.selectRoadSegment(selectedRoadSegment);
         } else {
-            this.#selectInstance(selected);
+            this.#selectObject(selected);
         }
     }
 
-    #selectInstance(selected: ISelectedInstance | undefined): void {
+    #selectObject(selected: ISelectedObject | undefined): void {
         this.roadGizmo.clearSelection();
-        this.selectedInstance.set(selected);
-        this.selectedCustomObject.set(undefined);
+        this.selectedObject.set(selected);
 
-        if (selected?.selectableType === 'building') {
+        if (this.#isSelectedBuilding()) {
             this.currentGizmo = this.objectGizmo;
-            this.objectGizmo.syncSelectionFromSelectedInstance();
+            this.objectGizmo.syncSelectionFromSelectedObject();
         } else {
             this.currentGizmo = undefined;
             this.objectGizmo.clearSelection();
@@ -357,13 +393,13 @@ export class GameScene3D {
     #updateSelectionHalo() {
         if (!this.selectionHalo) return;
 
-        const selected = this.selectedInstance.get();
-        if (!selected) {
+        const selected = this.selectedObject.get();
+        if (!selected || !(selected.object3D instanceof THREE.InstancedMesh) || selected.instanceId == null || selected.object3D.userData?.selectableType !== 'building') {
             this.selectionHalo.visible = false;
             return;
         }
 
-        const geometry = selected.mesh.geometry;
+        const geometry = selected.object3D.geometry;
         if (!geometry?.boundingBox) {
             geometry?.computeBoundingBox();
         }
@@ -373,8 +409,8 @@ export class GameScene3D {
             return;
         }
 
-        selected.mesh.getMatrixAt(selected.instanceId, this.tempMatrix);
-        this.tempWorldMatrix.multiplyMatrices(selected.mesh.matrixWorld, this.tempMatrix);
+        selected.object3D.getMatrixAt(selected.instanceId, this.tempMatrix);
+        this.tempWorldMatrix.multiplyMatrices(selected.object3D.matrixWorld, this.tempMatrix);
         this.tempWorldMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
 
         this.tempBox.copy(geometry.boundingBox);
@@ -667,7 +703,8 @@ export class GameScene3D {
             camera: this.camera,
             raycaster: this.raycaster,
             domElement: context.renderer.domElement,
-            getSelectedInstance: () => this.selectedInstance.get(),
+            onPickSelectableAtPointer: (event) => this.pickSelectableAtPointer(event),
+            getSelectedObject: () => this.selectedObject.get(),
             getInstanceYaw: (mesh, instanceId) => this.worldMap3D.getBuildingYaw(mesh, instanceId),
             onTryUpdateSelectedInstanceTransform: (mesh, instanceId, x, z, yaw) => {
                 return this.worldMap3D.tryUpdateBuildingTransform(mesh, instanceId, x, z, yaw);
@@ -675,29 +712,24 @@ export class GameScene3D {
             onTransformValidityChanged: (valid) => {
                 this.lastTransformValid = valid;
             },
-            isSelectable: (obj) => {
-                // Proxy is selectable by default, plus optional custom objects.
-                return obj === this.transformProxy || this.isCustomGizmoSelectableObject?.(obj) === true;
-            },
             onSelectObject: (obj) => {
                 if (obj === this.transformProxy) {
                     this.roadGizmo.clearSelection();
-                    this.selectedCustomObject.set(undefined);
+                    this.selectedObject.set(undefined);
                     // Re-sync proxy pose with active selected instance.
                     this.currentGizmo = this.objectGizmo;
-                    this.objectGizmo.syncSelectionFromSelectedInstance();
+                    this.objectGizmo.syncSelectionFromSelectedObject();
                     return;
                 }
 
-                const roadSegment = obj.userData?.roadSegment as RoadSegment | undefined;
+                const roadSegment = this.#getRoadSegmentFromObject(obj);
                 if (roadSegment) {
                     this.selectRoadSegment(roadSegment);
                     this.onCustomGizmoObjectSelected?.(obj);
                     return;
                 }
 
-                this.selectedInstance.set(undefined);
-                this.selectedCustomObject.set(obj);
+                this.selectedObject.set({ object3D: obj } as any);
                 if (obj.userData?.selectableType === 'road') {
                     this.objectGizmo.clearSelection();
                 }
@@ -751,8 +783,7 @@ export class GameScene3D {
             //this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
         };
         this.roadGizmo.onDeselect = () => {
-            this.selectedInstance.set(undefined);
-            this.selectedCustomObject.set(undefined);
+            this.selectedObject.set(undefined);
             this.currentGizmo = undefined;
             this.#updateSelectionHalo();
         };
@@ -760,6 +791,39 @@ export class GameScene3D {
             (this.toolMap.get('road') as RoadToolController | undefined)?.onRoadDragEnded();
             this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
         };
+    }
+
+    isSelectable: (obj: THREE.Object3D) => boolean = (obj) => {
+        let owner = obj.userData?.owner;
+        if (owner) {
+            return true;
+        }
+        return false;
+    }
+
+
+    pickSelectableAtPointer(event: PointerEvent): THREE.Object3D | undefined {
+        if (!this.renderDom) return undefined;
+
+        const rect = this.renderDom.getBoundingClientRect();
+        const mouse = new THREE.Vector2(
+            ((event.clientX - rect.left) / rect.width) * 2 - 1,
+            -((event.clientY - rect.top) / rect.height) * 2 + 1,
+        );
+        this.raycaster.setFromCamera(mouse, this.camera);
+
+        const hits = this.raycaster.intersectObjects(this.scene.children, true);
+        for (const hit of hits) {
+            let target: THREE.Object3D | null = hit.object;
+            while (target && !this.isSelectable(target)) {
+                target = target.parent;
+            }
+            if (target) {
+                return target;
+            }
+        }
+
+        return undefined;
     }
 
 }

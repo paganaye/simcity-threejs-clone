@@ -56,7 +56,6 @@ export function getBands(options: IRoadType): IRoadBands {
         if (band) bands.push(band);
     }
 
-
     addBand(options.leftSidewalk);
     addBand(options.leftKerb);
 

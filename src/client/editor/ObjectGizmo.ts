@@ -1,19 +1,13 @@
 import * as THREE from 'three';
 import { CustomGizmo, type ICustomGizmoProps } from './CustomGizmo';
+import { ISelectedObject } from './ISelectedObject';
 
 type GizmoAxis = 'x' | 'z' | 'xz' | 'yaw';
 
-export type GizmoSelectableType = 'building' | 'character' | 'road';
-
-export type ISelectedInstance = {
-    mesh: THREE.InstancedMesh;
-    instanceId: number;
-    selectableType: GizmoSelectableType;
-};
 
 type IObjectGizmoProps = ICustomGizmoProps & {
-    isSelectable: (object: THREE.Object3D) => boolean;
-    getSelectedInstance?: () => ISelectedInstance | undefined;
+    onPickSelectableAtPointer?: (event: PointerEvent) => THREE.Object3D | undefined;
+    getSelectedObject?: () => ISelectedObject | undefined;
     getInstanceYaw?: (mesh: THREE.InstancedMesh, instanceId: number) => number;
     onTryUpdateSelectedInstanceTransform?: (mesh: THREE.InstancedMesh, instanceId: number, x: number, z: number, yaw: number) => boolean;
     onTransformValidityChanged?: (valid: boolean) => void;
@@ -27,12 +21,13 @@ const GIZMO_SCALE_DISTANCE_FACTOR = 0.04;
 export class ObjectGizmo extends CustomGizmo {
     private readonly proxy = new THREE.Group();
     private selectedObject?: THREE.Object3D;
-    private readonly isSelectable: (object: THREE.Object3D) => boolean;
-    private readonly getSelectedInstance?: () => ISelectedInstance | undefined;
+    private readonly onSelectObject?: (object: THREE.Object3D) => void;
+
+    private readonly onPickSelectableAtPointer?: (event: PointerEvent) => THREE.Object3D | undefined;
+    private readonly getSelectedObject?: () => ISelectedObject | undefined;
     private readonly getInstanceYaw?: (mesh: THREE.InstancedMesh, instanceId: number) => number;
     private readonly onTryUpdateSelectedInstanceTransform?: (mesh: THREE.InstancedMesh, instanceId: number, x: number, z: number, yaw: number) => boolean;
     private readonly onTransformValidityChanged?: (valid: boolean) => void;
-    private readonly onSelectObject?: (object: THREE.Object3D) => void;
     private readonly onSnapping?: (position: THREE.Vector3, rotationY: number) => { x: number; z: number; angle: number } | undefined;
 
     private activeAxis?: GizmoAxis;
@@ -64,8 +59,8 @@ export class ObjectGizmo extends CustomGizmo {
 
     constructor(props: IObjectGizmoProps) {
         super(props);
-        this.isSelectable = props.isSelectable;
-        this.getSelectedInstance = props.getSelectedInstance;
+        this.onPickSelectableAtPointer = props.onPickSelectableAtPointer;
+        this.getSelectedObject = props.getSelectedObject;
         this.getInstanceYaw = props.getInstanceYaw;
         this.onTryUpdateSelectedInstanceTransform = props.onTryUpdateSelectedInstanceTransform;
         this.onTransformValidityChanged = props.onTransformValidityChanged;
@@ -122,15 +117,15 @@ export class ObjectGizmo extends CustomGizmo {
         this.setVisible(false);
     }
 
-    syncSelectionFromSelectedInstance(): void {
-        const selected = this.getSelectedInstance?.();
-        if (!selected || selected.selectableType !== 'building') {
+    syncSelectionFromSelectedObject(): void {
+        const selected = this.getSelectedObject?.();
+        if (!selected || !(selected.object3D instanceof THREE.InstancedMesh) || selected.instanceId == null || selected.object3D.userData?.selectableType !== 'building') {
             this.proxy.visible = false;
             this.clearSelection();
             return;
         }
 
-        const { mesh, instanceId } = selected;
+        const { object3D: mesh, instanceId } = selected;
         mesh.getMatrixAt(instanceId, this.tempMatrix);
         this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
         const yaw = this.getInstanceYaw
@@ -180,19 +175,19 @@ export class ObjectGizmo extends CustomGizmo {
         this.root.position.set(position.x, 0.06, position.z);
         this.root.rotation.set(0, rotationY, 0);
 
-        const controlsSelectedInstance = !this.selectedObject;
+        const controlsSelectedObject = !this.selectedObject;
 
-        let snapped = controlsSelectedInstance ? (this.onSnapping ?? this.defaultSnapping)(position, rotationY) : undefined;
+        let snapped = controlsSelectedObject ? (this.onSnapping ?? this.defaultSnapping)(position, rotationY) : undefined;
 
         if (snapped) {
             position.set(snapped.x, position.y, snapped.z);
             rotationY = snapped.angle;
         }
 
-        const selected = this.getSelectedInstance?.();
-        if (controlsSelectedInstance && selected && selected.selectableType === 'building' && this.onTryUpdateSelectedInstanceTransform) {
+        const selected = this.getSelectedObject?.();
+        if (controlsSelectedObject && selected && selected.object3D instanceof THREE.InstancedMesh && selected.instanceId != null && selected.object3D.userData?.selectableType === 'building' && this.onTryUpdateSelectedInstanceTransform) {
             const ok = this.onTryUpdateSelectedInstanceTransform(
-                selected.mesh,
+                selected.object3D,
                 selected.instanceId,
                 position.x,
                 position.z,
@@ -201,10 +196,10 @@ export class ObjectGizmo extends CustomGizmo {
             this.onTransformValidityChanged?.(ok);
 
             if (!ok) {
-                selected.mesh.getMatrixAt(selected.instanceId, this.tempMatrix);
+                selected.object3D.getMatrixAt(selected.instanceId, this.tempMatrix);
                 this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
                 const yaw = this.getInstanceYaw
-                    ? this.getInstanceYaw(selected.mesh, selected.instanceId)
+                    ? this.getInstanceYaw(selected.object3D, selected.instanceId)
                     : this.tempEuler.setFromQuaternion(this.tempQuaternion, 'YXZ').y;
                 this.proxy.position.copy(this.tempPosition);
                 this.proxy.position.y = 0;
@@ -220,7 +215,7 @@ export class ObjectGizmo extends CustomGizmo {
     onPointerDown(event: PointerEvent): boolean {
         const axis = this.root.visible ? this.#pickAxisAtPointer(event) : undefined;
         if (!axis) {
-            const selectable = this.#pickSelectableAtPointer(event);
+            const selectable = this.onPickSelectableAtPointer?.(event);
             if (selectable) {
                 this.pendingSelectable = selectable;
                 this.pendingSelectDownX = event.clientX;
@@ -254,40 +249,6 @@ export class ObjectGizmo extends CustomGizmo {
         this.onDraggingChanged?.(true);
         this.domElement.style.cursor = 'grabbing';
         return true;
-    }
-
-    #pickSelectableAtPointer(event: PointerEvent): THREE.Object3D | undefined {
-        const mouse = this.pointerToNdc(event);
-
-        this.raycaster.setFromCamera(mouse, this.camera);
-
-        const selectableObjects: THREE.Object3D[] = [];
-        this.scene.traverse((obj) => {
-            if (this.isSelectable?.(obj)) {
-                selectableObjects.push(obj);
-            }
-        });
-
-        if (selectableObjects.length === 0) {
-            return undefined;
-        }
-
-        const hits = this.raycaster.intersectObjects(selectableObjects, false);
-        const hitObject = hits[0]?.object;
-        if (!hitObject) return undefined;
-        return this.#resolveSelectableTarget(hitObject);
-    }
-
-    #resolveSelectableTarget(object: THREE.Object3D): THREE.Object3D {
-        let target = object;
-        let parent = target.parent;
-
-        while (parent && this.isSelectable(parent)) {
-            target = parent;
-            parent = target.parent;
-        }
-
-        return target;
     }
 
     onPointerMove(event: PointerEvent): boolean {

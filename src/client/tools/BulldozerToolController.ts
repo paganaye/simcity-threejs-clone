@@ -25,15 +25,16 @@ export class BulldozerToolController extends ToolController {
 
         if (picked.type === 'road') {
             this.scene3D.roadNetwork.removeSegment(picked.roadSegment);
-            if (this.scene3D.selectedCustomObject.get()?.userData?.roadSegment === picked.roadSegment) {
+            const selected = this.scene3D.selectedObject.get();
+            if (selected?.object3D instanceof THREE.Object3D && selected.object3D.userData?.roadSegment === picked.roadSegment) {
                 this.scene3D.clearSelection();
             }
             return;
         }
 
         if (this.scene3D.worldMap3D.removeBuilding(picked.mesh, picked.instanceId)) {
-            const selected = this.scene3D.selectedInstance.get();
-            if (selected?.mesh === picked.mesh && selected.instanceId === picked.instanceId) {
+            const selected = this.scene3D.selectedObject.get();
+            if (selected?.object3D === picked.mesh && selected.instanceId === picked.instanceId) {
                 this.scene3D.clearSelection();
             }
         }

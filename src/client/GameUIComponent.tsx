@@ -48,7 +48,7 @@ export function GameUIComponent(props: {
                     <UIButton icon={props.scene3D.isPaused.get() ? "play-color" : "pause-color"} onclick={() => props.scene3D.isPaused.set(!props.scene3D.isPaused.get())} selected={false} />
                 </div>
             </Show>
-            <SelectedObjectPanel selectedInstance={props.scene3D.selectedInstance.get} selectedCustomObject={props.scene3D.selectedCustomObject.get} />
+            <SelectedObjectPanel selectedObject={props.scene3D.selectedObject.get} />
             <Show when={props.rightPanel}>
                 <div id="ui-right-panel" class="container">
                     {props.rightPanel}

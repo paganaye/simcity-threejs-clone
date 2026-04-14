@@ -9,7 +9,7 @@ export class SelectToolController extends ToolController {
 
         if (event.key === 'Escape') {
             if (activeTool === 'select') {
-                const hasSelection = !!this.scene3D.selectedInstance.get() || !!this.scene3D.selectedCustomObject.get();
+                const hasSelection = !!this.scene3D.selectedObject.get();
                 if (hasSelection) {
                     this.scene3D.clearSelection();
                     return true;
@@ -26,6 +26,10 @@ export class SelectToolController extends ToolController {
         }
 
         return false;
+    }
+
+    onPointerDown(_event: PointerEvent, _gesture: ILeftPointerGesture): void {
+        // we select on mouse_up
     }
 
     onToolChanged(tool: ActiveTool): void {

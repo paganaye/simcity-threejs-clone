@@ -1,10 +1,10 @@
 import { Accessor, Show, createEffect, createSignal } from "solid-js";
-import type * as THREE from "three";
-import type { ISelectedInstance } from "./editor/ObjectGizmo";
+import * as THREE from "three";
 import type { Character, CharacterSelectionInfo } from "./characters/Character";
 import type { RoadSegment } from "./roads/RoadSegment";
 import type { IDualRoadType, IRoadType } from "./roads/IRoad";
 import { KerbType, SideWalkType } from "./textures/RoadBand";
+import { ISelectedObject } from "./editor/ISelectedObject";
 
 function RoadOptionsInput(props: {
     title: string;
@@ -64,30 +64,46 @@ function RoadOptionsInput(props: {
 }
 
 export function SelectedObjectPanel(props: {
-    selectedInstance: Accessor<ISelectedInstance | undefined>;
-    selectedCustomObject: Accessor<THREE.Object3D | undefined>;
+    selectedObject: Accessor<ISelectedObject | undefined>;
     onSelectedRoadChanged?: (road: RoadSegment) => void;
 }) {
     type CharacterResolver = (instanceId: number) => Character | undefined;
-    const customObject = () => props.selectedCustomObject();
-    const instance = () => props.selectedInstance();
+    const selected = () => props.selectedObject();
+    const customObject = (): THREE.Object3D | undefined => {
+        const current = selected();
+        if (!current) return undefined;
+        if (current.object3D instanceof THREE.InstancedMesh && current.instanceId != null) return undefined;
+        return current.object3D as THREE.Object3D;
+    };
+    const instance = (): ISelectedObject | undefined => {
+        const current = selected();
+        if (!current) return undefined;
+        if (current.object3D instanceof THREE.InstancedMesh && current.instanceId != null) return current;
+        return undefined;
+    };
     const selectedCharacter = (): Character | undefined => {
-        const selected = instance();
-        if (!selected || selected.selectableType !== "character") {
+        const selectedInstance = instance();
+        if (!selectedInstance || selectedInstance.object3D.userData?.selectableType !== "character") {
             return undefined;
         }
-        const resolver = selected.mesh.userData?.characterResolver as CharacterResolver | undefined;
-        return resolver?.(selected.instanceId);
+        if (!(selectedInstance.object3D instanceof THREE.InstancedMesh) || selectedInstance.instanceId == null) {
+            return undefined;
+        }
+        const resolver = selectedInstance.object3D.userData?.characterResolver as CharacterResolver | undefined;
+        const instanceId = selectedInstance.instanceId;
+        if (instanceId == null) return undefined;
+        return resolver?.(instanceId);
     };
     const characterInfo = (): CharacterSelectionInfo[] => {
         return selectedCharacter()?.getSelectionInfo() ?? [];
     };
     const selectedRoad = (): RoadSegment | undefined => {
-        const selected = customObject();
-        if (!selected || selected.userData?.selectableType !== "road") {
+        const selectedObject = selected();
+        if (!selectedObject) {
             return undefined;
         }
-        return selected.userData?.roadSegment as RoadSegment | undefined;
+        if (!(selectedObject.object3D instanceof THREE.Object3D)) return undefined;
+        return selectedObject.object3D.userData?.roadSegment as RoadSegment | undefined;
     };
     const shoulderOptions: KerbType[] = ["parallelParking", "perpendicularParking", "emergencyLane", "line", "none"];
     const sidewalkOptions: SideWalkType[] = ["small", "large", "grass", "none"];
@@ -174,7 +190,7 @@ export function SelectedObjectPanel(props: {
     };
 
     return (
-        <Show when={customObject() || instance()}>
+        <Show when={selected()}>
             <div id="selected-object-panel" class="container">
                 <div class="selected-object-panel-title">Selected Object</div>
                 <Show
@@ -184,11 +200,11 @@ export function SelectedObjectPanel(props: {
                             <div class="info-heading">Instance</div>
                             <div>
                                 <span class="info-label">Type </span>
-                                <span class="info-value">{instance()?.selectableType}</span>
+                                <span class="info-value">{String(instance()?.object3D.userData?.selectableType ?? "instance")}</span>
                             </div>
                             <div>
                                 <span class="info-label">Model </span>
-                                <span class="info-value">{String(instance()?.mesh.userData?.modelName ?? "unknown")}</span>
+                                <span class="info-value">{String(instance()?.object3D.userData?.modelName ?? "unknown")}</span>
                             </div>
                             <div>
                                 <span class="info-label">InstanceId </span>

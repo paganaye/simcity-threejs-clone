@@ -9,10 +9,10 @@ import {
     modelsMetaData,
 } from "../AssetManager";
 import { initAssetManagerData } from "../AssetManagerData";
-import type { ISelectedInstance } from "../editor/ObjectGizmo";
 import { GameScene3D } from "../GameScene3D";
 import { GameUIComponent } from "../GameUIComponent";
 import { Page } from "../Page";
+import { ISelectedObject } from "../editor/ISelectedObject";
 
 const TILE = appConstants.BuildingsScale;
 const BUILDING_MODELS = Object.entries(modelsMetaData)
@@ -115,7 +115,7 @@ export default class TestBuildings extends Page {
     private currentBuilding?: {
         modelName: ModelName;
         mesh: IFastMesh;
-        selected: ISelectedInstance;
+        selected: ISelectedObject;
     };
 
     #clearAccessHandles() {
@@ -130,7 +130,9 @@ export default class TestBuildings extends Page {
 
     #buildingCenter(): { x: number; z: number } {
         if (!this.currentBuilding) return { x: 0, z: 0 };
-        this.currentBuilding.selected.mesh.getMatrixAt(this.currentBuilding.selected.instanceId, this.tempMatrix);
+        const selected = this.currentBuilding.selected;
+        if (!(selected.object3D instanceof THREE.InstancedMesh) || selected.instanceId == null) return { x: 0, z: 0 };
+        selected.object3D.getMatrixAt(selected.instanceId, this.tempMatrix);
         this.tempMatrix.decompose(this.tempPosition, this.tempQuaternion, this.tempScale);
         return { x: this.tempPosition.x, z: this.tempPosition.z };
     }
@@ -168,7 +170,7 @@ export default class TestBuildings extends Page {
 
         if (!handle) {
             this.scene3DInstance.objectGizmo.clearSelection();
-            this.scene3DInstance.objectGizmo.syncSelectionFromSelectedInstance();
+            this.scene3DInstance.objectGizmo.syncSelectionFromSelectedObject();
             return;
         }
 
@@ -184,10 +186,10 @@ export default class TestBuildings extends Page {
         }
 
         const fastMesh = this.scene3DInstance.assetManager.addFastMesh(modelName, 10, 0, 10, 0);
-        const selected: ISelectedInstance = {
-            mesh: fastMesh.parent.instancedMesh,
+        const selected: ISelectedObject = {
+            kind: 'building',
+            object3D: fastMesh.parent.instancedMesh,
             instanceId: fastMesh.index,
-            selectableType: "building",
         };
 
         this.currentBuilding = {
@@ -198,7 +200,7 @@ export default class TestBuildings extends Page {
 
         //this.scene3DInstance.selectedInstance = selected;
         //uiProps.selectedInstance.set(selected);
-        this.scene3DInstance.objectGizmo.syncSelectionFromSelectedInstance();
+        this.scene3DInstance.objectGizmo.syncSelectionFromSelectedObject();
 
         const meta = modelsMetaData[modelName as keyof typeof modelsMetaData] as IAssetMeta;
         const center = this.#buildingCenter();
@@ -275,7 +277,7 @@ export default class TestBuildings extends Page {
             // this.scene3DInstance.selectionFilter = (selected) => {
             //     return selected.selectableType !== "building";
             // };
-            scene3D.isCustomGizmoSelectableObject = (obj) => {
+            scene3D.isSelectable = (obj) => {
                 return this.accessHandles.some((handle) => handle.pickMesh === obj || handle.root === obj);
             };
             scene3D.onCustomGizmoObjectSelected = (obj) => {

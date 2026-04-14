@@ -4,6 +4,7 @@ import type { IDualRoadType, IRoadType } from './IRoad';
 import { RoadPrimitive } from './RoadPrimitive';
 import { StraightRoadPrimitive } from './StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from './CurvedRoadPrimitive';
+import { getBands } from './RoadLayout';
 import { IPoint2D } from '../../sim/IPoint';
 
 const DEBUG_ROAD_ARC = true;
@@ -141,7 +142,6 @@ export class RoadSegment {
             roadType: params.roadType,
             cuts: params.cuts,
         });
-        this.#tagRoadPrimitive(primitive);
         if (side === 'start') {
             this.startJoinArcPrimitive = primitive;
             return;
@@ -160,6 +160,7 @@ export class RoadSegment {
         const forwardCuts = this.junctionCuts?.forwardCuts;
         const backwardCuts = this.junctionCuts?.backwardCuts;
 
+        const { forwardOffsetM, backwardOffsetM } = this.#getCarriagewayCenterOffsets();
         const start = { x: this.startPoint.x, z: this.startPoint.z };
         const end = { x: this.endPoint.x, z: this.endPoint.z };
 
@@ -172,9 +173,9 @@ export class RoadSegment {
                 mid,
                 end,
                 roadType: this.dualRoadType.forward,
+                lateralOffsetM: forwardOffsetM,
                 cuts: forwardCuts,
             });
-            this.#tagRoadPrimitive(this.forwardPrimitive);
 
             if (this.dualRoadType.backward) {
                 this.backwardPrimitive = new CurvedRoadPrimitive({
@@ -184,34 +185,75 @@ export class RoadSegment {
                     mid,
                     end: start,
                     roadType: this.dualRoadType.backward,
+                    // Backward primitive runs in the opposite direction, so
+                    // its local right-side offset sign must be inverted.
+                    lateralOffsetM: -backwardOffsetM,
                     cuts: backwardCuts,
                 });
-                this.#tagRoadPrimitive(this.backwardPrimitive);
             }
             return;
         }
 
+        const normal = this.#getLateralNormal();
+        const forwardStart = this.#offsetPoint(start, normal, forwardOffsetM);
+        const forwardEnd = this.#offsetPoint(end, normal, forwardOffsetM);
+        const backwardStart = this.#offsetPoint(start, normal, backwardOffsetM);
+        const backwardEnd = this.#offsetPoint(end, normal, backwardOffsetM);
+
         this.forwardPrimitive = new StraightRoadPrimitive({
             parent: this.sceneRoot,
             transient: false,
-            start,
-            end,
+            start: forwardStart,
+            end: forwardEnd,
             roadType: this.dualRoadType.forward,
             cuts: forwardCuts,
         });
-        this.#tagRoadPrimitive(this.forwardPrimitive);
 
         if (this.dualRoadType.backward) {
             this.backwardPrimitive = new StraightRoadPrimitive({
                 parent: this.sceneRoot,
                 transient: false,
-                start: end,
-                end: start,
+                start: backwardEnd,
+                end: backwardStart,
                 roadType: this.dualRoadType.backward,
                 cuts: backwardCuts,
             });
-            this.#tagRoadPrimitive(this.backwardPrimitive);
         }
+    }
+
+    #getCarriagewayCenterOffsets(): { forwardOffsetM: number; backwardOffsetM: number } {
+        if (!this.dualRoadType.backward) {
+            return { forwardOffsetM: 0, backwardOffsetM: 0 };
+        }
+
+        const forwardCarriagewayWidthM = getBands(this.dualRoadType.forward).totalWidthM;
+        const backwardCarriagewayWidthM = getBands(this.dualRoadType.backward).totalWidthM;
+        const halfGapM = (this.dualRoadType.gapSize ?? 0) / 2;
+
+        return {
+            // Positive is right side relative to start -> end.
+            forwardOffsetM: halfGapM + forwardCarriagewayWidthM / 2,
+            backwardOffsetM: -halfGapM - backwardCarriagewayWidthM / 2,
+        };
+    }
+
+    #getLateralNormal(): IPoint2D {
+        const dx = this.endPoint.x - this.startPoint.x;
+        const dz = this.endPoint.z - this.startPoint.z;
+        const length = Math.hypot(dx, dz);
+        if (length <= 1e-6) return { x: 0, z: 0 };
+
+        const angle = Math.atan2(-dz, dx);
+        return { x: Math.sin(angle), z: Math.cos(angle) };
+    }
+
+    #offsetPoint(point: IPoint2D, normal: IPoint2D, offsetM: number): IPoint2D {
+        if (offsetM === 0) return { x: point.x, z: point.z };
+        return {
+            x: point.x + normal.x * offsetM,
+            z: point.z + normal.z * offsetM,
+            y: point.y,
+        };
     }
 
     /** Curve the road through a world-space control point. Keeps start and end fixed. */
@@ -285,15 +327,6 @@ export class RoadSegment {
         this.backwardPrimitive?.dispose();
         this.startJoinArcPrimitive?.dispose();
         this.endJoinArcPrimitive?.dispose();
-    }
-
-    #tagRoadPrimitive(primitive: RoadPrimitive | undefined): void {
-        if (!primitive) return;
-        primitive.setMeshUserData({
-            selectableType: 'road',
-            roadSegment: this,
-            iRoad: this.dualRoadType,
-        });
     }
 
     #chordLength(): number {

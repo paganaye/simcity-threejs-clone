@@ -33,7 +33,7 @@ export default class RoundDualWayTest extends Page {
             const dualWayRoad: IDualRoadType = {
                 forward: roadType,
                 backward: roadType,
-                gapSize: 2,
+                gapSize: 0.1,
             };
 
             const centerX = 24;

@@ -14,6 +14,7 @@ export function setupEditorUI(page: ThreeEditor): void {
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const mouseDownPosition = new THREE.Vector2();
+    const moveThreshold = 5;
 
 
     page.appContainer.addEventListener('mousedown', onContainerMouseDown, false);
@@ -27,55 +28,80 @@ export function setupEditorUI(page: ThreeEditor): void {
         }
     }
 
-    function onContainerMouseUp(event: MouseEvent) {
-        if (event.button === 0) {
-            const mouseUpPosition = new THREE.Vector2(event.clientX, event.clientY);
-            const moveThreshold = 5;
+    function isClickSelectionGesture(event: MouseEvent): boolean {
+        if (event.button !== 0) {
+            return false;
+        }
 
-            if (mouseUpPosition.distanceTo(mouseDownPosition) < moveThreshold) {
-                mouse.x = (event.clientX / page.renderer.domElement.clientWidth) * 2 - 1;
-                mouse.y = -(event.clientY / page.renderer.domElement.clientHeight) * 2 + 1;
+        const mouseUpPosition = new THREE.Vector2(event.clientX, event.clientY);
+        return mouseUpPosition.distanceTo(mouseDownPosition) < moveThreshold;
+    }
 
-                raycaster.setFromCamera(mouse, page.camera);
+    function getSelectableIntersects(event: MouseEvent): THREE.Intersection[] {
+        mouse.x = (event.clientX / page.renderer.domElement.clientWidth) * 2 - 1;
+        mouse.y = -(event.clientY / page.renderer.domElement.clientHeight) * 2 + 1;
 
-                const selectableObjects = page.scene.children.filter(obj =>
-                    obj instanceof THREE.Mesh && !(obj instanceof THREE.BoxHelper) && obj.userData.isSelectable !== false
-                );
+        raycaster.setFromCamera(mouse, page.camera);
 
-                const intersects = raycaster.intersectObjects(selectableObjects, true);
+        const selectableRoots = page.scene.children.filter(obj =>
+            obj instanceof THREE.Mesh && !(obj instanceof THREE.BoxHelper) && obj.userData.isSelectable !== false
+        );
 
-                const currentSelection = page.editorSelection();
+        return raycaster.intersectObjects(selectableRoots, true);
+    }
 
+    function selectSingleObjectFromIntersects(
+        event: MouseEvent,
+        currentSelection: EditorSelection,
+        intersects: THREE.Intersection[],
+    ): void {
+        const firstIntersectedObject = intersects[0]?.object;
+        if (!firstIntersectedObject) {
+            return;
+        }
 
-                if (intersects.length > 0) {
-                    const firstIntersectedObject = intersects[0].object;
+        if (event.shiftKey) {
+            page.setEditorSelection(currentSelection.newSelectionWith(firstIntersectedObject));
+            return;
+        }
 
-                    if (event.shiftKey) {
-                        page.setEditorSelection(currentSelection.newSelectionWith(firstIntersectedObject));
-                    } else if (event.ctrlKey || event.metaKey) {
-                        page.setEditorSelection(currentSelection.toggle(firstIntersectedObject));
-                    } else {
-                        const currentlySelectedObject = currentSelection.objectCount === 1 ? currentSelection.objects.next().value : null;
+        if (event.ctrlKey || event.metaKey) {
+            page.setEditorSelection(currentSelection.toggle(firstIntersectedObject));
+            return;
+        }
 
-                        let objectToSelect = firstIntersectedObject;
+        const currentlySelectedObject = currentSelection.objectCount === 1 ? currentSelection.objects.next().value : null;
 
-                        if (currentlySelectedObject) {
-                            const currentIndexInIntersects = intersects.findIndex(intersect => intersect.object === currentlySelectedObject);
-                            if (currentIndexInIntersects !== -1) {
-                                const nextIndex = (currentIndexInIntersects + 1) % intersects.length;
-                                objectToSelect = intersects[nextIndex].object;
-                            }
-                        }
-
-                        page.setEditorSelection(EditorSelection.fromObject(page.scene, objectToSelect));
-                    }
-                } else {
-                    if (!event.shiftKey && !event.ctrlKey && !event.metaKey) {
-                        page.setEditorSelection(EditorSelection.createEmpty(page.scene));
-                    }
-                }
+        let objectToSelect = firstIntersectedObject;
+        if (currentlySelectedObject) {
+            const currentIndexInIntersects = intersects.findIndex(intersect => intersect.object === currentlySelectedObject);
+            if (currentIndexInIntersects !== -1) {
+                const nextIndex = (currentIndexInIntersects + 1) % intersects.length;
+                objectToSelect = intersects[nextIndex].object;
             }
         }
+
+        page.setEditorSelection(EditorSelection.fromObject(page.scene, objectToSelect));
+    }
+
+    function clearSelectionIfNeeded(event: MouseEvent): void {
+        if (!event.shiftKey && !event.ctrlKey && !event.metaKey) {
+            page.setEditorSelection(EditorSelection.createEmpty(page.scene));
+        }
+    }
+
+    function onContainerMouseUp(event: MouseEvent) {
+        if (!isClickSelectionGesture(event)) {
+            return;
+        }
+
+        const intersects = getSelectableIntersects(event);
+        if (intersects.length === 0) {
+            clearSelectionIfNeeded(event);
+            return;
+        }
+
+        selectSingleObjectFromIntersects(event, page.editorSelection(), intersects);
     }
 
     function onKeyDown(event: KeyboardEvent) {

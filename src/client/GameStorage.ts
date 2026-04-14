@@ -259,7 +259,7 @@ export class GameStorage {
                 && road.endX !== undefined
                 && road.endZ !== undefined
             ) {
-                segment.setArc(road.arcMidX, road.arcMidZ, road.endX, road.endZ);
+                segment.setArc({ x: road.arcMidX, z: road.arcMidZ }, { x: road.endX, z: road.endZ });
             }
         }
 

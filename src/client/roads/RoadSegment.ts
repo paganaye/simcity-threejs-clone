@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
 import type { IDualRoadType, IRoadType } from './IRoad';
 import { RoadPrimitive } from './RoadPrimitive';
-import { getBands } from './RoadLayout';
 import { StraightRoadPrimitive } from './StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from './CurvedRoadPrimitive';
 import { IPoint2D } from '../../sim/IPoint';
@@ -15,31 +14,21 @@ export interface SegmentEndPoint {
     segment: RoadSegment;
     side: SegmentSide;
 }
-/**
- * A single straight road segment.
- * The group sits at (startX, 0, startZ) with rotation.y = angle.
- * Road geometry is built at local origin with angle=0;
- * the group's rotation handles world direction so moving/rotating
- * the group (via gizmo) needs no geometry rebuild.
- */
+
 export class RoadSegment {
     private static nextId = 1;
     readonly id = RoadSegment.nextId++;
-    readonly group = new THREE.Group();
+
+    private startPoint: IPoint2D;
+    private endPoint: IPoint2D;
+    private arcMidPoint?: IPoint2D;
+
     private dualRoadType: IDualRoadType = {
         forward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
         backward: { roadColor: 'old', lanes: 1, rightKerb: 'none', rightSidewalk: 'small', laneWidth: 'normal', leftKerb: 'none', leftSidewalk: 'none' },
         gapSize: 0
     };
 
-    // Arc control point (world space). When set, road is rebuilt as a curve.
-    private _arcMidX?: number;
-    private _arcMidZ?: number;
-    // Stored end position when arc is active (world space).
-    private _arcEndX?: number;
-    private _arcEndZ?: number;
-    private _angle: number;
-    private _length: number;
     private junctionCuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts };
     forwardPrimitive!: RoadPrimitive;
     backwardPrimitive?: RoadPrimitive;
@@ -52,12 +41,8 @@ export class RoadSegment {
         end: IPoint2D,
         dualRoadType?: IDualRoadType,
     ) {
-        this.startX = start.x;
-        this.startZ = start.z;
-        const dx = end.x - start.x;
-        const dz = end.z - start.z;
-        this._angle = Math.atan2(-dz, dx);
-        this._length = Math.hypot(dx, dz);
+        this.startPoint = RoadSegment.toPoint(start);
+        this.endPoint = RoadSegment.toPoint(end);
 
         if (dualRoadType) {
             this.dualRoadType = {
@@ -66,17 +51,8 @@ export class RoadSegment {
                 gapSize: Number.isFinite(dualRoadType.gapSize) ? dualRoadType.gapSize : 0
             };
         }
-        this.group.userData.selectableType = 'road';
-        this.group.userData.roadSegment = this;
-        this.group.userData.iRoad = this.dualRoadType;
-        this.group.position.set(this.startX, 0, this.startZ);
-        this.group.rotation.y = this.angle;
-        sceneRoot.add(this.group);
         this.rebuild();
     }
-
-    public startX: number;
-    public startZ: number;
 
     get start(): SegmentEndPoint {
         return { side: 'start', segment: this };
@@ -86,23 +62,37 @@ export class RoadSegment {
     }
 
     get angle(): number {
-        return this._angle;
+        const dx = this.endPoint.x - this.startPoint.x;
+        const dz = this.endPoint.z - this.startPoint.z;
+        return Math.atan2(-dz, dx);
     }
 
     get length(): number {
-        return this._length;
+        const arc = this.#computeArcGeometry();
+        if (!arc) {
+            return this.#chordLength();
+        }
+        return Math.abs(arc.turnAngle) * arc.radius;
+    }
+
+    get startX(): number {
+        return this.startPoint.x;
+    }
+
+    get startZ(): number {
+        return this.startPoint.z;
     }
 
     get endX(): number {
-        return this._arcEndX ?? this.startX + Math.cos(this.angle) * this.length;
+        return this.endPoint.x;
     }
 
     get endZ(): number {
-        return this._arcEndZ ?? this.startZ - Math.sin(this.angle) * this.length;
+        return this.endPoint.z;
     }
 
-    get arcMidX(): number | undefined { return this._arcMidX; }
-    get arcMidZ(): number | undefined { return this._arcMidZ; }
+    get arcMidX(): number | undefined { return this.arcMidPoint?.x; }
+    get arcMidZ(): number | undefined { return this.arcMidPoint?.z; }
 
     getIRoad(): IDualRoadType {
         return this.dualRoadType;
@@ -114,7 +104,6 @@ export class RoadSegment {
             backward: nextRoad.backward ? { ...nextRoad.backward } : undefined,
             gapSize: Number.isFinite(nextRoad.gapSize) ? nextRoad.gapSize : 0,
         };
-        this.group.userData.iRoad = this.dualRoadType;
         this.rebuild();
     }
 
@@ -128,6 +117,8 @@ export class RoadSegment {
     }
 
     clearTransientJoinArcPrimitives(): void {
+        this.startJoinArcPrimitive?.dispose();
+        this.endJoinArcPrimitive?.dispose();
         this.startJoinArcPrimitive = undefined;
         this.endJoinArcPrimitive = undefined;
     }
@@ -142,7 +133,7 @@ export class RoadSegment {
         cuts?: IRoadCuts;
     }): void {
         const primitive = new CurvedRoadPrimitive({
-            parent: this.group,
+            parent: this.sceneRoot,
             transient: true,
             start: params.start,
             mid: params.mid,
@@ -150,6 +141,7 @@ export class RoadSegment {
             roadType: params.roadType,
             cuts: params.cuts,
         });
+        this.#tagRoadPrimitive(primitive);
         if (side === 'start') {
             this.startJoinArcPrimitive = primitive;
             return;
@@ -168,18 +160,13 @@ export class RoadSegment {
         const forwardCuts = this.junctionCuts?.forwardCuts;
         const backwardCuts = this.junctionCuts?.backwardCuts;
 
-        const start = { x: this.startX, z: this.startZ };
-        const end = { x: this.endX, z: this.endZ };
+        const start = { x: this.startPoint.x, z: this.startPoint.z };
+        const end = { x: this.endPoint.x, z: this.endPoint.z };
 
-        if (
-            this._arcMidX !== undefined &&
-            this._arcMidZ !== undefined &&
-            this._arcEndX !== undefined &&
-            this._arcEndZ !== undefined
-        ) {
-            const mid = { x: this._arcMidX, z: this._arcMidZ };
+        if (this.arcMidPoint) {
+            const mid = { x: this.arcMidPoint.x, z: this.arcMidPoint.z };
             this.forwardPrimitive = new CurvedRoadPrimitive({
-                parent: this.group,
+                parent: this.sceneRoot,
                 transient: false,
                 start,
                 mid,
@@ -187,10 +174,11 @@ export class RoadSegment {
                 roadType: this.dualRoadType.forward,
                 cuts: forwardCuts,
             });
+            this.#tagRoadPrimitive(this.forwardPrimitive);
 
             if (this.dualRoadType.backward) {
                 this.backwardPrimitive = new CurvedRoadPrimitive({
-                    parent: this.group,
+                    parent: this.sceneRoot,
                     transient: false,
                     start: end,
                     mid,
@@ -198,180 +186,148 @@ export class RoadSegment {
                     roadType: this.dualRoadType.backward,
                     cuts: backwardCuts,
                 });
+                this.#tagRoadPrimitive(this.backwardPrimitive);
             }
             return;
         }
 
         this.forwardPrimitive = new StraightRoadPrimitive({
-            parent: this.group,
+            parent: this.sceneRoot,
             transient: false,
             start,
             end,
             roadType: this.dualRoadType.forward,
             cuts: forwardCuts,
         });
+        this.#tagRoadPrimitive(this.forwardPrimitive);
 
         if (this.dualRoadType.backward) {
             this.backwardPrimitive = new StraightRoadPrimitive({
-                parent: this.group,
+                parent: this.sceneRoot,
                 transient: false,
                 start: end,
                 end: start,
                 roadType: this.dualRoadType.backward,
                 cuts: backwardCuts,
             });
+            this.#tagRoadPrimitive(this.backwardPrimitive);
         }
     }
 
     /** Curve the road through a world-space control point. Keeps start and end fixed. */
-    setArc(midX: number, midZ: number, endX?: number, endZ?: number, forceArc = false): void {
-        if (endX !== undefined && endZ !== undefined) {
-            this._arcEndX = endX;
-            this._arcEndZ = endZ;
-        } else if (this._arcEndX === undefined || this._arcEndZ === undefined) {
-            this._arcEndX = this.startX + Math.cos(this.angle) * this.length;
-            this._arcEndZ = this.startZ - Math.sin(this.angle) * this.length;
+    setArc(mid: IPoint2D, end?: IPoint2D, forceArc = false): void {
+        if (end) {
+            this.endPoint = RoadSegment.toPoint(end);
         }
 
-        const targetEndX = this._arcEndX;
-        const targetEndZ = this._arcEndZ;
-        if (targetEndX === undefined || targetEndZ === undefined) return;
+        const targetEndX = this.endPoint.x;
+        const targetEndZ = this.endPoint.z;
 
         // If arc control returns near the straight chord, switch back to true straight mode.
         // Transient join arcs may force curved mode to preserve small-angle round corners.
-        const chordDx = targetEndX - this.startX;
-        const chordDz = targetEndZ - this.startZ;
+        const chordDx = targetEndX - this.startPoint.x;
+        const chordDz = targetEndZ - this.startPoint.z;
         const chordLength = Math.hypot(chordDx, chordDz);
         if (!forceArc && chordLength > 1e-6) {
             const ux = chordDx / chordLength;
             const uz = chordDz / chordLength;
             const nx = -uz;
             const nz = ux;
-            const mx = midX - this.startX;
-            const mz = midZ - this.startZ;
+            const mx = mid.x - this.startPoint.x;
+            const mz = mid.z - this.startPoint.z;
             const perpendicularDistance = Math.abs(mx * nx + mz * nz);
             const straightThreshold = Math.max(0.2, chordLength * 0.02);
 
             if (perpendicularDistance <= straightThreshold) {
-                this.#setStraightFromEndpoints(targetEndX, targetEndZ);
+                this.#setStraightFromEnd({ x: targetEndX, z: targetEndZ });
                 this.rebuild();
                 return;
             }
         }
 
-        this._arcMidX = midX;
-        this._arcMidZ = midZ;
+        this.arcMidPoint = RoadSegment.toPoint(mid);
         this.rebuild();
     }
 
-    #setStraightFromEndpoints(endX: number, endZ: number): void {
-        const dx = endX - this.startX;
-        const dz = endZ - this.startZ;
-        this._length = Math.hypot(dx, dz);
-        this._angle = Math.atan2(-dz, dx);
-        this._arcMidX = undefined;
-        this._arcMidZ = undefined;
-        this._arcEndX = undefined;
-        this._arcEndZ = undefined;
+    #setStraightFromEnd(end: IPoint2D): void {
+        this.endPoint = RoadSegment.toPoint(end);
+        this.arcMidPoint = undefined;
     }
 
-    /** Move without rebuilding geometry — group transform handles world position. */
-    moveTo(startX: number, startZ: number, angle: number): void {
-        this.startX = startX;
-        this.startZ = startZ;
-        this._angle = angle;
-        this._arcMidX = undefined;
-        this._arcMidZ = undefined;
-        this._arcEndX = undefined;
-        this._arcEndZ = undefined;
-        this.group.position.set(startX, 0, startZ);
-        this.group.rotation.y = angle;
-        this.compilePrimitives();
+    moveTo(start: IPoint2D, angle: number): void {
+        const currentLength = this.#chordLength();
+        this.startPoint = RoadSegment.toPoint(start);
+        this.endPoint = {
+            x: start.x + Math.cos(angle) * currentLength,
+            z: start.z - Math.sin(angle) * currentLength,
+        };
+        this.arcMidPoint = undefined;
+        this.rebuild();
     }
 
     /** Change length and rebuild geometry. Clears any arc. */
     resize(newLength: number): void {
-        this._arcMidX = undefined;
-        this._arcMidZ = undefined;
-        this._arcEndX = undefined;
-        this._arcEndZ = undefined;
-        this._length = newLength;
+        const angle = this.angle;
+        this.endPoint = {
+            x: this.startPoint.x + Math.cos(angle) * newLength,
+            z: this.startPoint.z - Math.sin(angle) * newLength,
+        };
+        this.arcMidPoint = undefined;
         this.rebuild();
     }
 
-    /** Rebuild road meshes. Uses arc if control point is set, straight road otherwise. */
     rebuild(): void {
-        this.#clearGeometry();
-
-        if (this._arcMidX !== undefined && this._arcMidZ !== undefined &&
-            this._arcEndX !== undefined && this._arcEndZ !== undefined) {
-            this.#rebuildArc(this._arcMidX, this._arcMidZ, this._arcEndX, this._arcEndZ);
-        } else {
-            this.group.position.set(this.startX, 0, this.startZ);
-            this.group.rotation.y = this.angle;
-            this.#addStraightMeshes(this.length, this.junctionCuts);
-        }
-
-        this.#tagChildren();
         this.compilePrimitives();
     }
 
     dispose(): void {
-        this.#clearGeometry();
-        this.sceneRoot.remove(this.group);
+        this.forwardPrimitive?.dispose();
+        this.backwardPrimitive?.dispose();
+        this.startJoinArcPrimitive?.dispose();
+        this.endJoinArcPrimitive?.dispose();
     }
 
-    #clearGeometry(): void {
-        while (this.group.children.length > 0) {
-            const child = this.group.children[0] as THREE.Mesh;
-            if (child.geometry) child.geometry.dispose();
-            this.group.remove(child);
-        }
-    }
-
-    #tagChildren(): void {
-        this.group.traverse((obj) => {
-            if (obj !== this.group) {
-                obj.userData.selectableType = 'road';
-                obj.userData.roadSegment = this;
-            }
+    #tagRoadPrimitive(primitive: RoadPrimitive | undefined): void {
+        if (!primitive) return;
+        primitive.setMeshUserData({
+            selectableType: 'road',
+            roadSegment: this,
+            iRoad: this.dualRoadType,
         });
     }
 
-    /**
-     * Rebuild as a circular arc through (startX,startZ), mid, end.
-     * The group is placed at world-space identity so builder coords are world coords.
-     */
-    #rebuildArc(midX: number, midZ: number, endX: number, endZ: number): void {
-        const p1x = this.startX, p1z = this.startZ;
-        const p2x = midX, p2z = midZ;
-        const p3x = endX, p3z = endZ;
+    #chordLength(): number {
+        return Math.hypot(this.endPoint.x - this.startPoint.x, this.endPoint.z - this.startPoint.z);
+    }
 
-        // Circumcircle of three world points.
-        const D = 2 * (p1x * (p2z - p3z) + p2x * (p3z - p1z) + p3x * (p1z - p2z));
-        if (Math.abs(D) < 0.01) {
+    #computeArcGeometry(): { radius: number; turnAngle: number } | null {
+        if (!this.arcMidPoint) return null;
+
+        const p1x = this.startPoint.x;
+        const p1z = this.startPoint.z;
+        const p2x = this.arcMidPoint.x;
+        const p2z = this.arcMidPoint.z;
+        const p3x = this.endPoint.x;
+        const p3z = this.endPoint.z;
+
+        const determinant = 2 * (p1x * (p2z - p3z) + p2x * (p3z - p1z) + p3x * (p1z - p2z));
+        if (Math.abs(determinant) < 0.01) {
             if (DEBUG_ROAD_ARC) {
                 console.log('[RoadArc] fallback-straight', {
-                    segmentId: this.group.id,
-                    determinant: D,
+                    segmentId: this.id,
+                    determinant,
                 });
             }
-            // Points nearly collinear — fall back to straight road.
-            this.#setStraightFromEndpoints(p3x, p3z);
-            this.group.position.set(this.startX, 0, this.startZ);
-            this.group.rotation.y = this.angle;
-            this.#addStraightMeshes(this.length, this.junctionCuts);
-            return;
+            return null;
         }
 
         const w1 = p1x * p1x + p1z * p1z;
         const w2 = p2x * p2x + p2z * p2z;
         const w3 = p3x * p3x + p3z * p3z;
-        const cx = (w1 * (p2z - p3z) + w2 * (p3z - p1z) + w3 * (p1z - p2z)) / D;
-        const cz = (w1 * (p3x - p2x) + w2 * (p1x - p3x) + w3 * (p2x - p1x)) / D;
+        const cx = (w1 * (p2z - p3z) + w2 * (p3z - p1z) + w3 * (p1z - p2z)) / determinant;
+        const cz = (w1 * (p3x - p2x) + w2 * (p1x - p3x) + w3 * (p2x - p1x)) / determinant;
         const radius = Math.hypot(p1x - cx, p1z - cz);
 
-        // Compute angles in builder-space (x, -z) to match RoadBuilder conventions.
         const a1 = Math.atan2(-(p1z - cz), p1x - cx);
         const a2 = Math.atan2(-(p2z - cz), p2x - cx);
         const a3 = Math.atan2(-(p3z - cz), p3x - cx);
@@ -397,9 +353,7 @@ export class RoadSegment {
             return d;
         };
 
-        // Candidate 1: shortest signed arc from start to end.
         const shortDelta = normalizeSigned(a3 - a1);
-        // Candidate 2: opposite wrapping arc with same endpoints.
         const longDelta = shortDelta > 0 ? shortDelta - 2 * Math.PI : shortDelta + 2 * Math.PI;
 
         const isOnArc = (start: number, mid: number, delta: number): boolean => {
@@ -415,186 +369,14 @@ export class RoadSegment {
 
         let turnAngle = isOnArc(a1, a2, shortDelta) ? shortDelta : longDelta;
         if (!isOnArc(a1, a2, turnAngle)) {
-            // Fallback for numeric edge-cases: prefer the shortest arc.
             turnAngle = shortDelta;
         }
 
-        const startAngle = a1 + (turnAngle > 0 ? Math.PI / 2 : -Math.PI / 2);
-        const arcAngle = Math.abs(turnAngle);
-
-
-        // Build at world-space identity so builder positions are world coordinates.
-        this.group.position.set(0, 0, 0);
-        this.group.rotation.set(0, 0, 0);
-
-        this.#addCurvedMeshes(p1x, p1z, startAngle, turnAngle, radius);
-
-        // Keep stored state consistent with the arc geometry.
-        this._angle = startAngle;
-        this._length = arcAngle * radius;
+        return { radius, turnAngle };
     }
 
-    /** Add straight road meshes into this.group (local coords: start at origin, angle=0). */
-    #addStraightMeshes(length: number, cuts?: { forwardCuts?: IRoadCuts; backwardCuts?: IRoadCuts }): void {
-        const { forward, backward, gapSize } = this.dualRoadType;
-        const safeGap = Number.isFinite(gapSize) ? gapSize : 0;
-        const rightBands = getBands(forward);
-        const leftBands = backward ? getBands(backward) : null;
-        const halfGapM = backward ? safeGap / 2 : 0;
-
-        const shiftByNormal = (start: IPoint2D, end: IPoint2D, lateralOffsetM: number) => {
-            const dx = end.x - start.x;
-            const dz = end.z - start.z;
-            const angle = Math.atan2(-dz, dx);
-            const normalX = Math.sin(angle);
-            const normalZ = Math.cos(angle);
-            return {
-                start: { x: start.x + normalX * lateralOffsetM, y: start.y, z: start.z + normalZ * lateralOffsetM },
-                end: { x: end.x + normalX * lateralOffsetM, z: end.z + normalZ * lateralOffsetM },
-            };
-        };
-
-        const fwdOffsetM = halfGapM + rightBands.totalWidthM / 2;
-        const fwdBaseStart = { x: 0, y: 0.015, z: 0 };
-        const fwdBaseEnd = { x: length, z: 0 };
-        const fwdPoints = shiftByNormal(fwdBaseStart, fwdBaseEnd, fwdOffsetM);
-
-        this.forwardPrimitive = new StraightRoadPrimitive({
-            parent: this.group,
-            transient: false,
-            start: fwdPoints.start,
-            end: fwdPoints.end,
-            roadType: forward,
-            cuts: cuts?.forwardCuts,
-        });
-
-        if (backward && leftBands) {
-            const bwdOffsetM = halfGapM + leftBands.totalWidthM / 2;
-            const bwdBaseStart = { x: length, y: 0.015, z: 0 };
-            const bwdBaseEnd = { x: 0, z: 0 };
-            const bwdPoints = shiftByNormal(bwdBaseStart, bwdBaseEnd, bwdOffsetM);
-
-            this.backwardPrimitive = new StraightRoadPrimitive({
-                parent: this.group,
-                transient: false,
-                start: bwdPoints.start,
-                end: bwdPoints.end,
-                roadType: backward,
-                cuts: cuts?.backwardCuts,
-            });
-
-        }
-    }
-
-    /**
-     * Add curved road meshes into this.group.
-     * Coordinates are world-space — group must be at identity when calling this.
-     */
-    #addCurvedMeshes(startX: number, startZ: number, startAngle: number, turnAngle: number, radius: number): void {
-        const { forward, backward, gapSize } = this.dualRoadType;
-        const safeGap = backward && Number.isFinite(gapSize) ? gapSize : 0;
-        const halfGapM = backward ? safeGap / 2 : 0;
-        const rightBands = getBands(forward);
-        const leftBands = backward ? getBands(backward) : null;
-
-        const createArcPrimitive = (params: {
-            start: { x: number; y?: number; z: number; angle: number };
-            radius: number;
-            sweepAngle: number;
-            roadType: IRoadType;
-            cuts?: IRoadCuts;
-            direction: 'forward' | 'backward';
-        }): CurvedRoadPrimitive | null => {
-            const safeRadius = Math.max(0.001, Math.abs(params.radius));
-            const safeSweepAngle = Number.isFinite(params.sweepAngle) ? params.sweepAngle : 0;
-            if (Math.abs(safeSweepAngle) < 1e-6) return null;
-
-            const leftNormalX = Math.sin(params.start.angle);
-            const leftNormalZ = Math.cos(params.start.angle);
-            const turnDirection = safeSweepAngle < 0 ? -1 : 1;
-            const center = {
-                x: params.start.x + leftNormalX * safeRadius * turnDirection,
-                z: params.start.z + leftNormalZ * safeRadius * turnDirection,
-            };
-
-            const curveSweepAngle = -safeSweepAngle;
-            const radialSign = -turnDirection;
-            const pointAt = (t: number) => {
-                const tangentAngle = params.start.angle + curveSweepAngle * t;
-                const leftN = { x: Math.sin(tangentAngle), z: Math.cos(tangentAngle) };
-                return {
-                    x: center.x + leftN.x * radialSign * safeRadius,
-                    z: center.z + leftN.z * radialSign * safeRadius,
-                };
-            };
-
-            return new CurvedRoadPrimitive({
-                parent: this.group,
-                transient: false,
-                start: pointAt(0),
-                mid: pointAt(0.5),
-                end: pointAt(1),
-                roadType: params.roadType,
-                cuts: params.cuts,
-            });
-        };
-
-        const sweepAngle = -turnAngle;
-        const turnDirection = sweepAngle < 0 ? -1 : 1;
-        const leftNormalX = Math.sin(startAngle);
-        const leftNormalZ = Math.cos(startAngle);
-
-        const fwdOffsetM = halfGapM + rightBands.totalWidthM / 2;
-        const fwdRadius = radius - fwdOffsetM * turnDirection;
-        if (fwdRadius > 0.01) {
-            const fwdPrimitive = createArcPrimitive({
-                start: {
-                    x: startX + leftNormalX * fwdOffsetM,
-                    y: 0.015,
-                    z: startZ + leftNormalZ * fwdOffsetM,
-                    angle: startAngle,
-                },
-                radius: fwdRadius,
-                sweepAngle,
-                roadType: forward,
-                direction: 'forward',
-            });
-            fwdPrimitive?.refreshMesh();
-        }
-
-        if (backward && leftBands) {
-            const endAngle = startAngle + turnAngle;
-            const centerX = startX + leftNormalX * radius * turnDirection;
-            const centerZ = startZ + leftNormalZ * radius * turnDirection;
-            const endLeftNormalX = Math.sin(endAngle);
-            const endLeftNormalZ = Math.cos(endAngle);
-            const endX = centerX - endLeftNormalX * radius * turnDirection;
-            const endZ = centerZ - endLeftNormalZ * radius * turnDirection;
-
-            const bwdSweep = turnAngle;
-            const bwdTurnDirection = bwdSweep < 0 ? -1 : 1;
-            const bwdStartAngle = endAngle + Math.PI;
-            const bwdLeftNormalX = Math.sin(bwdStartAngle);
-            const bwdLeftNormalZ = Math.cos(bwdStartAngle);
-            const bwdOffsetM = halfGapM + leftBands.totalWidthM / 2;
-            const bwdRadius = radius - bwdOffsetM * bwdTurnDirection;
-
-            if (bwdRadius > 0.01) {
-                const bwdPrimitive = createArcPrimitive({
-                    start: {
-                        x: endX + bwdLeftNormalX * bwdOffsetM,
-                        y: 0.015,
-                        z: endZ + bwdLeftNormalZ * bwdOffsetM,
-                        angle: bwdStartAngle,
-                    },
-                    radius: bwdRadius,
-                    sweepAngle: bwdSweep,
-                    roadType: backward,
-                    direction: 'backward',
-                });
-                bwdPrimitive?.refreshMesh();
-            }
-        }
+    private static toPoint(point: IPoint2D): IPoint2D {
+        return { x: point.x, z: point.z, y: point.y };
     }
 
 }

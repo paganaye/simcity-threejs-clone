@@ -40,7 +40,10 @@ export abstract class RoadPrimitive {
 
     protected initializeMesh(parent: THREE.Object3D): void {
         this.mesh = this.createMesh();
-        if (this.mesh) parent.add(this.mesh);
+        if (this.mesh) {
+            this.mesh.userData = this;
+            parent.add(this.mesh);
+        }
     }
 
     protected disposeMesh(): void {
@@ -58,7 +61,17 @@ export abstract class RoadPrimitive {
         let scene = this.mesh?.parent;
         this.disposeMesh();
         this.mesh = this.createMesh();
-        if (this.mesh && scene) scene.add(this.mesh);
+        if (this.mesh) {
+            this.mesh.userData = this;
+            if (scene) scene.add(this.mesh);
+        }
+    }
+
+    setMeshUserData(data: Record<string, unknown>): void {
+        Object.assign(this as unknown as Record<string, unknown>, data);
+        if (this.mesh) {
+            this.mesh.userData = this;
+        }
     }
 
     get start(): PrimitiveEndPoint {

@@ -33,7 +33,7 @@ export default class RoundDualWayTest extends Page {
             const dualWayRoad: IDualRoadType = {
                 forward: roadType,
                 backward: roadType,
-                gapSize: 1,
+                gapSize: 2,
             };
 
             const centerX = 24;
@@ -73,22 +73,25 @@ export default class RoundDualWayTest extends Page {
             elapsed /= 2; // slow down a bit
             const minuteAngle = elapsed * 0.5;
             const secondAngle = elapsed * 2.6;
-            this.#rotateSegmentFromStart(this.minuteSegment, centerX, centerZ, 30, minuteAngle);
-            this.#rotateSegmentToEnd(this.secondSegment, centerX, centerZ, 40, secondAngle);
+            this.#rotateSegmentFromStart(this.minuteSegment, centerX, centerZ, minuteAngle);
+            this.#rotateSegmentToEnd(this.secondSegment, centerX, centerZ, secondAngle);
         }
 
         this.scene3DInstance?.drawFrame(elapsed);
     }
 
 
-    #rotateSegmentFromStart(segment: RoadSegment, _centerX: number, centerZ: number, _length: number, angle: number): void {
-        segment.moveTo(_centerX, centerZ, angle);
+    #rotateSegmentFromStart(segment: RoadSegment, centerX: number, centerZ: number, angle: number): void {
+        segment.moveTo({ x: centerX, z: centerZ }, angle);
     }
 
-    #rotateSegmentToEnd(segment: RoadSegment, centerX: number, centerZ: number, length: number, angle: number): void {
+    #rotateSegmentToEnd(segment: RoadSegment, centerX: number, centerZ: number, angle: number): void {
+        let length = segment.length;
         segment.moveTo(
-            centerX - Math.cos(angle) * length,
-            centerZ + Math.sin(angle) * length,
+            {
+                x: centerX - Math.cos(angle) * length,
+                z: centerZ + Math.sin(angle) * length,
+            },
             angle,
         );
     }

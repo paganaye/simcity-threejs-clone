@@ -180,6 +180,7 @@ export class GameScene3D {
     }
 
     clearSelection(): void {
+        delete this.scene.userData.roadSegment;
         this.selectedInstance.set(undefined);
         this.selectedCustomObject.set(undefined);
         this.currentGizmo = undefined;
@@ -215,7 +216,8 @@ export class GameScene3D {
         }
 
         this.selectedInstance.set(undefined);
-        this.selectedCustomObject.set(segment.group);
+        this.scene.userData.roadSegment = segment;
+        this.selectedCustomObject.set(this.scene);
         this.currentGizmo = this.roadGizmo;
         this.objectGizmo.clearSelection();
         this.lastSelectedRoad = segment.getIRoad();
@@ -243,14 +245,14 @@ export class GameScene3D {
         const hits = this.raycaster.intersectObjects(this.scene.children, true);
 
         let selected: ISelectedInstance | undefined;
-        let selectedObject3D: THREE.Object3D | undefined;
+        let selectedRoadSegment: RoadSegment | undefined;
         for (const hit of hits) {
             if (hit.object === this.transformProxy) continue;
             const selectableType = hit.object.userData?.selectableType as ('building' | 'character' | 'road' | undefined);
             if (!selectableType) continue;
             if (selectableType === 'road') {
-                selectedObject3D = hit.object.userData?.roadSegment?.group as THREE.Object3D | undefined;
-                if (selectedObject3D) break;
+                selectedRoadSegment = hit.object.userData?.roadSegment as RoadSegment | undefined;
+                if (selectedRoadSegment) break;
                 continue;
             }
             if (hit.instanceId == null) continue;
@@ -259,8 +261,8 @@ export class GameScene3D {
             break;
         }
 
-        if (selectedObject3D?.userData?.roadSegment) {
-            this.selectRoadSegment(selectedObject3D.userData.roadSegment as RoadSegment);
+        if (selectedRoadSegment) {
+            this.selectRoadSegment(selectedRoadSegment);
         } else {
             this.#selectInstance(selected);
         }
@@ -734,7 +736,7 @@ export class GameScene3D {
         };
         this.roadGizmo.onRoadMoved = (x, z, angle, axis: RoadHandleAxis) => {
             let side: SegmentSide | undefined = (axis === 'start' ? 'start' : axis === 'end' ? 'end' : undefined);
-            this.#getSelectedRoadSegment()?.moveTo(x, z, angle);
+            this.#getSelectedRoadSegment()?.moveTo({ x, z }, angle);
             this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment(), side);
         };
         this.roadGizmo.onRoadResized = (newLength) => {
@@ -745,7 +747,7 @@ export class GameScene3D {
             this.onRoadSegmentResized?.(seg);
         };
         this.roadGizmo.onArcChanged = (midX, midZ) => {
-            this.#getSelectedRoadSegment()?.setArc(midX, midZ);
+            this.#getSelectedRoadSegment()?.setArc({ x: midX, z: midZ });
             //this.roadNetwork.refreshTransientJoinArcs(this.#getSelectedRoadSegment());
         };
         this.roadGizmo.onDeselect = () => {

@@ -8,7 +8,8 @@ vi.mock('./RoadSegment', () => {
     class MockRoadSegment {
         static created: MockRoadSegment[] = [];
 
-        readonly group = new THREE.Group();
+        startX: number;
+        startZ: number;
         endX: number;
         endZ: number;
         arcMidX?: number;
@@ -16,26 +17,36 @@ vi.mock('./RoadSegment', () => {
 
         constructor(
             public readonly sceneRoot: THREE.Object3D,
-            public startX: number,
-            public startZ: number,
-            public angle: number,
-            public length: number,
+            start: { x: number; z: number },
+            end: { x: number; z: number },
             private readonly iRoad?: unknown,
         ) {
-            this.endX = startX + Math.cos(angle) * length;
-            this.endZ = startZ - Math.sin(angle) * length;
+            this.startX = start.x;
+            this.startZ = start.z;
+            this.endX = end.x;
+            this.endZ = end.z;
             MockRoadSegment.created.push(this);
+        }
+
+        get angle(): number {
+            return Math.atan2(-(this.endZ - this.startZ), this.endX - this.startX);
+        }
+
+        get length(): number {
+            return Math.hypot(this.endX - this.startX, this.endZ - this.startZ);
         }
 
         getIRoad(): unknown {
             return this.iRoad;
         }
 
-        setArc(midX: number, midZ: number, endX: number, endZ: number): void {
-            this.arcMidX = midX;
-            this.arcMidZ = midZ;
-            this.endX = endX;
-            this.endZ = endZ;
+        setArc(mid: { x: number; z: number }, end?: { x: number; z: number }): void {
+            this.arcMidX = mid.x;
+            this.arcMidZ = mid.z;
+            if (end) {
+                this.endX = end.x;
+                this.endZ = end.z;
+            }
         }
 
         dispose(): void {

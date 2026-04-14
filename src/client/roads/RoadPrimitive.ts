@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
 import type { IRoadType } from './IRoad';
-import { IPoint2D } from '../../sim/IPoint';
+import { IPoint2D } from '../../sim/Geometry';
 import { JoiningRoadPrimitive } from './JoiningRoadPrimitive';
 
 export type PrimitiveSide = 'start' | 'end';

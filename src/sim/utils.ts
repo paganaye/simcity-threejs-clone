@@ -1,5 +1,5 @@
 import { DEG2RAD, RAD2DEG } from "three/src/math/MathUtils.js";
-import { IPoint2D } from "./IPoint";
+import { IPoint2D } from "./Geometry";
 
 
 export const DEG_0 = 0 * DEG2RAD;

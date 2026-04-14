@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { appConstants } from "../../AppConstants";
 import { Character } from "./Character";
 import { QuadTree } from "../../sim/QuadTree";
-import type { IRectangle } from "../../sim/IPoint";
+import type { IRectangle } from "../../sim/Geometry";
 
 export interface CrowdOptions {
     count?: number;

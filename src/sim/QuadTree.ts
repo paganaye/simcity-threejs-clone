@@ -1,4 +1,4 @@
-import { IPoint2D, IRectangle, rectangleContains, rectangleIntersects } from './IPoint';
+import { IPoint2D, IRectangle, rectangleContains, rectangleIntersects } from './Geometry';
 
 interface IQuadTreeNode<T extends IPoint2D> {
     values?: T[];

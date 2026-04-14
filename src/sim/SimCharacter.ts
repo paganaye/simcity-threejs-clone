@@ -1,4 +1,4 @@
-import { IPoint2D } from "./IPoint";
+import { IPoint2D } from "./Geometry";
 import { random, randomBetween } from "./Rng";
 import { Sim } from "./Sim";
 

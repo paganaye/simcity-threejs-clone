@@ -3,7 +3,7 @@ import type { IRoadCuts } from './RoadCuts';
 import { RoadPrimitive } from './RoadPrimitive';
 import type { IRoadType } from './IRoad';
 import { getBands } from './RoadLayout';
-import type { IPoint2D } from '../../sim/IPoint';
+import type { IPoint2D } from '../../sim/Geometry';
 import { RoadConstants } from '../textures/RoadBand';
 import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 

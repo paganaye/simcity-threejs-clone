@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { IPoint3D } from "../../sim/IPoint";
+import { IPoint3D } from "../../sim/Geometry";
 
 export const simpleGeometries = {
     'Box': THREE.BoxGeometry,

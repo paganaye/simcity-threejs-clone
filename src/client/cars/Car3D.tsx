@@ -1,6 +1,6 @@
 import { GameScene3D } from '../GameScene3D.js';
 import { ReactiveMesh } from '../ReactiveMesh.jsx';
-import { IPoint2D } from '../../sim/IPoint.js';
+import { IPoint2D } from '../../sim/Geometry.js';
 import { ICarInfo } from '../../sim/SimCars.js';
 import { CarState } from './CarStates';
 

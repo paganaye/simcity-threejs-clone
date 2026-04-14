@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { IPoint2D, IRectangle } from './IPoint';
+import { IPoint2D, IRectangle } from './Geometry';
 import { QuadTree } from './QuadTree';
 
 describe('QuadTree', () => {

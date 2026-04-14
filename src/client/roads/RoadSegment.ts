@@ -5,7 +5,7 @@ import { RoadPrimitive } from './RoadPrimitive';
 import { StraightRoadPrimitive } from './StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from './CurvedRoadPrimitive';
 import { getBands } from './RoadLayout';
-import { IPoint2D } from '../../sim/IPoint';
+import { IPoint2D } from '../../sim/Geometry';
 
 const DEBUG_ROAD_ARC = true;
 

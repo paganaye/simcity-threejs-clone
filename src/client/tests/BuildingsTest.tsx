@@ -13,6 +13,7 @@ import { GameScene3D } from "../GameScene3D";
 import { GameUIComponent } from "../GameUIComponent";
 import { Page } from "../Page";
 import { ISelectedObject } from "../editor/ISelectedObject";
+import { IPoint2D } from "../../sim/Geometry";
 
 const TILE = appConstants.BuildingsScale;
 const BUILDING_MODELS = Object.entries(modelsMetaData)
@@ -128,7 +129,7 @@ export default class TestBuildings extends Page {
         this.activeAccessHandle = undefined;
     }
 
-    #buildingCenter(): { x: number; z: number } {
+    #buildingCenter(): IPoint2D {
         if (!this.currentBuilding) return { x: 0, z: 0 };
         const selected = this.currentBuilding.selected;
         if (!(selected.object3D instanceof THREE.InstancedMesh) || selected.instanceId == null) return { x: 0, z: 0 };

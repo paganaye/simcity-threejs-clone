@@ -3,6 +3,7 @@ import { appConstants } from "../../AppConstants";
 //import type { CharacterPath } from "./CharacterPath";
 import { Population } from "./Population";
 import { rotateTowards } from '../../sim/utils';
+import { IPoint2D } from "../../sim/Geometry";
 
 type RGB = [number, number, number];
 type FaceName = "front" | "back" | "left" | "right" | "top" | "bottom";
@@ -148,7 +149,7 @@ export class Character {
     this.characterId = `C${Character.nextCharacterId++}`;
   }
 
-  setTarget(target: { x: number; z: number }): void {
+  setTarget(target: IPoint2D): void {
     this.realTarget = { x: target.x, z: target.z, type: 'goal' };
   }
 

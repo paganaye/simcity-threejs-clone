@@ -1,5 +1,5 @@
 import { appConstants } from '../AppConstants';
-import { polygonInsideBounds, aabbOverlap, polygonsIntersectSAT } from '../utils/geometry';
+import { polygonInsideBounds, aabbOverlap, polygonsIntersectSAT } from '../sim/Geometry';
 import { WorldMap3D, PlacedFootprint } from './WorldMap3D';
 
 // private rebuild() {

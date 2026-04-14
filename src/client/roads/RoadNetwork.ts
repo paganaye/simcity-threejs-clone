@@ -1,8 +1,8 @@
-import * as THREE from 'three';
-import type { PrimitiveEndPoint } from './RoadPrimitive';
+import type { PrimitiveEndPoint, RoadPrimitive } from './RoadPrimitive';
 import { RoadSegment, SegmentEndPoint, SegmentSide } from './RoadSegment';
 import { GameScene3D } from '../GameScene3D';
 import { JoiningRoadPrimitive } from './JoiningRoadPrimitive';
+import { IPoint2D } from '../../sim/Geometry';
 
 const DEFAULT_JOIN_RADIUS = 8;
 const JOIN_EPSILON = 0.45;
@@ -14,11 +14,11 @@ export class RoadNetwork {
 
     *endPoints(): Iterable<PrimitiveEndPoint> {
         for (let segment of this.segments) {
-            yield { primitive: segment.forwardPrimitive, side: 'entry' };
-            yield { primitive: segment.forwardPrimitive, side: 'exit' };
+            yield segment.forwardPrimitive.entry;
+            yield segment.forwardPrimitive.exit;
             if (segment.backwardPrimitive) {
-                yield { primitive: segment.backwardPrimitive, side: 'entry' };
-                yield { primitive: segment.backwardPrimitive, side: 'exit' };
+                yield segment.backwardPrimitive.entry;
+                yield segment.backwardPrimitive.exit;
             }
         }
     }
@@ -33,18 +33,39 @@ export class RoadNetwork {
             const touchingSegments = this.#findTouchingSegments(road, other);
             if (!touchingSegments) continue;
 
-            if (touchingSegments.selectedSide.side == 'start' && touchingSegments.otherSide.side == 'end') {
-                // this.tryJoiningPrimitives(
-                //     sceneRoot,
-                //     { primitive: road.forwardPrimitive!, side: 'start' },
-                //     { primitive: other.backwardPrimitive!, side: 'end' }
-                // );
-                this.tryJoiningPrimitives(
+            let fwExitRoad: RoadPrimitive | undefined;
+            let fwEntryRoad: RoadPrimitive | undefined;
+
+            let bwExitRoad: RoadPrimitive | undefined;
+            let bwEntryRoad: RoadPrimitive | undefined;
+
+            const selectedAtStart = touchingSegments.selectedSide.side === 'start';
+            const otherAtStart = touchingSegments.otherSide.side === 'start';
+
+            fwExitRoad = otherAtStart ? other.backwardPrimitive : other.forwardPrimitive;
+            fwEntryRoad = selectedAtStart ? road.forwardPrimitive : road.backwardPrimitive;
+            bwExitRoad = selectedAtStart ? road.backwardPrimitive : road.forwardPrimitive;
+            bwEntryRoad = otherAtStart ? other.forwardPrimitive : other.backwardPrimitive;
+
+            
+            if (fwExitRoad && fwEntryRoad) {
+                JoiningRoadPrimitive.joinPrimitives(
                     sceneRoot,
-                    { primitive: road.backwardPrimitive!, side: 'entry' },
-                    { primitive: other.forwardPrimitive!, side: 'exit' }
+                    fwExitRoad.exit,
+                    fwEntryRoad.entry,
+                    road.forwardPrimitive.roadType,
+                    { radius: DEFAULT_JOIN_RADIUS },
                 );
-            } else {
+            }
+
+            if (bwExitRoad && bwEntryRoad) {
+                JoiningRoadPrimitive.joinPrimitives(
+                    sceneRoot,
+                    bwExitRoad.exit,
+                    bwEntryRoad.entry,
+                    road.backwardPrimitive!.roadType,
+                    { radius: DEFAULT_JOIN_RADIUS },
+                );
 
             }
 
@@ -73,17 +94,6 @@ export class RoadNetwork {
         this.segments.length = 0;
     }
 
-     tryJoiningPrimitives(
-        sceneRoot: THREE.Object3D,
-        first: PrimitiveEndPoint | undefined | null,
-        second: PrimitiveEndPoint | undefined | null,
-    ): boolean {
-        if (!first || !second) return false;
-        const joined = JoiningRoadPrimitive.joinPrimitives(sceneRoot, first, second, second.primitive.roadType, { radius: DEFAULT_JOIN_RADIUS });
-        if (!joined) return false;
-        //joined.recreateMesh();
-        return true;
-    }
 
 
     #findTouchingSegments(
@@ -94,7 +104,7 @@ export class RoadNetwork {
         otherSide: SegmentEndPoint
         distance: number;
     } | null {
-        const getPoint = (endPoint: SegmentEndPoint): { x: number; z: number } =>
+        const getPoint = (endPoint: SegmentEndPoint): IPoint2D =>
             endPoint.side === 'start'
                 ? { x: endPoint.segment.startX, z: endPoint.segment.startZ }
                 : { x: endPoint.segment.endX, z: endPoint.segment.endZ };

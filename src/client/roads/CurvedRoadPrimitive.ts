@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
 import { RoadPrimitive } from './RoadPrimitive';
 import type { IRoadType } from './IRoad';
+import type { RoadSegment } from './RoadSegment';
 import { getBands } from './RoadLayout';
 import { computeArcFromThreePoints, type IPoint2D } from '../../sim/Geometry';
 import { RoadConstants } from '../textures/RoadBand';
@@ -9,6 +10,7 @@ import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 
 export interface CurvedRoadPrimitiveParams {
     parent: THREE.Object3D;
+    segment: RoadSegment;
     transient: boolean;
     start: IPoint2D;
     mid: IPoint2D;
@@ -41,7 +43,7 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
 
     override createGeometry(): THREE.BufferGeometry | null {
         const y = 0, textureProgressV = 0, lineLength = RoadConstants.yellowLineLength, segmentLength = 2;
-        const arc = computeArcFromThreePoints(this.startPos, this.mid, this.endPos);
+        const arc = computeArcFromThreePoints(this.entry, this.mid, this.exit);
         if (!arc || Math.abs(arc.sweepAngle) < 1e-6) return null;
 
         const bands = getBands(this.roadType);

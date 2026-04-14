@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import { CurvedRoadPrimitive, CurvedRoadPrimitiveParams } from "./CurvedRoadPrimitive";
 import { IRoadType } from "./IRoad";
-import { PrimitiveEndPoint, RoadPrimitive } from "./RoadPrimitive";
+import { PrimitiveEndPoint, PrimitiveEntry, PrimitiveExit, RoadPrimitive } from "./RoadPrimitive";
+import { IPoint2D } from '../../sim/Geometry';
 
-const DEBUG_JOINING_ROAD = false;
+const DEBUG_JOINING_ROAD = true;
 
 export interface JoiningRoadPrimitiveParams extends CurvedRoadPrimitiveParams {
     radius: number;
-    first: PrimitiveEndPoint;
-    second: PrimitiveEndPoint;
+    exit: PrimitiveExit;
+    entry: PrimitiveEntry;
     requestedRadius?: number;
 }
 
@@ -17,8 +18,8 @@ export type JoiningPrimitiveOptions = {
 };
 
 export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
-    private readonly first: PrimitiveEndPoint;
-    private readonly second: PrimitiveEndPoint;
+    private readonly nextRoadEntry: PrimitiveEntry;
+    private readonly previousRoadExit: PrimitiveExit;
     private readonly requestedRadius: number;
     private isRebuilding = false;
     private readonly debugParent: THREE.Object3D;
@@ -33,10 +34,10 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
         console.log(`[JoiningRoadPrimitive] ${message}`, data);
     }
 
-    private static directionAwayFromSide(endpoint: PrimitiveEndPoint): { x: number; z: number } | null {
+    private static directionAwayFromSide(endpoint: PrimitiveEndPoint): IPoint2D | null {
         const primitive = endpoint.primitive;
-        const dx = primitive.endPos.x - primitive.startPos.x;
-        const dz = primitive.endPos.z - primitive.startPos.z;
+        const dx = primitive.exit.x - primitive.entry.x;
+        const dz = primitive.exit.z - primitive.entry.z;
         const length = Math.hypot(dx, dz);
         if (!Number.isFinite(length) || length <= 1e-6) return null;
         return endpoint.side === 'entry'
@@ -48,8 +49,8 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
         super(params);
         this.mid = params.mid;
         this.debugParent = params.parent;
-        this.first = params.first;
-        this.second = params.second;
+        this.nextRoadEntry = params.entry;
+        this.previousRoadExit = params.exit;
         this.requestedRadius = typeof params.requestedRadius === 'number' && Number.isFinite(params.requestedRadius)
             ? Math.max(0, Math.abs(params.requestedRadius))
             : Math.max(0, Math.abs(params.radius));
@@ -59,7 +60,7 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
     onRoadMoved(): void {
         if (this.isRebuilding) return;
 
-        const next = JoiningRoadPrimitive.computeJoinGeometry(this.first, this.second, this.requestedRadius);
+        const next = JoiningRoadPrimitive.computeJoinGeometry(this.previousRoadExit, this.nextRoadEntry, this.requestedRadius);
         if (!next) {
             JoiningRoadPrimitive.debug('onRoadMoved: geometry invalid, keeping current arc');
             super.onRoadMoved();
@@ -69,31 +70,13 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
         this.isRebuilding = true;
         try {
             this.updateDebugRequestedRadiusCircle(next.center, this.requestedRadius, next.mid.y + 0.05);
-
-            JoiningRoadPrimitive.debug('onRoadMoved: applying join geometry', {
-                requestedRadius: this.requestedRadius,
-                actualRadius: next.actualRadius,
-                centerX: Number(next.center.x.toFixed(3)),
-                centerZ: Number(next.center.z.toFixed(3)),
-                startX: Number(next.start.x.toFixed(3)),
-                startZ: Number(next.start.z.toFixed(3)),
-                endX: Number(next.end.x.toFixed(3)),
-                endZ: Number(next.end.z.toFixed(3)),
-                midX: Number(next.mid.x.toFixed(3)),
-                midY: Number(next.mid.y.toFixed(3)),
-                midZ: Number(next.mid.z.toFixed(3)),
-            });
-            if (this.first.side === 'entry') this.first.primitive.startPos = next.end;
-            else this.first.primitive.endPos = next.end;
-            if (this.second.side === 'entry') this.second.primitive.startPos = next.start;
-            else this.second.primitive.endPos = next.start;
-
-            this.first.primitive.recreateMesh();
-            this.second.primitive.recreateMesh();
-
-            this.startPos = next.start;
+            this.nextRoadEntry.move(next.end)
+            this.previousRoadExit.move(next.start);
+            this.nextRoadEntry.primitive.recreateMesh();
+            this.previousRoadExit.primitive.recreateMesh();
+            this.entry.move(next.start);
+            this.exit.move(next.end);
             this.mid = next.mid;
-            this.endPos = next.end;
         } finally {
             this.isRebuilding = false;
         }
@@ -105,58 +88,31 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
         console.log("disposing JoiningRoadPrimitive", this);
         this.disposeDebugRequestedRadiusCircle();
 
-        if (this.first.side === 'entry' && this.first.primitive.startJoinPrimitive === this) {
-            this.first.primitive.startJoinPrimitive = null;
-        }
-        if (this.first.side === 'exit' && this.first.primitive.endJoinPrimitive === this) {
-            this.first.primitive.endJoinPrimitive = null;
-        }
-        if (this.second.side === 'entry' && this.second.primitive.startJoinPrimitive === this) {
-            this.second.primitive.startJoinPrimitive = null;
-        }
-        if (this.second.side === 'exit' && this.second.primitive.endJoinPrimitive === this) {
-            this.second.primitive.endJoinPrimitive = null;
-        }
+        this.nextRoadEntry.joiningPrimitive = null;
+        this.previousRoadExit.joiningPrimitive = null;
         super.onDispose();
     }
 
-
-    private static disposeJoinAt(endpoint: PrimitiveEndPoint): void {
-        if (endpoint.side === 'entry') {
-            const join = endpoint.primitive.startJoinPrimitive;
-            if (join) {
-                join.dispose();
-                endpoint.primitive.startJoinPrimitive = null;
-            }
-        } else if (endpoint.side === 'end') {
-            const join = endpoint.primitive.endJoinPrimitive;
-            if (join) {
-                join.dispose();
-                endpoint.primitive.endJoinPrimitive = null;
-            }
-        }
-    }
-
     private static computeJoinGeometry(
-        first: PrimitiveEndPoint,
-        second: PrimitiveEndPoint,
+        previousRoadExit: PrimitiveExit,
+        nextRoadEntry: PrimitiveEntry,
         requestedRadius: number,
     ): {
-        start: { x: number; z: number };
-        end: { x: number; z: number };
-        center: { x: number; z: number };
+        start: IPoint2D;
+        end: IPoint2D;
+        center: IPoint2D;
         mid: { x: number; y: number; z: number };
         actualRadius: number;
     } | null {
-        const d1 = this.directionAwayFromSide(first);
-        const d2 = this.directionAwayFromSide(second);
+        const d1 = this.directionAwayFromSide(nextRoadEntry);
+        const d2 = this.directionAwayFromSide(previousRoadExit);
         if (!d1 || !d2) {
             this.debug('computeJoinGeometry: invalid direction vector', { d1, d2 });
             return null;
         }
 
-        const p1 = first.primitive.getPoint(first.side);
-        const p2 = second.primitive.getPoint(second.side);
+        const p1 = nextRoadEntry;
+        const p2 = previousRoadExit;
         const det = d1.x * d2.z - d1.z * d2.x;
         if (Math.abs(det) <= 1e-6) {
             this.debug('computeJoinGeometry: parallel rays (det too small)', { det, p1, p2, d1, d2 });
@@ -177,11 +133,27 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
             return null;
         }
 
-        const firstOpposite = first.side === 'entry' ? first.primitive.endPos : first.primitive.startPos;
-        const secondOpposite = second.side === 'entry' ? second.primitive.endPos : second.primitive.startPos;
+        const firstOpposite = nextRoadEntry.primitive.exit;
+        const secondOpposite = previousRoadExit.primitive.entry;
+        const firstSegmentLength = nextRoadEntry.primitive.segment?.length ?? 20;
+        const secondSegmentLength = previousRoadExit.primitive.segment?.length ?? 20;
+
+        if (!Number.isFinite(firstSegmentLength) || !Number.isFinite(secondSegmentLength)) {
+            this.debug('computeJoinGeometry: invalid source segment length', {
+                firstSegmentLength,
+                secondSegmentLength,
+            });
+            return null;
+        }
+
         const firstMaxTrim = (firstOpposite.x - node.x) * d1.x + (firstOpposite.z - node.z) * d1.z;
         const secondMaxTrim = (secondOpposite.x - node.x) * d2.x + (secondOpposite.z - node.z) * d2.z;
-        const maxTrim = Math.max(0, Math.min(firstMaxTrim, secondMaxTrim) - 0.001);
+        const firstHalfSegmentTrim = firstSegmentLength * 0.5;
+        const secondHalfSegmentTrim = secondSegmentLength * 0.5;
+        const maxTrim = Math.max(
+            0,
+            Math.min(firstMaxTrim, secondMaxTrim, firstHalfSegmentTrim, secondHalfSegmentTrim) - 0.001,
+        );
         const trim = THREE.MathUtils.clamp(requestedRadius / tanHalf, 0, maxTrim);
         if (!Number.isFinite(trim) || trim <= 1e-6) {
             this.debug('computeJoinGeometry: trim invalid', {
@@ -189,6 +161,10 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
                 maxTrim,
                 firstMaxTrim,
                 secondMaxTrim,
+                firstSegmentLength,
+                secondSegmentLength,
+                firstHalfSegmentTrim,
+                secondHalfSegmentTrim,
                 requestedRadius,
                 tanHalf,
             });
@@ -205,8 +181,8 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
             return null;
         }
 
-        const normalLeft = (d: { x: number; z: number }) => ({ x: -d.z, z: d.x });
-        const normalRight = (d: { x: number; z: number }) => ({ x: d.z, z: -d.x });
+        const normalLeft = (d: IPoint2D) => ({ x: -d.z, z: d.x });
+        const normalRight = (d: IPoint2D) => ({ x: d.z, z: -d.x });
 
         const n1 = turn > 0 ? normalLeft(d1) : normalRight(d1);
         const n2 = turn > 0 ? normalRight(d2) : normalLeft(d2);
@@ -282,7 +258,7 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
     }
 
     private updateDebugRequestedRadiusCircle(
-        center: { x: number; z: number },
+        center: IPoint2D,
         radius: number,
         y: number,
     ): void {
@@ -321,40 +297,38 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
 
     static joinPrimitives(
         parent: THREE.Object3D,
-        firstEndPoint: PrimitiveEndPoint,
-        secondEndPoint: PrimitiveEndPoint,
+        previousRoadExit: PrimitiveExit,
+        nextRoadEntry: PrimitiveEntry,
         roadType: IRoadType,
         options: JoiningPrimitiveOptions = {},
     ): RoadPrimitive | null {
-        this.disposeJoinAt(firstEndPoint);
-        this.disposeJoinAt(secondEndPoint);
+        nextRoadEntry.disposeJoin();
+        previousRoadExit.disposeJoin();
 
         const requestedRadius = typeof options.radius === 'number' && Number.isFinite(options.radius) ? Math.max(0, Math.abs(options.radius)) : 6;
-        const geometry = this.computeJoinGeometry(firstEndPoint, secondEndPoint, requestedRadius);
+        const geometry = this.computeJoinGeometry(previousRoadExit, nextRoadEntry, requestedRadius);
         if (!geometry) return null;
 
-        firstEndPoint.primitive.movePoint(firstEndPoint.side, geometry.end);
-        secondEndPoint.primitive.movePoint(secondEndPoint.side, geometry.start);
+        nextRoadEntry.move(geometry.end);
+        previousRoadExit.move(geometry.start);
 
         const result = new JoiningRoadPrimitive({
             parent,
+            segment: null as any,
             transient: true,
             start: geometry.start,
             mid: geometry.mid,
             end: geometry.end,
             roadType,
             radius: geometry.actualRadius,
-            first: firstEndPoint,
-            second: secondEndPoint,
+            entry: nextRoadEntry,
+            exit: previousRoadExit,
             requestedRadius,
         });
 
         result.updateDebugRequestedRadiusCircle(geometry.center, requestedRadius, geometry.mid.y + 0.05);
-        if (firstEndPoint.side === 'entry') firstEndPoint.primitive.startJoinPrimitive = result;
-        else firstEndPoint.primitive.endJoinPrimitive = result;
-        if (secondEndPoint.side === 'entry') secondEndPoint.primitive.startJoinPrimitive = result;
-        else secondEndPoint.primitive.endJoinPrimitive = result;
-
+        nextRoadEntry.joiningPrimitive = result;
+        previousRoadExit.joiningPrimitive = result;
         return result;
     }
 

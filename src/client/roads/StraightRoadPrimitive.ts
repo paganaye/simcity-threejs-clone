@@ -2,6 +2,7 @@ import type { IRoadCuts } from './RoadCuts';
 import * as THREE from 'three';
 import { RoadPrimitive } from './RoadPrimitive';
 import type { IRoadType } from './IRoad';
+import type { RoadSegment } from './RoadSegment';
 import { getBands } from './RoadLayout';
 import type { IPoint2D } from '../../sim/Geometry';
 import { RoadConstants } from '../textures/RoadBand';
@@ -9,6 +10,7 @@ import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
 
 export interface StraightRoadPrimitiveParams {
     parent: THREE.Object3D;
+    segment: RoadSegment;
     transient: boolean;
     start: IPoint2D;
     end: IPoint2D;
@@ -26,7 +28,7 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         return THREE.MathUtils.clamp(value, 0, length);
     }
 
-    private static getExtremityValues(cut: IRoadCuts['startCut'] | undefined, length: number): [number, number, number, number] {
+    private static getExtremityValues(cut: IRoadCuts['entryCut'] | undefined, length: number): [number, number, number, number] {
         if (!cut) return [0, 0, 0, 0];
         return [
             this.clampExtremityValue(cut.left, length),
@@ -96,8 +98,8 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         const rightOuter = -widthM / 2;
         const lateral = [leftOuter, roadLeft, roadRight, rightOuter];
 
-        const startCuts = StraightRoadPrimitive.getExtremityValues(this.cuts?.startCut, length);
-        const endCuts = StraightRoadPrimitive.getExtremityValues(this.cuts?.endCut, length);
+        const startCuts = StraightRoadPrimitive.getExtremityValues(this.cuts?.entryCut, length);
+        const endCuts = StraightRoadPrimitive.getExtremityValues(this.cuts?.exitCut, length);
         const repeat = endV - startV;
 
         const startX = lateral.map((_, index) => -halfLength + startCuts[index]);
@@ -206,8 +208,8 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         segmentLength?: number;
     } = {}): THREE.BufferGeometry | null {
         const { textureProgressV = 0, lineLength = RoadConstants.yellowLineLength } = params;
-        const dx = this.endPos.x - this.startPos.x;
-        const dz = this.endPos.z - this.startPos.z;
+        const dx = this.exit.x - this.entry.x;
+        const dz = this.exit.z - this.entry.z;
         const length = Math.hypot(dx, dz);
         if (length <= 0) return null;
 
@@ -217,7 +219,7 @@ export class StraightRoadPrimitive extends RoadPrimitive {
 
         const startV = textureProgressV;
         const endV = startV + length / lineLength;
-        const hasCustomCuts = Boolean(this.cuts?.startCut || this.cuts?.endCut || this.cuts?.rightCuts?.length || this.cuts?.leftCuts?.length);
+        const hasCustomCuts = Boolean(this.cuts?.entryCut || this.cuts?.exitCut || this.cuts?.rightCuts?.length || this.cuts?.leftCuts?.length);
         if (!hasCustomCuts) {
             const geometry = new THREE.PlaneGeometry(length, widthM);
             const uvArray = [0, startV, 0, endV, 1, startV, 1, endV];
@@ -241,8 +243,8 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         const geometry = this.createGeometry({ textureProgressV, lineLength });
         if (!geometry) return null;
 
-        const dx = this.endPos.x - this.startPos.x;
-        const dz = this.endPos.z - this.startPos.z;
+        const dx = this.exit.x - this.entry.x;
+        const dz = this.exit.z - this.entry.z;
         const angle = Math.atan2(-dz, dx);
 
         const bands = getBands(this.roadType);
@@ -251,13 +253,13 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         const halfOffsetM = carriagewayCenter - widthM / 2;
         const normalX = Math.sin(angle);
         const normalZ = Math.cos(angle);
-        const centerX = (this.startPos.x + this.endPos.x) / 2;
-        const centerZ = (this.startPos.z + this.endPos.z) / 2;
+        const centerX = (this.entry.x + this.exit.x) / 2;
+        const centerZ = (this.entry.z + this.exit.z) / 2;
         const material = RoadTextureBuilder.getRoadMaterial(this.roadType);
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.set(
             centerX + normalX * (halfOffsetM + offsetM),
-            this.startPos.y ?? 0,
+            this.entry.y ?? 0,
             centerZ + normalZ * (halfOffsetM + offsetM)
         );
         mesh.rotation.x = -Math.PI / 2;

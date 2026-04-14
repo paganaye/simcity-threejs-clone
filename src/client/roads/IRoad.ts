@@ -1,3 +1,4 @@
+import { IPoint2D } from "../../sim/Geometry";
 import { RoadType, KerbType, SideWalkType, Lane } from "../textures/RoadBand";
 
 export interface IRoadType {
@@ -19,14 +20,14 @@ export type IDualRoadType = {
 export type IRoadShape =
     | {
         type: 'line';
-        start: { x: number; z: number };
-        end: { x: number; z: number };
+        start: IPoint2D;
+        end: IPoint2D;
     }
     | {
         type: 'arc';
-        start: { x: number; z: number };
-        mid: { x: number; z: number };
-        end: { x: number; z: number };
+        start: IPoint2D;
+        mid: IPoint2D;
+        end: IPoint2D;
     };
 
 export interface IRoadInstruction {

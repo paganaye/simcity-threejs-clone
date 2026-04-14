@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GameStorage } from './GameStorage';
 import { RoadNetwork } from './roads/RoadNetwork';
 import { GameScene3D } from './GameScene3D';
+import { IPoint2D } from '../sim/Geometry';
 
 vi.mock('./RoadSegment', () => {
     class MockRoadSegment {
@@ -17,8 +18,8 @@ vi.mock('./RoadSegment', () => {
 
         constructor(
             public readonly sceneRoot: THREE.Object3D,
-            start: { x: number; z: number },
-            end: { x: number; z: number },
+            start: IPoint2D,
+            end: IPoint2D,
             private readonly iRoad?: unknown,
         ) {
             this.startX = start.x;
@@ -40,7 +41,7 @@ vi.mock('./RoadSegment', () => {
             return this.iRoad;
         }
 
-        setArc(mid: { x: number; z: number }, end?: { x: number; z: number }): void {
+        setArc(mid: IPoint2D, end?: IPoint2D): void {
             this.arcMidX = mid.x;
             this.arcMidZ = mid.z;
             if (end) {

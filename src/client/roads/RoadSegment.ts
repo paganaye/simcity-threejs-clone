@@ -1,5 +1,5 @@
 import type { IRoadCuts } from './RoadCuts';
-import type { IDualRoadType, IRoadType } from './IRoad';
+import type { IDualRoadType } from './IRoad';
 import { RoadPrimitive } from './RoadPrimitive';
 import { StraightRoadPrimitive } from './StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from './CurvedRoadPrimitive';
@@ -125,31 +125,31 @@ export class RoadSegment {
         this.endJoinArcPrimitive = undefined;
     }
 
-    setTransientJoinArc(side: SegmentSide, params: {
-        id: string;
-        direction: 'forward' | 'backward';
-        start: IPoint2D;
-        mid: IPoint2D;
-        end: IPoint2D;
-        roadType: IRoadType;
-        cuts?: IRoadCuts;
-    }): void {
-        const primitive = new CurvedRoadPrimitive({
-            parent: this.gameScene3D.scene,
-            transient: true,
-            start: params.start,
-            mid: params.mid,
-            end: params.end,
-            roadType: params.roadType,
-            cuts: params.cuts,
-        });
-        if (side === 'start') {
-            this.startJoinArcPrimitive = primitive;
-            return;
-        }
+    // setTransientJoinArc(side: SegmentSide, params: {
+    //     id: string;
+    //     direction: 'forward' | 'backward';
+    //     start: IPoint2D;
+    //     mid: IPoint2D;
+    //     end: IPoint2D;
+    //     roadType: IRoadType;
+    //     cuts?: IRoadCuts;
+    // }): void {
+    //     const primitive = new CurvedRoadPrimitive({
+    //         parent: this.gameScene3D.scene,
+    //         transient: true,
+    //         start: params.start,
+    //         mid: params.mid,
+    //         end: params.end,
+    //         roadType: params.roadType,
+    //         cuts: params.cuts,
+    //     });
+    //     if (side === 'start') {
+    //         this.startJoinArcPrimitive = primitive;
+    //         return;
+    //     }
 
-        this.endJoinArcPrimitive = primitive;
-    }
+    //     this.endJoinArcPrimitive = primitive;
+    // }
 
     private compilePrimitives(): void {
         if (this.forwardPrimitive) this.forwardPrimitive.dispose();
@@ -176,6 +176,7 @@ export class RoadSegment {
                 roadType: this.dualRoadType.forward,
                 lateralOffsetM: forwardOffsetM,
                 cuts: forwardCuts,
+                segment: this,
             });
 
             if (this.dualRoadType.backward) {
@@ -190,6 +191,7 @@ export class RoadSegment {
                     // its local right-side offset sign must be inverted.
                     lateralOffsetM: -backwardOffsetM,
                     cuts: backwardCuts,
+                    segment: this,
                 });
             }
             return;
@@ -208,6 +210,7 @@ export class RoadSegment {
             end: forwardEnd,
             roadType: this.dualRoadType.forward,
             cuts: forwardCuts,
+            segment: this,
         });
 
         if (this.dualRoadType.backward) {
@@ -218,6 +221,7 @@ export class RoadSegment {
                 end: backwardStart,
                 roadType: this.dualRoadType.backward,
                 cuts: backwardCuts,
+                segment: this,
             });
         }
     }

@@ -3,38 +3,77 @@ import type { IRoadCuts } from './RoadCuts';
 import type { IRoadType } from './IRoad';
 import { IPoint2D } from '../../sim/Geometry';
 import { JoiningRoadPrimitive } from './JoiningRoadPrimitive';
+import type { RoadSegment } from './RoadSegment';
+
 
 export type PrimitiveSide = 'entry' | 'exit';
 
-export type PrimitiveEndPoint = {
-    side: PrimitiveSide;
-    primitive: RoadPrimitive;
+export abstract class PrimitiveEndPoint implements IPoint2D {
+    x: number = 0;
+    y?: number = 0;
+    z: number = 0;
+
+    readonly abstract side: PrimitiveSide;
+    constructor(readonly primitive: RoadPrimitive) { }
+
+    isPrimitiveEndPoint(): boolean { return true; }
+    joiningPrimitive?: JoiningRoadPrimitive | null;
+
+    move(point: IPoint2D, raiseEvent: boolean = true): void {
+        this.x = point.x;
+        this.y = point.y;
+        this.z = point.z;
+        if (raiseEvent) {
+            this.primitive.onRoadMoved();
+        }
+    }
+
+    disposeJoin() {
+        this.joiningPrimitive?.dispose();
+        this.joiningPrimitive = null;
+    }
+
+
+}
+
+export class PrimitiveEntry extends PrimitiveEndPoint {
+    override readonly side = 'entry';
+}
+export class PrimitiveExit extends PrimitiveEndPoint {
+    override readonly side = 'exit';
 }
 
 export abstract class RoadPrimitive {
     transient: boolean;
-    startPos: IPoint2D;
-    endPos: IPoint2D;
     roadType: IRoadType;
     cuts?: IRoadCuts;
 
-    startJoinPrimitive?: JoiningRoadPrimitive | null;
-    endJoinPrimitive?: JoiningRoadPrimitive | null;
+    //    entryJoinPrimitive?: JoiningRoadPrimitive | null;
+    //    exitJoinPrimitive?: JoiningRoadPrimitive | null;
     isDisposed: boolean = false;
 
     private mesh?: THREE.Mesh | null;
+    readonly parent: THREE.Object3D<THREE.Object3DEventMap>;
+    readonly segment: RoadSegment;
 
     protected constructor(params: {
         parent: THREE.Object3D;
+        segment: RoadSegment;
         transient: boolean;
         start: IPoint2D;
         end: IPoint2D;
         roadType: IRoadType;
         cuts?: IRoadCuts;
     }) {
+        this.parent = params.parent;
+        this.segment = params.segment;
         this.transient = params.transient;
-        this.startPos = params.start;
-        this.endPos = params.end;
+        this.entry.x = params.start.x;
+        this.entry.y = params.start.y;
+        this.entry.z = params.start.z;
+        this.exit.x = params.end.x;
+        this.exit.y = params.end.y;
+        this.exit.z = params.end.z;
         this.roadType = params.roadType;
         this.cuts = params.cuts;
     }
@@ -58,13 +97,10 @@ export abstract class RoadPrimitive {
         if (this.isDisposed) return;
         this.isDisposed = true;
 
-        const startJoin = this.startJoinPrimitive;
-        const endJoin = this.endJoinPrimitive;
-        this.startJoinPrimitive = null;
-        this.endJoinPrimitive = null;
-
-        startJoin?.dispose();
-        endJoin?.dispose();
+        this.entry.joiningPrimitive?.dispose();
+        this.entry.joiningPrimitive = null;
+        this.exit.joiningPrimitive?.dispose();
+        this.exit.joiningPrimitive = null;
         this.disposeMesh();
         this.onDispose();
     }
@@ -82,15 +118,8 @@ export abstract class RoadPrimitive {
         }
     }
 
-    get start(): PrimitiveEndPoint {
-        return { side: 'entry', primitive: this };
-    }
-
-    get end(): PrimitiveEndPoint {
-        return { side: 'exit', primitive: this };
-    }
-
-
+    entry: PrimitiveEntry = new PrimitiveEntry(this);
+    exit: PrimitiveExit = new PrimitiveExit(this);
 
     abstract createGeometry(params?: {
         y?: number;
@@ -102,49 +131,22 @@ export abstract class RoadPrimitive {
     protected abstract createMesh(): THREE.Mesh | null;
 
     getPoint(side: PrimitiveSide) {
-        return side === 'entry' ? this.startPos : this.endPos;
-    }
-
-
-    movePoint(side: PrimitiveSide, point: IPoint2D): void {
-        if (side === 'entry') {
-            this.startPos = point;
-        } else {
-            this.endPos = point;
-        }
-        this.onRoadMoved();
+        return side === 'entry' ? this.entry : this.exit;
     }
 
     move(start: IPoint2D, end: IPoint2D): void {
-        this.startPos = start;
-        this.endPos = end;
+        this.entry.move(start, false);
+        this.exit.move(end, false);
         this.onRoadMoved();
     }
 
     onRoadMoved(): void {
-        this.startJoinPrimitive?.onRoadMoved();
-        this.endJoinPrimitive?.onRoadMoved();
+        this.entry.joiningPrimitive?.onRoadMoved();
+        this.exit.joiningPrimitive?.onRoadMoved();
         this.recreateMesh();
 
 
-        //this.replaceMesh(this.mesh?.parent ?? new THREE.Object3D(), this.buildMesh());
-        // #rebuildMeshes(): void {
-        //     if(!this.scene3DInstance || !this.minutePrimitive || !this.secondPrimitive) return;
 
-
-        //     this.joinPrimitive?.clearMesh();
-        //     const joinPrimitive = joinPrimitives(
-        //         this.minutePrimitive,
-        //         'start',
-        //         this.secondPrimitive,
-        //         'end',
-        //         { radius: 10 },
-        //     );
-        //     this.minutePrimitive.createMesh(this.scene3DInstance.scene);
-        //     this.secondPrimitive.createMesh(this.scene3DInstance.scene);
-        //     this.joinPrimitive = joinPrimitive ?? undefined;
-        //     this.joinPrimitive?.createMesh(this.scene3DInstance.scene);
-        // }
 
 
     }

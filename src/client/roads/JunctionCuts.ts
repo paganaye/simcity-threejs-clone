@@ -1,6 +1,7 @@
 import { getBands } from './RoadLayout';
 import type { IExtremityCut, IRoadCuts } from './RoadCuts';
 import { IRoadType } from './IRoad';
+import { IPoint2D, IVector2D } from '../../sim/Geometry';
 
 export type IStraightRoadCutDef = {
     start: { x: number; y: number; z: number; angle: number };
@@ -8,31 +9,30 @@ export type IStraightRoadCutDef = {
     style: IRoadType;
 };
 
-type IVec2 = { x: number; z: number };
 type IBoundaryKey = 'leftOuter' | 'roadLeft' | 'roadRight' | 'rightOuter';
 type IMajorBoundaryKey = 'outer' | 'road';
-type ILine2 = { origin: IVec2; direction: IVec2 };
+type ILine2 = { origin: IVector2D; direction: IVector2D };
 type IBoundaryLines = Record<IBoundaryKey, ILine2>;
 type IMajorBoundaryLines = Record<IMajorBoundaryKey, ILine2>;
 export type IMajorBoundarySelection = { side: 'left' | 'right'; lines: IMajorBoundaryLines };
 type IIntersectionResult = Record<IMajorBoundaryKey, Record<IBoundaryKey, number | null>>;
 
-export function signedLateralDistance(road: IStraightRoadCutDef, point: { x: number; z: number }): number {
+export function signedLateralDistance(road: IStraightRoadCutDef, point: IPoint2D): number {
     const normal = { x: Math.sin(road.start.angle), z: Math.cos(road.start.angle) };
     const dx = point.x - road.start.x;
     const dz = point.z - road.start.z;
     return dx * normal.x + dz * normal.z;
 }
 
-function cross2(a: IVec2, b: IVec2): number {
+function cross2(a: IVector2D, b: IVector2D): number {
     return a.x * b.z - a.z * b.x;
 }
 
-function getRoadAxis(road: IStraightRoadCutDef): IVec2 {
+function getRoadAxis(road: IStraightRoadCutDef): IVector2D {
     return { x: Math.cos(road.start.angle), z: -Math.sin(road.start.angle) };
 }
 
-function getRoadNormal(road: IStraightRoadCutDef): IVec2 {
+function getRoadNormal(road: IStraightRoadCutDef): IVector2D {
     return { x: Math.sin(road.start.angle), z: Math.cos(road.start.angle) };
 }
 
@@ -112,10 +112,10 @@ export function getMajorBoundarySelection(mainRoad: IStraightRoadCutDef, minorRo
 }
 
 function intersectInfiniteLines(
-    aOrigin: IVec2,
-    aDirection: IVec2,
-    bOrigin: IVec2,
-    bDirection: IVec2,
+    aOrigin: IVector2D,
+    aDirection: IVector2D,
+    bOrigin: IVector2D,
+    bDirection: IVector2D,
 ): { aT: number; bT: number } | null {
     const denominator = cross2(aDirection, bDirection);
     if (Math.abs(denominator) < 1e-6) return null;

@@ -35,13 +35,13 @@ export default class RoadTest extends Page {
                 end: { x: 30, z: 10 },
                 roadType: road1,
                 cuts: {
-                    startCut: {
+                    entryCut: {
                         left: 4,
                         roadLeft: 2,
                         roadRight: 0,
                         right: 1,
                     },
-                    endCut: {
+                    exitCut: {
                         left: 4,
                         roadLeft: 2,
                         roadRight: 2,

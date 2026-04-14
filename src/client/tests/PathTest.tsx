@@ -4,6 +4,7 @@ import { Page } from "../Page";
 import { Crowd3D } from "../characters/Crowd3D";
 import { Character } from "../characters/Character";
 import { appConstants } from "../../AppConstants";
+import { IPoint2D } from "../../sim/Geometry";
 
 export default class Path2 extends Page {
   private crowd3D?: Crowd3D;
@@ -48,14 +49,14 @@ export default class Path2 extends Page {
 
   }
 
-  private getOrbitCenter(): { x: number; z: number } {
+  private getOrbitCenter(): IPoint2D {
     return {
       x: (this.crowd3D!.population.mapWidth - 1) * 0.5,
       z: (this.crowd3D!.population.mapHeight - 1) * 0.5,
     };
   }
 
-  private getOrbitPoint(elapsed: number): { x: number; z: number } {
+  private getOrbitPoint(elapsed: number): IPoint2D {
     if (!this.crowd3D) {
       return { x: 0, z: 0 };
     }

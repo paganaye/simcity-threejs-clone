@@ -4,6 +4,7 @@ import type { Population } from "./characters/Population";
 import type { IDualRoadType } from "./roads/IRoad";
 import { RoadSegment } from "./roads/RoadSegment";
 import * as THREE from 'three';
+import { IPoint2D } from "../sim/Geometry";
 
 
 export interface IStoreGameData<TGameData> {
@@ -41,7 +42,7 @@ export interface ISerializedCharacter {
     scale: number;
     isBlocked: boolean;
     waitDuration: number;
-    target?: { x: number; z: number };
+    target?: IPoint2D;
     homeId?: string;
     workId?: string;
 }
@@ -53,7 +54,7 @@ export interface ISerializedCamera {
 
 export interface ISerializedCity {
     version: 1;
-    mapSize: { x: number; z: number };
+    mapSize: IPoint2D;
     buildings: ISerializedBuilding[];
     roads: ISerializedRoad[];
     characters: ISerializedCharacter[];
@@ -245,7 +246,7 @@ export class GameStorage {
         }
         for (const road of save.roads) {
             const segment = this.scene.roadNetwork.addSegment(new RoadSegment(
-                this.scene.scene,
+                this.scene,
                 { x: road.startX, z: road.startZ },
                 {
                     x: road.startX + Math.cos(road.angle) * road.length,

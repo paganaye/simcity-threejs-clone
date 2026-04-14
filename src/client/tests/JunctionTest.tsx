@@ -173,7 +173,7 @@ export default class JunctionTest extends Page {
                 start: road2.start,
                 end: { x: road2.start.x + Math.cos(road2.start.angle) * road2.length, z: road2.start.z - Math.sin(road2.start.angle) * road2.length },
                 roadType: road2.style,
-                cuts: { endCut: road2Cuts },
+                cuts: { exitCut: road2Cuts },
             });
 
             new StraightRoadPrimitive({
@@ -182,7 +182,7 @@ export default class JunctionTest extends Page {
                 start: road3.start,
                 end: { x: road3.start.x + Math.cos(road3.start.angle) * road3.length, z: road3.start.z - Math.sin(road3.start.angle) * road3.length },
                 roadType: road3.style,
-                cuts: { endCut: road3Cuts },
+                cuts: { exitCut: road3Cuts },
             });
 
 

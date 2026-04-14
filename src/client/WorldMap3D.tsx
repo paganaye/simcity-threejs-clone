@@ -9,17 +9,12 @@ import {
 } from './AssetManager';
 import { GameScene3D } from './GameScene3D';
 import { appConstants } from '../AppConstants';
-import {
-    type Vec2,
-    getPolygonAabb,
-    polygonInsideBounds,
-    rotateAndTranslatePolygon,
-} from '../utils/geometry';
 import { IFloorSize } from './GameUIComponent';
+import { IVector2D, rotateAndTranslatePolygon, getPolygonAabb, polygonInsideBounds } from '../sim/Geometry';
 
 export type PlacedFootprint = {
-    center: Vec2;
-    polygon: Vec2[];
+    center: IVector2D;
+    polygon: IVector2D[];
     minX: number;
     maxX: number;
     minZ: number;
@@ -120,7 +115,7 @@ export class WorldMap3D {
         };
     }
 
-    private fallbackSquare(): Vec2[] {
+    private fallbackSquare(): IVector2D[] {
         const half = appConstants.BuildingsScale * 0.4;
         return [
             { x: -half, z: -half },

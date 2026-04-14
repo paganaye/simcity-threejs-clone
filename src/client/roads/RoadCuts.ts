@@ -15,6 +15,6 @@ export interface IExtremityCut {
 export interface IRoadCuts {
     rightCuts?: ISideCuts[];
     leftCuts?: ISideCuts[];
-    startCut?: IExtremityCut;
-    endCut?: IExtremityCut;
+    entryCut?: IExtremityCut;
+    exitCut?: IExtremityCut;
 }

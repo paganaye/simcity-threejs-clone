@@ -40,7 +40,7 @@ export default class RoadTool extends Page {
                 gapSize: 0,
             };
 
-            const main = new RoadSegment(scene3D.scene, { x: 4, z: 18 }, { x: 34, z: 18 }, roadType);
+            const main = new RoadSegment(scene3D, { x: 4, z: 18 }, { x: 34, z: 18 }, roadType);
             //const branchA = new RoadSegment(scene3D.scene, { x: 12, z: 30 }, { x: 12 + Math.cos(Math.PI / 4) * 22, z: 30 - Math.sin(Math.PI / 4) * 22 }, roadType);
             //const branchB = new RoadSegment(scene3D.scene, { x: 20, z: 2 }, { x: 20 + Math.cos(-Math.PI / 4) * 22, z: 2 - Math.sin(-Math.PI / 4) * 22 }, roadType);
             scene3D.roadNetwork.addSegment(main);

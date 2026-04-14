@@ -6,6 +6,7 @@ import { Population } from './characters/Population';
 import { GameUIComponent, ToolButton } from './GameUIComponent';
 import { placeRandomBuildings } from './placeRandomBuildings';
 import { GameStorage } from './GameStorage';
+import { IPoint2D } from '../sim/Geometry';
 
 export default class GamePage extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -13,7 +14,7 @@ export default class GamePage extends Page {
     private gameStorage?: GameStorage;
     private static readonly RETARGET_AFTER_WAIT_SECONDS = 5;
 
-    private setRandomTargetForCharacter(character: { setTarget: (target: { x: number; z: number }) => void }): void {
+    private setRandomTargetForCharacter(character: { setTarget: (target: IPoint2D) => void }): void {
         if (!this.population3D) return;
         const margin = 0.5;
         const minX = margin;

@@ -20,6 +20,7 @@ export interface CurvedRoadPrimitiveParams {
     cuts?: IRoadCuts;
 }
 
+
 // Represents a curved single road segment defined by start, mid, and end points.
 //  The curve is a circular arc passing through these three points.
 export class CurvedRoadPrimitive extends RoadPrimitive {

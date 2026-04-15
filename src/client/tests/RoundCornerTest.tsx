@@ -6,7 +6,7 @@ import { Page } from '../Page';
 import type { IRoadType } from '../roads/IRoad';
 //import type { RoadPrimitive } from '../roads/RoadPrimitive';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
-import { JoiningRoads } from '../roads/JoiningRoads';
+import { RoadJoin } from '../roads/RoadJoin';
 import type { PrimitiveEndPoint } from '../roads/RoadPrimitive';
 
 export default class RoundCornerTest extends Page {
@@ -56,7 +56,7 @@ export default class RoundCornerTest extends Page {
             this.requestedPrevRoadLine = this.#createDebugLine(scene3D.scene, 0xff4444);
             this.requestedNextRoadLine = this.#createDebugLine(scene3D.scene, 0x44aaff);
 
-            JoiningRoads.joinRoads(scene3D.scene, this.secondPrimitive.exit, this.minutePrimitive.entry, roadType);
+            RoadJoin.joinRoads(scene3D.scene, this.secondPrimitive.exit, this.minutePrimitive.entry, roadType);
             console.log('[CurvedRoadTest] Two road primitives rotate like clock hands.');
 
             scene3D.isLoading.set(false);

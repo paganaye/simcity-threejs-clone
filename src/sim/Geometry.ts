@@ -108,6 +108,32 @@ export function normalizeVector(p: IVector2D): IVector2D {
     return { x: p.x / d, z: p.z / d };
 }
 
+export function normalize2D(vector: IPoint2D, epsilon: number = 1e-6): IPoint2D | null {
+    const length = Math.hypot(vector.x, vector.z);
+    if (!Number.isFinite(length) || length <= epsilon) return null;
+    return { x: vector.x / length, z: vector.z / length };
+}
+
+export function intersectRayWithLine(
+    rayOrigin: IPoint2D,
+    rayDirection: IPoint2D,
+    linePoint: IPoint2D,
+    lineDirection: IPoint2D,
+    epsilon: number = 1e-6,
+): { point: IPoint2D; t: number } | null {
+    const det = rayDirection.x * lineDirection.z - rayDirection.z * lineDirection.x;
+    if (Math.abs(det) <= epsilon) return null;
+    const t = ((linePoint.x - rayOrigin.x) * lineDirection.z - (linePoint.z - rayOrigin.z) * lineDirection.x) / det;
+    if (!Number.isFinite(t)) return null;
+    return {
+        t,
+        point: {
+            x: rayOrigin.x + rayDirection.x * t,
+            z: rayOrigin.z + rayDirection.z * t,
+        },
+    };
+}
+
 export function midPoint(start: IPoint2D, end: IPoint2D): IPoint2D {
     return { x: (start.x + end.x) / 2, z: (start.z + end.z) / 2 };
 }

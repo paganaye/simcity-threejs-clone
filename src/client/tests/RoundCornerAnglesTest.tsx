@@ -4,7 +4,7 @@ import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
 import type { IRoadType } from '../roads/IRoad';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
-import { JoiningRoads } from '../roads/JoiningRoads';
+import { RoadJoin } from '../roads/RoadJoin';
 
 export default class RoundCornerAnglesTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -28,8 +28,6 @@ export default class RoundCornerAnglesTest extends Page {
             };
 
             const angleRows = [30, 45, 60, 75, 90];
-            const originX = 20;
-            const spacingZ = 20;
             let x = 10;
             let z = 10;
             for (let i = 0; i < angleRows.length; i++) {
@@ -65,7 +63,7 @@ export default class RoundCornerAnglesTest extends Page {
                     roadType,
                 });
 
-                JoiningRoads.joinRoads(scene3D.scene, previousRoad.exit, nextRoad.entry, roadType);
+                RoadJoin.joinRoads(scene3D.scene, previousRoad.exit, nextRoad.entry, roadType);
             }
 
             console.log('[RoundCornerAnglesTest] Rendered joins for 10, 20, 30 and 40 degrees.');

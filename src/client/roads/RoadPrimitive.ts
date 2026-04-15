@@ -2,11 +2,15 @@ import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
 import type { IRoadType } from './IRoad';
 import { IPoint2D } from '../../sim/Geometry';
-import { JoiningRoadPrimitive } from './JoiningRoadPrimitive';
 import type { RoadSegment } from './RoadSegment';
 
 
 export type PrimitiveSide = 'entry' | 'exit';
+
+export interface IJoiningPrimitives {
+    onAdjacentRoadMoved(): void;
+    dispose(): void;
+}
 
 export abstract class PrimitiveEndPoint implements IPoint2D {
     x: number = 0;
@@ -17,7 +21,7 @@ export abstract class PrimitiveEndPoint implements IPoint2D {
     constructor(readonly primitive: RoadPrimitive) { }
 
     isPrimitiveEndPoint(): boolean { return true; }
-    joiningPrimitive?: JoiningRoadPrimitive | null;
+    joiningPrimitives?: IJoiningPrimitives | null;
 
     move(point: IPoint2D, raiseEvent: boolean = true): void {
         this.x = point.x;
@@ -29,11 +33,9 @@ export abstract class PrimitiveEndPoint implements IPoint2D {
     }
 
     disposeJoin() {
-        this.joiningPrimitive?.dispose();
-        this.joiningPrimitive = null;
+        this.joiningPrimitives?.dispose();
+        this.joiningPrimitives = null;
     }
-
-
 }
 
 export class PrimitiveEntry extends PrimitiveEndPoint {
@@ -42,6 +44,7 @@ export class PrimitiveEntry extends PrimitiveEndPoint {
 export class PrimitiveExit extends PrimitiveEndPoint {
     override readonly side = 'exit';
 }
+
 
 export abstract class RoadPrimitive {
     transient: boolean;
@@ -97,10 +100,10 @@ export abstract class RoadPrimitive {
         if (this.isDisposed) return;
         this.isDisposed = true;
 
-        this.entry.joiningPrimitive?.dispose();
-        this.entry.joiningPrimitive = null;
-        this.exit.joiningPrimitive?.dispose();
-        this.exit.joiningPrimitive = null;
+        this.entry.joiningPrimitives?.dispose();
+        this.entry.joiningPrimitives = null;
+        this.exit.joiningPrimitives?.dispose();
+        this.exit.joiningPrimitives = null;
         this.disposeMesh();
         this.onDispose();
     }
@@ -141,13 +144,8 @@ export abstract class RoadPrimitive {
     }
 
     onRoadMoved(): void {
-        this.entry.joiningPrimitive?.onRoadMoved();
-        this.exit.joiningPrimitive?.onRoadMoved();
+        this.entry.joiningPrimitives?.onAdjacentRoadMoved();
+        this.exit.joiningPrimitives?.onAdjacentRoadMoved();
         this.recreateMesh();
-
-
-
-
-
     }
 }

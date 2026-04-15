@@ -10,7 +10,7 @@ import { RoadShaderMaterialBuilder } from '../textures/RoadShaderMaterialBuilder
 
 export interface CurvedRoadPrimitiveParams {
     parent: THREE.Object3D;
-    segment: RoadSegment;
+    segment?: RoadSegment;
     transient: boolean;
     start: IPoint2D;
     mid: IPoint2D;

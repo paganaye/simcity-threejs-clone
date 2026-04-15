@@ -1,8 +1,8 @@
 import type { PrimitiveEndPoint, RoadPrimitive } from './RoadPrimitive';
 import { RoadSegment, SegmentEndPoint, SegmentSide } from './RoadSegment';
 import { GameScene3D } from '../GameScene3D';
-import { JoiningRoadPrimitive } from './JoiningRoadPrimitive';
 import { IPoint2D } from '../../sim/Geometry';
+import { JoiningRoads } from './JoiningRoads';
 
 const DEFAULT_JOIN_RADIUS = 8;
 const JOIN_EPSILON = 0.45;
@@ -49,7 +49,7 @@ export class RoadNetwork {
 
             
             if (fwExitRoad && fwEntryRoad) {
-                JoiningRoadPrimitive.joinPrimitives(
+                JoiningRoads.joinRoads(
                     sceneRoot,
                     fwExitRoad.exit,
                     fwEntryRoad.entry,
@@ -59,7 +59,7 @@ export class RoadNetwork {
             }
 
             if (bwExitRoad && bwEntryRoad) {
-                JoiningRoadPrimitive.joinPrimitives(
+                JoiningRoads.joinRoads(
                     sceneRoot,
                     bwExitRoad.exit,
                     bwEntryRoad.entry,

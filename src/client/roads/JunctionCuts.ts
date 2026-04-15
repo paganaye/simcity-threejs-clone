@@ -1,7 +1,7 @@
-import { getBands } from './RoadLayout';
 import type { IExtremityCut, IRoadCuts } from './RoadCuts';
 import { IRoadType } from './IRoad';
 import { IPoint2D, IVector2D } from '../../sim/Geometry';
+import { RoadBands } from './RoadBands';
 
 export type IStraightRoadCutDef = {
     start: { x: number; y: number; z: number; angle: number };
@@ -37,7 +37,7 @@ function getRoadNormal(road: IStraightRoadCutDef): IVector2D {
 }
 
 function getRoadOffsets(road: IStraightRoadCutDef): Record<IBoundaryKey, number> {
-    const bands = getBands(road.style);
+    const bands = RoadBands.get(road.style);
     const widthM = bands.totalWidthM;
     const carriagewayCenter = (bands.carriagewayStartM + bands.carriagewayEndM) / 2;
     const halfOffsetM = carriagewayCenter - widthM / 2;

@@ -1,20 +1,12 @@
-import { Lane, RoadBand, BandType, roadBands, laneSeparators } from '../textures/RoadBand';
-import type { IDualRoadType, IRoadType } from './IRoad';
+import type { IDualRoadType} from './IRoad';
+import { RoadBands } from './RoadBands';
 
 
-
-export interface IRoadBands {
-    bands: RoadBand[];
-    totalWidthM: number;
-    carriagewayStartM: number;
-    carriagewayEndM: number;
-    carriagewayWidthM: number;
-}
 
 export interface IJunctionArm {
     road: IDualRoadType;
     angleRad: number;
-    crossSection: IRoadBands;
+    crossSection: RoadBands;
 }
 
 export interface IJunctionGeometry {
@@ -45,91 +37,4 @@ export interface IJunctionTextureResult {
 
 
 
-export function getBands(options: IRoadType): IRoadBands {
-    const laneCount = Math.max(0, options.lanes);
-    const laneType: Lane = 'normal';
 
-    let bands: RoadBand[] = [];
-
-    function addBand(type: BandType | undefined): void {
-        let band = type ? roadBands[type] : null;
-        if (band) bands.push(band);
-    }
-
-    addBand(options.leftSidewalk);
-    addBand(options.leftKerb);
-
-    for (let laneIndex = 0; laneIndex < laneCount; laneIndex++) {
-        addBand(laneType);
-        if (laneIndex < laneCount - 1) {
-            bands.push(laneSeparators.discontinuous);
-        }
-    }
-    addBand(options.rightKerb);
-    addBand(options.rightSidewalk);
-
-    let offsetM = 0;
-    let carriagewayStartM;
-    let carriagewayEndM;
-
-    for (const band of bands) {
-        const isCarriageway = band.kind === 'lane' || band.kind === 'laneSeparator';
-        if (isCarriageway) {
-            if (carriagewayStartM === undefined) carriagewayStartM = offsetM;
-            carriagewayEndM = offsetM + band.widthM;
-        }
-        offsetM += band.widthM;
-    }
-
-    return {
-        bands,
-        totalWidthM: offsetM,
-        carriagewayStartM: carriagewayStartM ?? 0,
-        carriagewayEndM: carriagewayEndM ?? 0,
-        carriagewayWidthM: (carriagewayEndM !== undefined && carriagewayStartM !== undefined) ? (carriagewayEndM - carriagewayStartM) : 0,
-    };
-
-}
-
-// export function getRoadBands(options: IRoadOptions): IRoadBands {
-//     let bands = getBands(options);
-//     return calcBands(bands);
-// }
-
-// export function buildCompositeRoadCrossSection(road: IRoad): IRoadBands {
-//     const forward = getRoadBands(road.forward);
-//     //const backward = road.backward ? mirrorBands(getRoadBands(road.backward)) : null;
-//     const gapWidthM = backward ? Math.max(0, road.gapSize || 0) : 0;
-
-//     const bands = backward
-//         ? [...backward.bands, ...(gapWidthM > 0 ? [{ type: 'gap' as const, widthM: gapWidthM, color: 'transparent' }] : []), ...forward.bands]
-//         : [...forward.bands];
-
-//     return calcBands(bands);
-// }
-
-// export function buildCrossJunctionGeometry(
-//     mainRoad: IRoad,
-//     crossingRoad: IRoad,
-//     options?: IJunctionTextureOptions,
-// ): IJunctionGeometry {
-//     const mainCrossSection = getBands(mainRoad.forward);
-//     const crossingCrossSection = getBands(crossingRoad);
-//     const approachLengthM = Math.max(0, options?.approachLengthM ?? 8);
-//     const intersectionWidthM = crossingCrossSection.carriagewayWidthM;
-//     const intersectionHeightM = mainCrossSection.carriagewayWidthM;
-
-//     return {
-//         centerX: 0,
-//         centerZ: 0,
-//         arms: [
-//             { road: mainRoad, angleRad: 0, crossSection: mainCrossSection },
-//             { road: crossingRoad, angleRad: Math.PI / 2, crossSection: crossingCrossSection },
-//         ],
-//         textureWidthM: Math.max(crossingCrossSection.totalWidthM, intersectionWidthM + approachLengthM * 2),
-//         textureHeightM: Math.max(mainCrossSection.totalWidthM, intersectionHeightM + approachLengthM * 2),
-//         intersectionWidthM,
-//         intersectionHeightM,
-//         approachLengthM,
-//     };
-// }

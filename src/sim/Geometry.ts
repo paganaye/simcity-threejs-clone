@@ -1,3 +1,4 @@
+export const EPSILON = 1e-6;
 
 export interface IPoint2D {
     x: number;
@@ -43,10 +44,10 @@ export function tileCenter(position: IPoint2D): IPoint2D {
 
 export const TWO_PI = Math.PI * 2;
 
-export const DEG_0   = 0;
-export const DEG_30  = Math.PI / 6;
-export const DEG_60  = Math.PI / 3;
-export const DEG_90  = Math.PI / 2;
+export const DEG_0 = 0;
+export const DEG_30 = Math.PI / 6;
+export const DEG_60 = Math.PI / 3;
+export const DEG_90 = Math.PI / 2;
 export const DEG_120 = 2 * Math.PI / 3;
 export const DEG_180 = Math.PI;
 export const DEG_270 = 3 * Math.PI / 2;
@@ -194,7 +195,7 @@ export function calculateArc(pA: IPoint2D, pB: IPoint2D, pC: IPoint2D, maxRadius
     const center = addPoints(pB, scalePoint(bisector, centerOffset));
 
     const startAngle = Math.atan2(ptA.z - center.z, ptA.x - center.x);
-    const endAngle   = Math.atan2(ptB.z - center.z, ptB.x - center.x);
+    const endAngle = Math.atan2(ptB.z - center.z, ptB.x - center.x);
     let sweep = endAngle - startAngle;
     if (sweep <= -Math.PI) sweep += TWO_PI;
     else if (sweep > Math.PI) sweep -= TWO_PI;
@@ -300,78 +301,94 @@ export function rectangleIntersects(self: IRectangle, range: IRectangle): boolea
 
 
 export type PolygonAabb = {
-  minX: number;
-  maxX: number;
-  minZ: number;
-  maxZ: number;
+    minX: number;
+    maxX: number;
+    minZ: number;
+    maxZ: number;
 };
 
 export function rotateAndTranslatePolygon(poly: Array<IPoint2D>, tx: number, tz: number, angle: number): IVector2D[] {
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  return poly.map((p) => ({
-    x: tx + p.x * c - p.z * s,
-    z: tz + p.x * s + p.z * c,
-  }));
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    return poly.map((p) => ({
+        x: tx + p.x * c - p.z * s,
+        z: tz + p.x * s + p.z * c,
+    }));
 }
 
 export function getPolygonAabb(poly: IVector2D[]): PolygonAabb {
-  let minX = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let minZ = Number.POSITIVE_INFINITY;
-  let maxZ = Number.NEGATIVE_INFINITY;
-  for (const p of poly) {
-    if (p.x < minX) minX = p.x;
-    if (p.x > maxX) maxX = p.x;
-    if (p.z < minZ) minZ = p.z;
-    if (p.z > maxZ) maxZ = p.z;
-  }
-  return { minX, maxX, minZ, maxZ };
+    let minX = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let minZ = Number.POSITIVE_INFINITY;
+    let maxZ = Number.NEGATIVE_INFINITY;
+    for (const p of poly) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.z < minZ) minZ = p.z;
+        if (p.z > maxZ) maxZ = p.z;
+    }
+    return { minX, maxX, minZ, maxZ };
 }
 
 export function aabbOverlap(a: PolygonAabb, b: PolygonAabb): boolean {
-  return !(a.maxX < b.minX || b.maxX < a.minX || a.maxZ < b.minZ || b.maxZ < a.minZ);
+    return !(a.maxX < b.minX || b.maxX < a.minX || a.maxZ < b.minZ || b.maxZ < a.minZ);
 }
 
 export function polygonInsideBounds(poly: IVector2D[], minX: number, minZ: number, maxX: number, maxZ: number): boolean {
-  for (const p of poly) {
-    if (p.x < minX || p.x > maxX || p.z < minZ || p.z > maxZ) return false;
-  }
-  return true;
+    for (const p of poly) {
+        if (p.x < minX || p.x > maxX || p.z < minZ || p.z > maxZ) return false;
+    }
+    return true;
 }
 
 export function polygonsIntersectSAT(a: IVector2D[], b: IVector2D[]): boolean {
-  const axes = getAxes(a).concat(getAxes(b));
-  for (const axis of axes) {
-    const pa = projectPolygon(a, axis);
-    const pb = projectPolygon(b, axis);
-    if (pa.max < pb.min || pb.max < pa.min) return false;
-  }
-  return true;
+    const axes = getAxes(a).concat(getAxes(b));
+    for (const axis of axes) {
+        const pa = projectPolygon(a, axis);
+        const pb = projectPolygon(b, axis);
+        if (pa.max < pb.min || pb.max < pa.min) return false;
+    }
+    return true;
 }
 
 function getAxes(poly: IVector2D[]): IVector2D[] {
-  const axes: IVector2D[] = [];
-  for (let i = 0; i < poly.length; i++) {
-    const p0 = poly[i];
-    const p1 = poly[(i + 1) % poly.length];
-    const edgeX = p1.x - p0.x;
-    const edgeZ = p1.z - p0.z;
-    const nx = -edgeZ;
-    const nz = edgeX;
-    const len = Math.hypot(nx, nz);
-    if (len > 1e-6) axes.push({ x: nx / len, z: nz / len });
-  }
-  return axes;
+    const axes: IVector2D[] = [];
+    for (let i = 0; i < poly.length; i++) {
+        const p0 = poly[i];
+        const p1 = poly[(i + 1) % poly.length];
+        const edgeX = p1.x - p0.x;
+        const edgeZ = p1.z - p0.z;
+        const nx = -edgeZ;
+        const nz = edgeX;
+        const len = Math.hypot(nx, nz);
+        if (len > 1e-6) axes.push({ x: nx / len, z: nz / len });
+    }
+    return axes;
 }
 
 function projectPolygon(poly: IVector2D[], axis: IVector2D): { min: number; max: number } {
-  let min = Number.POSITIVE_INFINITY;
-  let max = Number.NEGATIVE_INFINITY;
-  for (const p of poly) {
-    const d = p.x * axis.x + p.z * axis.z;
-    if (d < min) min = d;
-    if (d > max) max = d;
-  }
-  return { min, max };
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    for (const p of poly) {
+        const d = p.x * axis.x + p.z * axis.z;
+        if (d < min) min = d;
+        if (d > max) max = d;
+    }
+    return { min, max };
+}
+
+
+export function intersectLines(
+    aPoint: IPoint2D,
+    aDir: IPoint2D,
+    bPoint: IPoint2D,
+    bDir: IPoint2D
+): IPoint2D | null {
+    const det = aDir.x * bDir.z - aDir.z * bDir.x;
+    if (Math.abs(det) <= EPSILON) return null;
+    const t = ((bPoint.x - aPoint.x) * bDir.z - (bPoint.z - aPoint.z) * bDir.x) / det;
+    return {
+        x: aPoint.x + aDir.x * t,
+        z: aPoint.z + aDir.z * t,
+    };
 }

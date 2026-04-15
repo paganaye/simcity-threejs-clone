@@ -3,9 +3,9 @@ import type { IDualRoadType } from './IRoad';
 import { RoadPrimitive } from './RoadPrimitive';
 import { StraightRoadPrimitive } from './StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from './CurvedRoadPrimitive';
-import { getBands } from './RoadLayout';
 import { computeArcFromThreePoints, distance2D, getRightNormal, IPoint2D, offsetPoint as offsetPoint2D } from '../../sim/Geometry';
 import { GameScene3D } from '../GameScene3D';
+import { RoadBands } from './RoadBands';
 
 const DEBUG_ROAD_ARC = true;
 
@@ -231,8 +231,8 @@ export class RoadSegment {
             return { forwardOffsetM: 0, backwardOffsetM: 0 };
         }
 
-        const forwardCarriagewayWidthM = getBands(this.dualRoadType.forward).totalWidthM;
-        const backwardCarriagewayWidthM = getBands(this.dualRoadType.backward).totalWidthM;
+        const forwardCarriagewayWidthM = RoadBands.get(this.dualRoadType.forward).totalWidthM;
+        const backwardCarriagewayWidthM = RoadBands.get(this.dualRoadType.backward).totalWidthM;
         const halfGapM = (this.dualRoadType.gapSize ?? 0) / 2;
 
         return {

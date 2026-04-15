@@ -8,8 +8,6 @@ import { RoadJoin } from './RoadJoin';
 
 export type PrimitiveSide = 'entry' | 'exit';
 
-
-
 export abstract class PrimitiveEndPoint implements IPoint2D {
     x: number = 0;
     y?: number = 0;
@@ -53,7 +51,7 @@ export abstract class RoadPrimitive {
     //    exitJoinPrimitive?: JoiningRoadPrimitive | null;
     isDisposed: boolean = false;
 
-    private mesh?: THREE.Mesh | null;
+    private mesh?: THREE.Object3D | null;
     readonly parent: THREE.Object3D<THREE.Object3DEventMap>;
     readonly segment?: RoadSegment;
 
@@ -89,7 +87,7 @@ export abstract class RoadPrimitive {
 
     protected disposeMesh(): void {
         if (!this.mesh) return;
-        this.mesh.geometry.dispose();
+        //this.mesh.dispose();
         this.mesh.parent?.remove(this.mesh);
         this.mesh = null;
     }
@@ -129,7 +127,7 @@ export abstract class RoadPrimitive {
         segmentLength?: number;
     }): THREE.BufferGeometry | null;
 
-    protected abstract createMesh(): THREE.Mesh | null;
+    protected abstract createMesh(): THREE.Object3D | null;
 
     getPoint(side: PrimitiveSide) {
         return side === 'entry' ? this.entry : this.exit;

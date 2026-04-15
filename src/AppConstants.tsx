@@ -24,7 +24,10 @@ export var appConstants = {
     STRAIGHT_SPEED: 1 / 1000,
     TURN_SPEED: 1 / 2000,
     U_TURN_SPEED: 1 / 4000,
-    LANE_OFFSET: 0.05
+    LANE_OFFSET: 0.05,
+
+    DEBUG_ROAD: true,
+    DEBUG_JOINING_ROAD: true,
 
 }
 

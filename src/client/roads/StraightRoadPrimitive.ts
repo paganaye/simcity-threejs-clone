@@ -6,11 +6,11 @@ import type { RoadSegment } from './RoadSegment';
 import { getBands } from './RoadLayout';
 import type { IPoint2D } from '../../sim/Geometry';
 import { RoadConstants } from '../textures/RoadBand';
-import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
+import { RoadShaderMaterialBuilder } from '../textures/RoadShaderMaterialBuilder';
 
 export interface StraightRoadPrimitiveParams {
     parent: THREE.Object3D;
-    segment: RoadSegment;
+    segment?: RoadSegment | undefined;
     transient: boolean;
     start: IPoint2D;
     end: IPoint2D;
@@ -255,7 +255,7 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         const normalZ = Math.cos(angle);
         const centerX = (this.entry.x + this.exit.x) / 2;
         const centerZ = (this.entry.z + this.exit.z) / 2;
-        const material = RoadTextureBuilder.getRoadMaterial(this.roadType);
+        const material = RoadShaderMaterialBuilder.getRoadMaterial(this.roadType);
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.set(
             centerX + normalX * (halfOffsetM + offsetM),

@@ -6,7 +6,7 @@ import type { RoadSegment } from './RoadSegment';
 import { getBands } from './RoadLayout';
 import { computeArcFromThreePoints, type IPoint2D } from '../../sim/Geometry';
 import { RoadConstants } from '../textures/RoadBand';
-import { RoadTextureBuilder } from '../textures/RoadTextureBuilder';
+import { RoadShaderMaterialBuilder } from '../textures/RoadShaderMaterialBuilder';
 
 export interface CurvedRoadPrimitiveParams {
     parent: THREE.Object3D;
@@ -37,7 +37,7 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
     protected createMesh(): THREE.Mesh | null {
         const geometry = this.createGeometry();
         if (!geometry) return null;
-        const material = RoadTextureBuilder.getRoadMaterial(this.roadType);
+        const material = RoadShaderMaterialBuilder.getRoadMaterial(this.roadType);
         return new THREE.Mesh(geometry, material);
     }
 

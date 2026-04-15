@@ -54,11 +54,11 @@ export abstract class RoadPrimitive {
 
     private mesh?: THREE.Mesh | null;
     readonly parent: THREE.Object3D<THREE.Object3DEventMap>;
-    readonly segment: RoadSegment;
+    readonly segment?: RoadSegment;
 
     protected constructor(params: {
         parent: THREE.Object3D;
-        segment: RoadSegment;
+        segment?: RoadSegment;
         transient: boolean;
         start: IPoint2D;
         end: IPoint2D;

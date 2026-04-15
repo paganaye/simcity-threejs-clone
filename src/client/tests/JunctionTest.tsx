@@ -12,9 +12,9 @@ import {
     type IStraightRoadCutDef,
 } from '../roads/JunctionCuts';
 import { Page } from '../Page';
-import { IRoadCuts } from '../textures/RoadTextureBuilder';
 import type { IRoadType } from '../roads/IRoad';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
+import { IRoadCuts } from '../roads/RoadCuts';
 
 type IStraightRoadDef = IStraightRoadCutDef;
 type IBoundaryKey = 'leftOuter' | 'roadLeft' | 'roadRight' | 'rightOuter';

@@ -16,6 +16,7 @@ const pages = {
     "Quaternion": "client/tests/QuaternionTest",
     "Road shader": "client/tests/RoadShaderTest",
     "Round Corner": "client/tests/RoundCornerTest",
+    "Round Corner Angles": "client/tests/RoundCornerAnglesTest",
     "Round DualWay": "client/tests/RoundDualWayTest",
     "Road Cut": "client/tests/RoadCutTest",
     "Road tool": "client/tests/RoadToolTest",

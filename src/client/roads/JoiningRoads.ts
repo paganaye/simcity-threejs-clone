@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { IRoadType } from './IRoad';
-import type { PrimitiveEndPoint, PrimitiveEntry, PrimitiveExit } from './RoadPrimitive';
+import type { PrimitiveEndPoint, PrimitiveEntry, PrimitiveExit, RoadPrimitive } from './RoadPrimitive';
 import { getBands } from './RoadLayout';
 import type { IExtremityCut } from './RoadCuts';
 import type { IPoint2D } from '../../sim/Geometry';
@@ -65,6 +65,7 @@ export class JoiningRoads {
         nextRoadCuts.entryCut = {
             left: nextRoadEntryTrim,
             roadLeft: nextRoadEntryTrim,
+            middle: nextRoadEntryTrim,
             roadRight: nextRoadEntryTrim,
             right: nextRoadEntryTrim,
         };
@@ -72,6 +73,7 @@ export class JoiningRoads {
         previousRoadCuts.exitCut = {
             left: previousRoadExitTrim,
             roadLeft: previousRoadExitTrim,
+            middle: previousRoadExitTrim,
             roadRight: previousRoadExitTrim,
             right: previousRoadExitTrim,
         };
@@ -88,6 +90,7 @@ export class JoiningRoads {
         nextRoadCuts.entryCut = {
             left: 7,
             roadLeft: 4,
+            middle: 2.5,
             roadRight: 1,
             right: 0,
         };
@@ -95,6 +98,7 @@ export class JoiningRoads {
         previousRoadCuts.exitCut = {
             left: 7,
             roadLeft: 4,
+            middle: 2.5,
             roadRight: 1,
             right: 0,
         };
@@ -335,18 +339,19 @@ export class JoiningRoads {
         const leftOuter = width * 0.5;
         const roadLeft = leftOuter - bands.carriagewayStartM;
         const roadRight = leftOuter - bands.carriagewayEndM;
+        const middle = (roadLeft + roadRight) * 0.5;
         const rightOuter = -leftOuter;
-        const lateral = [leftOuter, roadLeft, roadRight, rightOuter];
+        const lateral = [leftOuter, roadLeft, middle, roadRight, rightOuter];
 
         const u = this.normalize2D(segmentDirection);
         const m = this.normalize2D(seamNormal);
         if (!u || !m) {
-            return { left: 0, roadLeft: 0, roadRight: 0, right: 0 };
+            return { left: 0, roadLeft: 0, middle: 0, roadRight: 0, right: 0 };
         }
 
         const uDotM = u.x * m.x + u.z * m.z;
         if (Math.abs(uDotM) <= JOIN_EPS) {
-            return { left: 0, roadLeft: 0, roadRight: 0, right: 0 };
+            return { left: 0, roadLeft: 0, middle: 0, roadRight: 0, right: 0 };
         }
 
         const n = { x: -u.z, z: u.x };
@@ -374,8 +379,9 @@ export class JoiningRoads {
         return {
             left: values[0],
             roadLeft: values[1],
-            roadRight: values[2],
-            right: values[3],
+            middle: values[2],
+            roadRight: values[3],
+            right: values[4],
         };
     }
 
@@ -428,7 +434,7 @@ export class JoiningRoads {
         nextRoadEntry: PrimitiveEntry,
         roadType: IRoadType,
         options: JoiningPrimitiveOptions = {},
-    ): CurvedJoiningRoad | TightJoiningRoad | null {
+    ): RoadPrimitive | null {
 
         const requestedRadius = typeof options.radius === 'number' && Number.isFinite(options.radius) ? Math.max(0, Math.abs(options.radius)) : 6;
 

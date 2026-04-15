@@ -38,12 +38,14 @@ export default class RoadTest extends Page {
                     entryCut: {
                         left: 4,
                         roadLeft: 2,
+                        middle: 1,
                         roadRight: 0,
                         right: 1,
                     },
                     exitCut: {
                         left: 4,
                         roadLeft: 2,
+                        middle: 2,
                         roadRight: 2,
                         right: 2,
                     },

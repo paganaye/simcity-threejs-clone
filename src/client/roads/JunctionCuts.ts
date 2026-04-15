@@ -259,9 +259,10 @@ export function computeMinorRoadEndCut(mainRoad: IStraightRoadCutDef, minorRoad:
     let roadLeft = toEndCut(intersections.road.roadRight);
     let roadRight = toEndCut(intersections.road.roadLeft);
     let right = toEndCut(intersections.outer.leftOuter);
+    const middle = clampCut((roadLeft + roadRight) * 0.5, localLength);
 
     left = Math.max(left, roadLeft);
     right = Math.max(right, roadRight);
 
-    return { left: left, roadLeft: roadLeft, roadRight: roadRight, right: right };
+    return { left: left, roadLeft: roadLeft, middle: middle, roadRight: roadRight, right: right };
 }

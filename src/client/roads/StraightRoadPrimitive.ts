@@ -28,11 +28,12 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         return THREE.MathUtils.clamp(value, 0, length);
     }
 
-    private static getExtremityValues(cut: IRoadCuts['entryCut'] | undefined, length: number): [number, number, number, number] {
-        if (!cut) return [0, 0, 0, 0];
+    private static getExtremityValues(cut: IRoadCuts['entryCut'] | undefined, length: number): [number, number, number, number, number] {
+        if (!cut) return [0, 0, 0, 0, 0];
         return [
             this.clampExtremityValue(cut.left, length),
             this.clampExtremityValue(cut.roadLeft, length),
+            this.clampExtremityValue(cut.middle, length),
             this.clampExtremityValue(cut.roadRight, length),
             this.clampExtremityValue(cut.right, length),
         ];
@@ -94,9 +95,10 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         const halfLength = length / 2;
         const leftOuter = widthM / 2;
         const roadLeft = leftOuter - carriagewayStartM;
+        const middle = (roadLeft + (leftOuter - carriagewayEndM)) * 0.5;
         const roadRight = leftOuter - carriagewayEndM;
         const rightOuter = -widthM / 2;
-        const lateral = [leftOuter, roadLeft, roadRight, rightOuter];
+        const lateral = [leftOuter, roadLeft, middle, roadRight, rightOuter];
 
         const startCuts = StraightRoadPrimitive.getExtremityValues(this.cuts?.entryCut, length);
         const endCuts = StraightRoadPrimitive.getExtremityValues(this.cuts?.exitCut, length);
@@ -108,8 +110,8 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         const rightSegments = StraightRoadPrimitive.getSideCutSegments({
             cuts: this.cuts?.rightCuts,
             length,
-            overlapStartX: Math.max(startX[2], startX[3]),
-            overlapEndX: Math.min(endX[2], endX[3]),
+            overlapStartX: Math.max(startX[3], startX[4]),
+            overlapEndX: Math.min(endX[3], endX[4]),
         });
         const leftSegments = StraightRoadPrimitive.getSideCutSegments({
             cuts: this.cuts?.leftCuts,
@@ -122,12 +124,14 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         const startEdge: IPoint2D[] = [
             { x: startX[0], z: leftOuter },
             { x: startX[1], z: roadLeft },
-            { x: startX[2], z: roadRight },
-            { x: startX[3], z: rightOuter },
+            { x: startX[2], z: middle },
+            { x: startX[3], z: roadRight },
+            { x: startX[4], z: rightOuter },
         ];
         const endEdge: IPoint2D[] = [
-            { x: endX[3], z: rightOuter },
-            { x: endX[2], z: roadRight },
+            { x: endX[4], z: rightOuter },
+            { x: endX[3], z: roadRight },
+            { x: endX[2], z: middle },
             { x: endX[1], z: roadLeft },
             { x: endX[0], z: leftOuter },
         ];
@@ -136,7 +140,7 @@ export class StraightRoadPrimitive extends RoadPrimitive {
             StraightRoadPrimitive.pushUniquePoint(outline, point);
         }
 
-        let rightBoundaryX = startX[3];
+        let rightBoundaryX = startX[4];
         for (const cut of rightSegments) {
             if (cut.from > rightBoundaryX) {
                 StraightRoadPrimitive.pushUniquePoint(outline, { x: cut.from, z: rightOuter });
@@ -146,7 +150,7 @@ export class StraightRoadPrimitive extends RoadPrimitive {
             StraightRoadPrimitive.pushUniquePoint(outline, { x: cut.to, z: rightOuter });
             rightBoundaryX = cut.to;
         }
-        StraightRoadPrimitive.pushUniquePoint(outline, { x: endX[3], z: rightOuter });
+        StraightRoadPrimitive.pushUniquePoint(outline, { x: endX[4], z: rightOuter });
 
         for (const point of endEdge) {
             StraightRoadPrimitive.pushUniquePoint(outline, point);

@@ -8,7 +8,7 @@ export interface ISideCuts {
 export interface IExtremityCut {
     left: number;
     roadLeft: number;
-    
+    middle: number;  
     roadRight: number;
     right: number;
 }

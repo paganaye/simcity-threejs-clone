@@ -60,8 +60,8 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
     onRoadMoved(): void {
         if (this.isRebuilding) return;
 
-        const next = JoiningRoadPrimitive.computeJoinGeometry(this.previousRoadExit, this.nextRoadEntry, this.requestedRadius);
-        if (!next) {
+        const geometry = JoiningRoadPrimitive.computeJoinGeometry(this.previousRoadExit, this.nextRoadEntry, this.requestedRadius);
+        if (!geometry) {
             JoiningRoadPrimitive.debug('onRoadMoved: geometry invalid, keeping current arc');
             super.onRoadMoved();
             return;
@@ -69,14 +69,28 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
 
         this.isRebuilding = true;
         try {
-            this.updateDebugRequestedRadiusCircle(next.center, this.requestedRadius, next.mid.y + 0.05);
-            this.nextRoadEntry.move(next.end)
-            this.previousRoadExit.move(next.start);
+            this.updateDebugRequestedRadiusCircle(geometry.center, this.requestedRadius, geometry.mid.y + 0.05);
+            //this.nextRoadEntry.move(next.end)
+            //this.previousRoadExit.move(next.start);
+            let nextRoadCuts = this.nextRoadEntry.primitive.cuts || (this.nextRoadEntry.primitive.cuts = {});
+            nextRoadCuts.entryCut = {
+                left: geometry.nextRoadEntryTrim,
+                roadLeft: geometry.nextRoadEntryTrim,
+                roadRight: geometry.nextRoadEntryTrim,
+                right: geometry.nextRoadEntryTrim
+            }
+            let previousRoadCuts = this.previousRoadExit.primitive.cuts || (this.previousRoadExit.primitive.cuts = {});
+            previousRoadCuts.exitCut = {
+                left: geometry.previousRoadExitTrim,
+                roadLeft: geometry.previousRoadExitTrim,
+                roadRight: geometry.previousRoadExitTrim,
+                right: geometry.previousRoadExitTrim
+            }
             this.nextRoadEntry.primitive.recreateMesh();
             this.previousRoadExit.primitive.recreateMesh();
-            this.entry.move(next.start);
-            this.exit.move(next.end);
-            this.mid = next.mid;
+            this.entry.move(geometry.start);
+            this.exit.move(geometry.end);
+            this.mid = geometry.mid;
         } finally {
             this.isRebuilding = false;
         }
@@ -103,6 +117,8 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
         center: IPoint2D;
         mid: { x: number; y: number; z: number };
         actualRadius: number;
+        previousRoadExitTrim: number;
+        nextRoadEntryTrim: number;
     } | null {
         const d1 = this.directionAwayFromSide(nextRoadEntry);
         const d2 = this.directionAwayFromSide(previousRoadExit);
@@ -229,7 +245,8 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
         this.debug('computeJoinGeometry: success', {
             requestedRadius,
             actualRadius,
-            trim,
+            nextRoadEntryTrim: trim,
+            previousRoadExitTrim: trim,
             phi,
             turn,
             nodeX: Number(node.x.toFixed(3)),
@@ -243,7 +260,15 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
             delta,
         });
 
-        return { start, end, center, mid, actualRadius };
+        return {
+            start,
+            end,
+            center,
+            mid,
+            actualRadius,
+            nextRoadEntryTrim: trim,
+            previousRoadExitTrim: trim,
+        };
     }
 
     private disposeDebugRequestedRadiusCircle(): void {
@@ -309,8 +334,8 @@ export class JoiningRoadPrimitive extends CurvedRoadPrimitive {
         const geometry = this.computeJoinGeometry(previousRoadExit, nextRoadEntry, requestedRadius);
         if (!geometry) return null;
 
-        nextRoadEntry.move(geometry.end);
-        previousRoadExit.move(geometry.start);
+        //nextRoadEntry.move(geometry.end);
+        //previousRoadExit.move(geometry.start);
 
         const result = new JoiningRoadPrimitive({
             parent,

@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
-import { IPoint2D, ISegment, IVector2D } from '../../sim/Geometry';
+import { IArc, IPoint2D, ISegment, IVector2D } from '../../sim/Geometry';
 import type { RoadSegment } from './RoadSegment';
 import { RoadType } from './RoadType';
 import { PrimitiveEntry, PrimitiveExit, PrimitiveSide } from './PrimitiveEndPoint';
+import { drawArc, drawSegment } from '../Debug';
 
 export abstract class RoadPrimitive implements ISegment {
     transient: boolean;
@@ -108,9 +109,46 @@ export abstract class RoadPrimitive implements ISegment {
         this.recreateMesh();
     }
 
-
     abstract getDirection(side: PrimitiveSide): IVector2D;
 
-    
-    
+    abstract getGeometry(line: RoadLine): ISegment | IArc;
+
+    protected createDebugGuideLines(group: THREE.Object3D): void {
+        group.name = 'debug-road-guides';
+        const y = (this.entry.y ?? 0) + 0.01;
+
+        for (const [line, color] of [
+            ['outerLeft', '#b5b5b5'],
+            ['carriageWayLeft', '#4f4f4f'],
+            ['median', '#ffff00'],
+            ['carriageWayRight', '#4f4f4f'],
+            ['outerRight', '#b5b5b5'],
+        ] as [RoadLine, string][]) {
+            const geometry = this.getGeometry(line);
+            if ('entry' in geometry && 'exit' in geometry) {
+                drawSegment(color, {
+                    entry: { x: geometry.entry.x, y, z: geometry.entry.z },
+                    exit: { x: geometry.exit.x, y, z: geometry.exit.z },
+                }, group);
+                continue;
+            }
+
+            drawArc(color, geometry, group, y);
+        }
+    }
+
+    protected getLineLateralOffset(line: RoadLine): number {
+        const halfWidth = this.roadType.outerWidth * 0.5;
+        const carriageWayLeft = this.roadType.carriagewayStart - halfWidth;
+        const carriageWayRight = this.roadType.carriagewayEnd - halfWidth;
+        switch (line) {
+            case 'outerLeft': return -halfWidth;
+            case 'carriageWayLeft': return carriageWayLeft;
+            case 'median': return (carriageWayLeft + carriageWayRight) * 0.5;
+            case 'carriageWayRight': return carriageWayRight;
+            case 'outerRight': return halfWidth;
+        }
+    }
 }
+
+export type RoadLine = 'outerLeft' | 'carriageWayLeft' | 'median' | 'carriageWayRight' | 'outerRight';

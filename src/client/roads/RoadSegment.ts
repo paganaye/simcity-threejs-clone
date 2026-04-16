@@ -231,8 +231,8 @@ export class RoadSegment {
             return { forwardOffsetM: 0, backwardOffsetM: 0 };
         }
 
-        const forwardCarriagewayWidthM = RoadType.get(this.dualRoadType.forward).totalWidth;
-        const backwardCarriagewayWidthM = RoadType.get(this.dualRoadType.backward).totalWidth;
+        const forwardCarriagewayWidthM = RoadType.get(this.dualRoadType.forward).outerWidth;
+        const backwardCarriagewayWidthM = RoadType.get(this.dualRoadType.backward).outerWidth;
         const halfGapM = (this.dualRoadType.gapSize ?? 0) / 2;
 
         return {

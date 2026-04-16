@@ -37,14 +37,14 @@ function getRoadNormal(road: IStraightRoadCutDef): IVector2D {
 }
 
 function getRoadOffsets(road: IStraightRoadCutDef): Record<IBoundaryKey, number> {
-    const bands = RoadType.get(road.style);
-    const widthM = bands.totalWidth;
-    const carriagewayCenter = (bands.carriagewayStart + bands.carriagewayEnd) / 2;
+    const roadType = RoadType.get(road.style);
+    const widthM = roadType.outerWidth;
+    const carriagewayCenter = (roadType.carriagewayStart + roadType.carriagewayEnd) / 2;
     const halfOffsetM = carriagewayCenter - widthM / 2;
 
     const leftOuter = halfOffsetM + widthM / 2;
-    const roadLeft = halfOffsetM + (widthM / 2 - bands.carriagewayStart);
-    const roadRight = halfOffsetM + (widthM / 2 - bands.carriagewayEnd);
+    const roadLeft = halfOffsetM + (widthM / 2 - roadType.carriagewayStart);
+    const roadRight = halfOffsetM + (widthM / 2 - roadType.carriagewayEnd);
     const rightOuter = halfOffsetM - widthM / 2;
 
     return { leftOuter, roadLeft, roadRight, rightOuter };

@@ -23,14 +23,12 @@ export function getBands(options: IRoadType): IRoadBands {
 
 export class RoadType {
     private static cache: Map<string, RoadType> = new Map();
-
     readonly bands: RoadBand[];
-    readonly totalWidth: number;
+    readonly outerWidth: number;
     readonly carriagewayStart: number;
+    readonly midCarriageway: number;
     readonly carriagewayEnd: number;
     readonly carriagewayWidth: number;
-    readonly totalStart: number;
-    readonly totalEnd: number;
 
     private constructor(readonly roadType: IRoadType) {
         const laneCount = Math.max(0, roadType.lanes);
@@ -69,25 +67,23 @@ export class RoadType {
         }
 
         this.bands = bands;
-        this.totalWidth = offsetM;
+        this.outerWidth = offsetM;
         this.carriagewayStart = carriagewayStartM ?? 0;
         this.carriagewayEnd = carriagewayEndM ?? 0;
         this.carriagewayWidth = (carriagewayEndM !== undefined && carriagewayStartM !== undefined)
             ? (carriagewayEndM - carriagewayStartM) : 0;
-        this.totalStart = 0;
-        this.totalEnd = this.totalWidth;
-
+        this.midCarriageway = (this.carriagewayStart + this.carriagewayEnd) / 2;
     }
 
 
     static get(options: IRoadType): RoadType {
         const key = JSON.stringify(options);
-        let bands = this.cache.get(key);
-        if (!bands) {
-            bands = new RoadType(options);
-            this.cache.set(key, bands);
+        let roadType = this.cache.get(key);
+        if (!roadType) {
+            roadType = new RoadType(options);
+            this.cache.set(key, roadType);
         }
-        return bands;
+        return roadType;
     }
 
     classGuard() { }

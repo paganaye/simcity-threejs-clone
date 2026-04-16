@@ -1,13 +1,12 @@
 import type { IRoadCuts } from './RoadCuts';
 import * as THREE from 'three';
-import { RoadPrimitive } from './RoadPrimitive';
+import { RoadLine, RoadPrimitive } from './RoadPrimitive';
 import type { RoadSegment } from './RoadSegment';
-import type { IPoint2D, IVector2D } from '../../sim/Geometry';
+import { Vector, distance2D, midPoint, normalize2D, type IPoint2D, type IVector2D } from '../../sim/Geometry';
 import { RoadConstants } from '../textures/RoadBand';
 import { RoadShaderMaterialBuilder } from '../textures/RoadShaderMaterialBuilder';
 import { appConstants } from '../../AppConstants';
 import { RoadType } from './RoadType';
-import { drawSegment } from '../Debug';
 import { PrimitiveSide } from './PrimitiveEndPoint';
 
 export interface StraightRoadPrimitiveParams {
@@ -85,6 +84,13 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         carriagewayEndM: number;
         startV: number;
         endV: number;
+        dirX: number;
+        dirZ: number;
+        latX: number;
+        latZ: number;
+        midX: number;
+        midZ: number;
+        y: number;
     }): THREE.BufferGeometry {
         const {
             length,
@@ -93,6 +99,13 @@ export class StraightRoadPrimitive extends RoadPrimitive {
             carriagewayEndM,
             startV,
             endV,
+            dirX,
+            dirZ,
+            latX,
+            latZ,
+            midX,
+            midZ,
+            y,
         } = params;
         const halfLength = length / 2;
         const leftOuter = widthM / 2;
@@ -190,7 +203,12 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         for (const point of contour) {
             const t = THREE.MathUtils.clamp((point.x + halfLength) / length, 0, 1);
             const u = THREE.MathUtils.clamp((leftOuter - point.y) / widthM, 0, 1);
-            vertices.push(point.x, point.y, 0);
+            // point.x = along road, point.y = lateral — transform to world XZ
+            vertices.push(
+                midX + dirX * point.x + latX * point.y,
+                y,
+                midZ + dirZ * point.x + latZ * point.y,
+            );
             uvs.push(u, startV + repeat * t);
         }
 
@@ -214,106 +232,94 @@ export class StraightRoadPrimitive extends RoadPrimitive {
         segmentLength?: number;
     } = {}): THREE.BufferGeometry | null {
         const { textureProgressV = 0, lineLength = RoadConstants.yellowLineLength } = params;
-        const dx = this.exit.x - this.entry.x;
-        const dz = this.exit.z - this.entry.z;
-        const length = Math.hypot(dx, dz);
+        const length = distance2D(this.entry, this.exit);
         if (length <= 0) return null;
 
-        const bands = this.roadType;
-        const widthM = bands.totalWidth;
+        const direction = normalize2D({
+            x: this.exit.x - this.entry.x,
+            z: this.exit.z - this.entry.z,
+        });
+        if (!direction) return null;
+
+        const widthM = this.roadType.outerWidth;
         if (widthM <= 0) return null;
+
+        // World-space orientation
+        const dirX = direction.x;
+        const dirZ = direction.z;
+        const latX = dirZ;   // perpendicular right
+        const latZ = -dirX;
+        const carriagewayCenter = (this.roadType.carriagewayStart + this.roadType.carriagewayEnd) / 2;
+        const lateralOffsetM = carriagewayCenter - widthM / 2;
+        const center = midPoint(this.entry, this.exit);
+        const midX = center.x + latX * lateralOffsetM;
+        const midZ = center.z + latZ * lateralOffsetM;
+        const y = this.entry.y ?? 0;
 
         const startV = textureProgressV;
         const endV = startV + length / lineLength;
         const hasCustomCuts = Boolean(this.cuts?.entryCut || this.cuts?.exitCut || this.cuts?.rightCuts?.length || this.cuts?.leftCuts?.length);
         if (!hasCustomCuts) {
-            const geometry = new THREE.PlaneGeometry(length, widthM);
-            const uvArray = [0, startV, 0, endV, 1, startV, 1, endV];
-            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvArray, 2));
+            // Generate 4 corners directly in world XZ — no rotation needed
+            const halfLen = length / 2;
+            const halfWidth = widthM / 2;
+            const positions: number[] = [];
+            const pushWorld = (along: number, lat: number) =>
+                positions.push(midX + dirX * along + latX * lat, y, midZ + dirZ * along + latZ * lat);
+            pushWorld(-halfLen,  halfWidth);  // 0: entry, left
+            pushWorld(-halfLen, -halfWidth);  // 1: entry, right
+            pushWorld( halfLen,  halfWidth);  // 2: exit,  left
+            pushWorld( halfLen, -halfWidth);  // 3: exit,  right
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, startV, 1, startV, 0, endV, 1, endV], 2));
+            geometry.setIndex([0, 2, 1, 2, 3, 1]);
+            geometry.computeVertexNormals();
             return geometry;
         }
 
         return this.createCutGeometry({
-            length,
-            widthM,
-            carriagewayStartM: bands.carriagewayStart,
-            carriagewayEndM: bands.carriagewayEnd,
-            startV,
-            endV,
+            length, widthM,
+            carriagewayStartM: this.roadType.carriagewayStart,
+            carriagewayEndM: this.roadType.carriagewayEnd,
+            startV, endV,
+            dirX, dirZ, latX, latZ, midX, midZ, y,
         });
     }
 
-    private createDebugGuideLines(group: THREE.Object3D, length: number): void {
-        group.name = 'debug-road-guides';
-
-        const bands = this.roadType;
-        const leftOuter = bands.totalWidth * 0.5;
-        const roadLeft = leftOuter - bands.carriagewayStart;
-        const roadRight = leftOuter - bands.carriagewayEnd;
-        const middle = (roadLeft + roadRight) * 0.5;
-        const rightOuter = -leftOuter;
-
-        const lines: Array<{ z: number; color: string }> = [
-            { z: leftOuter, color: '#b5b5b5' },
-            { z: roadLeft, color: '#4f4f4f' },
-            { z: middle, color: '#ffff00' },
-            { z: roadRight, color: '#4f4f4f' },
-            { z: rightOuter, color: '#b5b5b5' },
-        ];
-
-        for (const line of lines) {
-            drawSegment(
-                line.color,
-                {
-                    entry: { x: -length * 0.5, z: line.z },
-                    exit: { x: length * 0.5, z: line.z },
-                },
-                group,
-            );
-        }
-    }
-
     protected override createMesh(): THREE.Object3D | null {
-        const textureProgressV = 0, lineLength = RoadConstants.yellowLineLength, offsetM = 0;
-        const geometry = this.createGeometry({ textureProgressV, lineLength });
+        const geometry = this.createGeometry();
         if (!geometry) return null;
-
-        const dx = this.exit.x - this.entry.x;
-        const dz = this.exit.z - this.entry.z;
-        const segmentLength = Math.hypot(dx, dz);
-        const angle = Math.atan2(-dz, dx);
-
-        const bands = this.roadType;
-        const widthM = bands.totalWidth;
-        const carriagewayCenter = (bands.carriagewayStart + bands.carriagewayEnd) / 2;
-        const halfOffsetM = carriagewayCenter - widthM / 2;
-        const normalX = Math.sin(angle);
-        const normalZ = Math.cos(angle);
-        const centerX = (this.entry.x + this.exit.x) / 2;
-        const centerZ = (this.entry.z + this.exit.z) / 2;
         const material = RoadShaderMaterialBuilder.getRoadMaterial(this.roadType.roadType);
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(
-            centerX + normalX * (halfOffsetM + offsetM),
-            this.entry.y ?? 0,
-            centerZ + normalZ * (halfOffsetM + offsetM)
-        );
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.rotation.z = angle;
         if (appConstants.DEBUG_ROAD) {
-
-            this.createDebugGuideLines(mesh, segmentLength);
+            this.createDebugGuideLines(mesh);
         }
         return mesh;
     }
 
     getDirection(_side: PrimitiveSide): IVector2D {
-        const dx = this.exit.x - this.entry.x;
-        const dz = this.exit.z - this.entry.z;
-        const length = Math.hypot(dx, dz);
-        if (length <= 0) return { x: 0, z: 0 };
-        let x = dx / length;
-        let z = dz / length;
-        return { x, z };
+        return normalize2D({
+            x: this.exit.x - this.entry.x,
+            z: this.exit.z - this.entry.z,
+        }) ?? { x: 0, z: 0 };
+    }
+
+    override getGeometry(line: RoadLine) {
+        const offset = this.getLineLateralOffset(line);
+        const direction = this.getDirection('entry');
+        const right = Vector.rightAngle(direction);
+        return {
+            entry: {
+                x: this.entry.x + right.x * offset,
+                y: this.entry.y,
+                z: this.entry.z + right.z * offset,
+            },
+            exit: {
+                x: this.exit.x + right.x * offset,
+                y: this.exit.y,
+                z: this.exit.z + right.z * offset,
+            },
+        };
     }
 }

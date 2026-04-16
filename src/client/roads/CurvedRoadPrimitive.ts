@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
-import { RoadPrimitive } from './RoadPrimitive';
+import { RoadLine, RoadPrimitive } from './RoadPrimitive';
 import type { RoadSegment } from './RoadSegment';
-import { computeArcFromThreePoints, EPSILON, IVector2D, type IPoint2D } from '../../sim/Geometry';
+import { computeArcFromThreePoints, EPSILON, IArc, IVector2D, type IPoint2D } from '../../sim/Geometry';
 import { RoadConstants } from '../textures/RoadBand';
 import { RoadShaderMaterialBuilder } from '../textures/RoadShaderMaterialBuilder';
 import { RoadType } from './RoadType';
 import { PrimitiveSide } from './PrimitiveEndPoint';
+import { appConstants } from '../../AppConstants';
 
 export interface CurvedRoadPrimitiveParams {
     parent: THREE.Object3D;
@@ -39,7 +40,11 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         const geometry = this.createGeometry();
         if (!geometry) return null;
         const material = RoadShaderMaterialBuilder.getRoadMaterial(this.roadType.roadType);
-        return new THREE.Mesh(geometry, material);
+        const mesh = new THREE.Mesh(geometry, material);
+        if (appConstants.DEBUG_ROAD) {
+            this.createDebugGuideLines(mesh);
+        }
+        return mesh;
     }
 
     override createGeometry(): THREE.BufferGeometry | null {
@@ -47,8 +52,7 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         const arc = computeArcFromThreePoints(this.entry, this.mid, this.exit);
         if (!arc || Math.abs(arc.sweepAngle) < 1e-6) return null;
 
-        const bands = this.roadType;
-        const widthM = bands.totalWidth;
+        const widthM = this.roadType.outerWidth;
         if (widthM <= 0) return null;
 
         const halfWidth = widthM / 2;
@@ -129,6 +133,30 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         return arc.sweepAngle > 0
             ? { x: -radial.z, z: radial.x }
             : { x: radial.z, z: -radial.x };
+    }
+
+    override getGeometry(line: RoadLine): IArc {
+        const arc = computeArcFromThreePoints(this.entry, this.mid, this.exit);
+        const fallbackRadius = Math.hypot(this.exit.x - this.entry.x, this.exit.z - this.entry.z) * 0.5;
+        if (!arc) {
+            return {
+                center: { x: this.entry.x, z: this.entry.z },
+                radius: Math.max(EPSILON, fallbackRadius),
+                startAngle: 0,
+                sweepAngle: 0,
+            };
+        }
+
+        const offset = this.getLineLateralOffset(line);
+        // Positive offset is to the right of travel direction.
+        // On CCW arcs, right side is outward; on CW arcs, right side is inward.
+        const signedOffset = arc.sweepAngle > 0 ? offset : -offset;
+        return {
+            center: arc.center,
+            radius: Math.max(EPSILON, arc.radius + signedOffset),
+            startAngle: arc.startAngle,
+            sweepAngle: arc.sweepAngle,
+        };
     }
 }
 

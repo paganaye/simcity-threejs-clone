@@ -1,4 +1,3 @@
-
 export const EPSILON = 1e-6;
 
 export interface IPoint2D {
@@ -112,26 +111,6 @@ export function normalize2D(vector: IPoint2D, epsilon: number = 1e-6): IPoint2D 
     const length = Math.hypot(vector.x, vector.z);
     if (!Number.isFinite(length) || length <= epsilon) return null;
     return { x: vector.x / length, z: vector.z / length };
-}
-
-export function intersectRayWithLine(
-    rayOrigin: IPoint2D,
-    rayDirection: IPoint2D,
-    linePoint: IPoint2D,
-    lineDirection: IPoint2D,
-    epsilon: number = 1e-6,
-): { point: IPoint2D; t: number } | null {
-    const det = rayDirection.x * lineDirection.z - rayDirection.z * lineDirection.x;
-    if (Math.abs(det) <= epsilon) return null;
-    const t = ((linePoint.x - rayOrigin.x) * lineDirection.z - (linePoint.z - rayOrigin.z) * lineDirection.x) / det;
-    if (!Number.isFinite(t)) return null;
-    return {
-        t,
-        point: {
-            x: rayOrigin.x + rayDirection.x * t,
-            z: rayOrigin.z + rayDirection.z * t,
-        },
-    };
 }
 
 export function midPoint(start: IPoint2D, end: IPoint2D): IPoint2D {
@@ -377,24 +356,19 @@ function projectPolygon(poly: IVector2D[], axis: IVector2D): { min: number; max:
 }
 
 
-export function intersectLines(
-    aPoint: IPoint2D,
-    aDir: IPoint2D,
-    bPoint: IPoint2D,
-    bDir: IPoint2D
-): IPoint2D | null {
-    const det = aDir.x * bDir.z - aDir.z * bDir.x;
-    if (Math.abs(det) <= EPSILON) return null;
-    const t = ((bPoint.x - aPoint.x) * bDir.z - (bPoint.z - aPoint.z) * bDir.x) / det;
-    return {
-        x: aPoint.x + aDir.x * t,
-        z: aPoint.z + aDir.z * t,
-    };
-}
+
+
 
 export interface ISegment {
     entry: IPoint2D;
     exit: IPoint2D;
+}
+
+export interface IArc {
+    center: IPoint2D;
+    radius: number;
+    startAngle: number;
+    sweepAngle: number;
 }
 
 export class Vector {
@@ -428,6 +402,13 @@ export class Vector {
             z: vector.z * scale,
         };
     }
+
+    static rightAngle(direction: IPoint2D) {
+        return { x: direction.z, z: -direction.x }
+    }
+
+
+
 }
 
 export class Segment {
@@ -450,5 +431,60 @@ export class Segment {
         return { x: direction.z, z: -direction.x };
     }
 
+    intersection(
+        seg1: ISegment,
+        seg2: ISegment,
+    ): IPoint2D | null {
+        let seg1Dir = Segment.direction(seg1);
+        let seg2Dir = Segment.direction(seg2);
+        const det = seg1Dir.x * seg2Dir.z - seg1Dir.z * seg2Dir.x;
+        if (Math.abs(det) <= EPSILON) return null;
+        const t = ((seg2.entry.x - seg1.entry.x) * seg2Dir.z - (seg2.entry.z - seg1.entry.z) * seg2Dir.x) / det;
+        return {
+            x: seg1.entry.x + seg1Dir.x * t,
+            z: seg1.entry.z + seg1Dir.z * t,
+        };
+    }
+
+    strictIntersection(
+        seg1: ISegment,
+        seg2: ISegment,
+    ): IPoint2D & { t: number, u: number } {
+        const d1 = Segment.direction(seg1);
+        const d2 = Segment.direction(seg2);
+
+        let det = d1.x * d2.z - d1.z * d2.x;
+        if (Math.abs(det) <= EPSILON) det = EPSILON;
+
+        const dx = seg2.entry.x - seg1.entry.x;
+        const dz = seg2.entry.z - seg1.entry.z;
+
+        const t = (dx * d2.z - dz * d2.x) / det;
+        const u = (dx * d1.z - dz * d1.x) / det;
+
+
+        return {
+            x: seg1.entry.x + d1.x * t,
+            z: seg1.entry.z + d1.z * t,
+            t, u
+        };
+    }
 
 }
+
+export class Point2D {
+    static midPoint(p1: IPoint2D, p2: IPoint2D): IPoint2D {
+        return {
+            x: (p1.x + p2.x) / 2,
+            z: (p1.z + p2.z) / 2,
+        };
+    }
+
+    static translate(point: IPoint2D, angle: number, distance: number): IPoint2D {
+        return {
+            x: point.x + Math.cos(angle) * distance,
+            z: point.z + Math.sin(angle) * distance,
+        };
+    }
+}
+

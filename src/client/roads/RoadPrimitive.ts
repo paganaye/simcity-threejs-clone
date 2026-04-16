@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
 import type { IRoadType } from './IRoad';
-import { IPoint2D } from '../../sim/Geometry';
+import { IPoint2D, IVector2D, Vector } from '../../sim/Geometry';
 import type { RoadSegment } from './RoadSegment';
 import { RoadJoin } from './RoadJoin';
 
@@ -144,4 +144,15 @@ export abstract class RoadPrimitive {
         this.exit.roadJoin?.onAdjacentRoadMoved();
         this.recreateMesh();
     }
+
+    get perpendicularRightVector(): IVector2D {
+        const delta = Vector.sub(this.exit, this.entry);
+        return Vector.normalize({ x: -delta.z, z: delta.x })!;
+    }
+
+    get direction(): IVector2D {
+        const delta = Vector.sub(this.exit, this.entry);
+        return Vector.normalize(delta)!;
+    }
+
 }

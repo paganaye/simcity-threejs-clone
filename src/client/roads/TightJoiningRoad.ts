@@ -3,7 +3,7 @@ import type { IRoadType } from './IRoad';
 import { StraightRoadPrimitive } from './StraightRoadPrimitive';
 import type { PrimitiveEndPoint, PrimitiveEntry, PrimitiveExit } from './RoadPrimitive';
 import type { IExtremityCut } from './RoadCuts';
-import { intersectRayWithLine, EPSILON, normalize2D, type IPoint2D } from '../../sim/Geometry';
+import { intersectRayWithLine, EPSILON, normalize2D, type IPoint2D, Vector } from '../../sim/Geometry';
 import { JoiningRoadsParams } from './RoadJoin';
 import { appConstants } from '../../AppConstants';
 import { RoadBands } from './RoadBands';
@@ -38,7 +38,7 @@ type TightJoinGeometry = {
 export class TightJoiningRoad extends StraightRoadPrimitive {
     private static readonly ZERO_CUT: IExtremityCut = { left: 0, roadLeft: 0, middle: 0, roadRight: 0, right: 0 };
 
-    private static directionAwayFromSide(endpoint: PrimitiveEndPoint): IPoint2D | null {
+    private static oldDirectionAwayFromSide(endpoint: PrimitiveEndPoint): IPoint2D | null {
         const primitive = endpoint.primitive;
         const dx = primitive.exit.x - primitive.entry.x;
         const dz = primitive.exit.z - primitive.entry.z;
@@ -48,6 +48,7 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
             ? { x: dx / length, z: dz / length }
             : { x: -dx / length, z: -dz / length };
     }
+
 
     private static getExtremityLateralSamples(roadType: IRoadType): [number, number, number, number, number] {
         const bands = RoadBands.get(roadType);
@@ -153,11 +154,14 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
             joinArgs.parent.add(marker);
         };
 
-        makeMarker('magenta', geometry.node)
+        // makeMarker('red', joinArgs.previousRoadExit);
+        // makeMarker('red', joinArgs.nextRoadEntry);
 
-        makeMarker('orange', geometry.firstPoint);
-        makeMarker('orange', geometry.mid);
-        makeMarker('orange', geometry.secondPoint);
+        // makeMarker('magenta', geometry.node)
+
+        // makeMarker('orange', geometry.firstPoint);
+        // makeMarker('orange', geometry.mid);
+        // makeMarker('orange', geometry.secondPoint);
 
         // Calculate intersections of the 3 dark-grey carriage lines.
         // const bands = RoadBands.get(joinArgs.roadType);
@@ -167,39 +171,48 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
         // const _roadRight = halfWidth - bands.carriagewayEndM;
 
 
+        const previousRoadExit = joinArgs.previousRoadExit;
 
+        const nextRoadEntry = joinArgs.nextRoadEntry;
 
-        const p1 = joinArgs.nextRoadEntry;
+        makeMarker('blue', previousRoadExit);
+
+        makeMarker('blue', nextRoadEntry);
+
+        const previousRightVector = previousRoadExit.primitive.perpendicularRightVector;
+        
+        makeMarker('cyan', Vector.add(previousRoadExit, previousRightVector, 2));
+        
+         const nextRightVector = nextRoadEntry.primitive.perpendicularRightVector;
+
+        makeMarker('ping', Vector.add(nextRoadEntry, nextRightVector, 2));
+        
+        // makeMarker('pink', { x: previousRoadExit.x + exitRight.x, z: previousRoadExit.z + exitRight.z });
         // const p2 = joinArgs.previousRoadExit;
-        const d1Data = this.directionAwayFromSide(joinArgs.nextRoadEntry);
-        const d2Data = this.directionAwayFromSide(joinArgs.previousRoadExit);
-        const d3Data = normalize2D({ x: geometry.end.x - geometry.start.x, z: geometry.end.z - geometry.start.z }, EPSILON);
+        // const d1Data = this.directionAwayFromSide(joinArgs.nextRoadEntry);
+        // const d2Data = this.directionAwayFromSide(joinArgs.previousRoadExit);
+        // const d3Data = normalize2D({ x: geometry.end.x - geometry.start.x, z: geometry.end.z - geometry.start.z }, EPSILON);
 
-        if (d1Data && d2Data && d3Data) {
-            // const right1 = { x: d1Data.z, z: -d1Data.x };
-            // const right2 = { x: d2Data.z, z: -d2Data.x };
-            // const left2 = { x: -right2.x, z: -right2.z };
-            // const right3 = { x: d3Data.z, z: -d3Data.x };
+        // if (d1Data && d2Data && d3Data) {
+        //   const right1 = { x: d1Data.z, z: -d1Data.x };
+        //   const right2 = { x: d2Data.z, z: -d2Data.x };
+        //   const left2 = { x: -right2.x, z: -right2.z };
+        //   const right3 = { x: d3Data.z, z: -d3Data.x };
 
-            // // Line 1: dark-grey edge of arm 1.
-            // const line1Point = { x: p1.x + right1.x * roadRight, z: p1.z + right1.z * roadRight };
-            // // Line 2: dark-grey edge of arm 2.
-            // const line2Point = { x: p2.x + left2.x * roadLeft, z: p2.z + left2.z * roadLeft };
-            // // Line 3: dark-grey edge of the center connector.
-            // const line3Point = { x: geometry.start.x + right3.x * roadRight, z: geometry.start.z + right3.z * roadRight };
+        //   // Line 1: dark-grey edge of arm 1.
+        //   const line1Point = { x: p1.x + right1.x * roadRight, z: p1.z + right1.z * roadRight };
+        //   // Line 2: dark-grey edge of arm 2.
+        //   const line2Point = { x: p2.x + left2.x * roadLeft, z: p2.z + left2.z * roadLeft };
+        //   // Line 3: dark-grey edge of the center connector.
+        //   const line3Point = { x: geometry.start.x + right3.x * roadRight, z: geometry.start.z + right3.z * roadRight };
 
-            // const i13 = intersectLines(line1Point, d1Data, line3Point, d3Data);
-            // const i23 = intersectLines(line2Point, d2Data, line3Point, d3Data);
-            // const i12 = intersectLines(line1Point, d1Data, line2Point, d2Data);
-
-            // if (i13) joinArgs.parent.add(makeMarker('green', 'debug-tight-inner-intersection-13', i13.x, i13.z));
-
-            // if (i23) joinArgs.parent.add(makeMarker('green', 'debug-tight-inner-intersection-23', i23.x, i23.z));
-
-            // if (i12) joinArgs.parent.add(makeMarker('green', 'debug-tight-inner-intersection-12', i12.x, i12.z));
-
-            makeMarker('blue', p1);
-        }
+        //   const i13 = intersectLines(line1Point, d1Data, line3Point, d3Data);
+        //   const i23 = intersectLines(line2Point, d2Data, line3Point, d3Data);
+        //   const i12 = intersectLines(line1Point, d1Data, line2Point, d2Data);
+        //   if (i13) joinArgs.parent.add(makeMarker('green', 'debug-tight-inner-intersection-13', i13.x, i13.z));
+        //   if (i23) joinArgs.parent.add(makeMarker('green', 'debug-tight-inner-intersection-23', i23.x, i23.z));
+        //   if (i12) joinArgs.parent.add(makeMarker('green', 'debug-tight-inner-intersection-12', i12.x, i12.z));
+        //}
 
         // joinArgs.parent.add(bisectorLine);
         // joinArgs.parent.add(nodeMarker);
@@ -212,8 +225,8 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
     static computeTightJoinGeometry(
         joinArgs: JoiningRoadsParams
     ): TightJoinGeometry | null {
-        const d1 = this.directionAwayFromSide(joinArgs.nextRoadEntry);
-        const d2 = this.directionAwayFromSide(joinArgs.previousRoadExit);
+        const d1 = this.oldDirectionAwayFromSide(joinArgs.nextRoadEntry);
+        const d2 = this.oldDirectionAwayFromSide(joinArgs.previousRoadExit);
         if (!d1 || !d2) return null;
 
         const p1 = joinArgs.nextRoadEntry;
@@ -512,3 +525,4 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
     }
 
 }
+

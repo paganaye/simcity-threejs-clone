@@ -1,3 +1,5 @@
+import { int } from "three/tsl";
+
 export const EPSILON = 1e-6;
 
 export interface IPoint2D {
@@ -14,8 +16,6 @@ export interface IPoint3D {
 
 export type IVector2D = IPoint2D;
 export type IVector3D = IPoint3D;
-
-
 
 export interface IOrientation2D extends IPoint2D {
     angle: number;
@@ -392,3 +392,36 @@ export function intersectLines(
         z: aPoint.z + aDir.z * t,
     };
 }
+
+export class Vector {
+    static add(point: IPoint2D, vector: IPoint2D, scale: number = 1): IPoint2D {
+        return {
+            x: point.x + vector.x * scale,
+            z: point.z + vector.z * scale,
+        };
+    }
+    static sub(point: IPoint2D, vector: IPoint2D, scale: number = 1): IPoint2D {
+        return {
+            x: point.x - vector.x * scale,
+            z: point.z - vector.z * scale,
+        };
+    }
+    static length(vector: IPoint2D): number {
+        return Math.hypot(vector.x, vector.z);
+    }
+    static normalize(vector: IPoint2D): IPoint2D | null {
+        const length = Vector.length(vector);
+        if (!Number.isFinite(length) || length <= EPSILON) return { x: 1, z: 0 };
+        return {
+            x: vector.x / length,
+            z: vector.z / length,
+        };
+    }
+    static scale(vector: IPoint2D, scale: number): IPoint2D {
+        return {
+            x: vector.x * scale,
+            z: vector.z * scale,
+        };
+    }
+}
+

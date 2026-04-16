@@ -1,4 +1,4 @@
-export type RoadType = 'old' | 'new';
+export type RoadColor = 'old' | 'new';
 
 export const RoadConstants = {
     whiteLine: '#ffffff',

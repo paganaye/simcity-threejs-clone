@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import type { IRoadType } from './IRoad';
 import { StraightRoadPrimitive } from './StraightRoadPrimitive';
-import type { PrimitiveEndPoint, PrimitiveEntry, PrimitiveExit } from './RoadPrimitive';
+import type { PrimitiveEndPoint, PrimitiveEntry, PrimitiveExit } from './PrimitiveEndPoint';
 import type { IExtremityCut } from './RoadCuts';
-import { intersectRayWithLine, EPSILON, normalize2D, type IPoint2D, Vector } from '../../sim/Geometry';
+import { intersectRayWithLine, EPSILON, normalize2D, type IPoint2D, Vector, Segment } from '../../sim/Geometry';
 import { JoiningRoadsParams } from './RoadJoin';
 import { appConstants } from '../../AppConstants';
-import { RoadBands } from './RoadBands';
+import { RoadType } from './RoadType';
+import { drawMarker } from '../Debug';
 
 const TIGHT_SEGMENT_EPS = 0.05;
 const TIGHT_MAX_CUT_RATIO = 0.48;
@@ -15,7 +15,6 @@ const TIGHT_NOSE_DEPTH_WIDTH_RATIO = 0.9;
 const TIGHT_TRIM_REDUCTION = 0.84;
 const TIGHT_MIN_CENTER_SEGMENT_WIDTH_RATIO = 0.55;
 const DEBUG_TIGHT_BISECTOR_LENGTH = 14;
-const DEBUG_TIGHT_BISECTOR_HEIGHT = 0.08;
 const DEBUG_TIGHT_BISECTOR_COLOR = 0xffaa00;
 
 type TightJoinGeometry = {
@@ -50,12 +49,11 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
     }
 
 
-    private static getExtremityLateralSamples(roadType: IRoadType): [number, number, number, number, number] {
-        const bands = RoadBands.get(roadType);
-        const width = bands.totalWidthM;
+    private static getExtremityLateralSamples(bands: RoadType): [number, number, number, number, number] {
+        const width = bands.totalWidth;
         const leftOuter = width * 0.5;
-        const roadLeft = leftOuter - bands.carriagewayStartM;
-        const roadRight = leftOuter - bands.carriagewayEndM;
+        const roadLeft = leftOuter - bands.carriagewayStart;
+        const roadRight = leftOuter - bands.carriagewayEnd;
         const middle = (roadLeft + roadRight) * 0.5;
         const rightOuter = -leftOuter;
         return [leftOuter, roadLeft, middle, roadRight, rightOuter];
@@ -78,7 +76,7 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
 
     private static computeExtremityCutTouchingBisector(params: {
         endpoint: PrimitiveEndPoint;
-        roadType: IRoadType;
+        roadType: RoadType;
         segmentDirectionAwayFromSide: IPoint2D;
         bisector: IPoint2D;
         bisectorPoint: IPoint2D;
@@ -86,7 +84,7 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
     }): IExtremityCut {
         const {
             endpoint,
-            roadType,
+            roadType: roadBands,
             segmentDirectionAwayFromSide,
             bisector,
             bisectorPoint,
@@ -100,7 +98,7 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
 
         const maxAllowed = Math.max(0, availableLength * TIGHT_MAX_CUT_RATIO);
         const n = { x: -u.z, z: u.x };
-        const lateral = this.getExtremityLateralSamples(roadType);
+        const lateral = this.getExtremityLateralSamples(roadBands);
         const centerHit = intersectRayWithLine(endpoint, u, bisectorPoint, b, EPSILON);
         const centerTrim = THREE.MathUtils.clamp(centerHit?.t ?? 0, 0, maxAllowed);
         const values = lateral.map((z) => {
@@ -126,7 +124,7 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
     private static showDebug(joinArgs: JoiningRoadsParams, geometry: TightJoinGeometry): void {
         if (!appConstants.DEBUG_JOINING_ROAD) return;
 
-        const y = ((joinArgs.nextRoadEntry.y ?? 0) + (joinArgs.previousRoadExit.y ?? 0)) * 0.5 + DEBUG_TIGHT_BISECTOR_HEIGHT;
+        const y = 0.01;
         const start = new THREE.Vector3(
             geometry.node.x - geometry.bisector.x * DEBUG_TIGHT_BISECTOR_LENGTH,
             y,
@@ -144,15 +142,7 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
         bisectorLine.name = 'debug-tight-bisector';
 
 
-        const sphereGeometry = new THREE.SphereGeometry(0.4, 8, 8);
 
-        const makeMarker = (color: string, pt: IPoint2D): void => {
-            const material = new THREE.MeshBasicMaterial({ color, depthTest: false });
-            const marker = new THREE.Mesh(sphereGeometry, material);
-            marker.position.set(pt.x, y, pt.z);
-            marker.renderOrder = 1001;
-            joinArgs.parent.add(marker);
-        };
 
         // makeMarker('red', joinArgs.previousRoadExit);
         // makeMarker('red', joinArgs.nextRoadEntry);
@@ -164,7 +154,7 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
         // makeMarker('orange', geometry.secondPoint);
 
         // Calculate intersections of the 3 dark-grey carriage lines.
-        // const bands = RoadBands.get(joinArgs.roadType);
+        // const bands = RoadType.get(joinArgs.roadType);
         // const widthM = bands.totalWidthM;
         // const halfWidth = widthM * 0.5;
         // const _roadLeft = halfWidth - bands.carriagewayStartM;
@@ -175,18 +165,17 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
 
         const nextRoadEntry = joinArgs.nextRoadEntry;
 
-        makeMarker('blue', previousRoadExit);
+        drawMarker('blue', previousRoadExit, joinArgs.parent);
+        // makeMarker('blue', nextRoadEntry,  joinArgs.parent);
 
-        makeMarker('blue', nextRoadEntry);
+        const previousRightVector = Segment.direction(previousRoadExit.primitive);
 
-        const previousRightVector = previousRoadExit.primitive.perpendicularRightVector;
-        
-        makeMarker('cyan', Vector.add(previousRoadExit, previousRightVector, 2));
-        
-         const nextRightVector = nextRoadEntry.primitive.perpendicularRightVector;
+        drawMarker('cyan', Vector.add(previousRoadExit, previousRightVector, joinArgs.roadType.totalWidth / 2), joinArgs.parent);
 
-        makeMarker('ping', Vector.add(nextRoadEntry, nextRightVector, 2));
-        
+        const nextRightVector = Segment.perpendicularRight(nextRoadEntry.primitive);
+
+        drawMarker('pink', Vector.add(nextRoadEntry, nextRightVector, joinArgs.roadType.totalWidth / 2), joinArgs.parent);
+
         // makeMarker('pink', { x: previousRoadExit.x + exitRight.x, z: previousRoadExit.z + exitRight.z });
         // const p2 = joinArgs.previousRoadExit;
         // const d1Data = this.directionAwayFromSide(joinArgs.nextRoadEntry);
@@ -266,8 +255,8 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
 
         const bisector = { x: bisectorX / bisectorLength, z: bisectorZ / bisectorLength };
         const bisectorPerp = { x: -bisector.z, z: bisector.x };
-        const bands = RoadBands.get(joinArgs.roadType);
-        const widthM = bands.totalWidthM;
+        const bands = joinArgs.roadType;
+        const widthM = bands.totalWidth;
         const halfWidth = widthM * 0.5;
         const right1 = { x: d1.z, z: -d1.x };
         const right2 = { x: d2.z, z: -d2.x };
@@ -417,13 +406,13 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
         seamNormal: IPoint2D,
         side: 'entry' | 'exit',
         length: number,
-        roadType: IRoadType,
+        roadType: RoadType,
     ): IExtremityCut {
-        const bands = RoadBands.get(roadType);
-        const width = bands.totalWidthM;
+        const bands = roadType;
+        const width = bands.totalWidth;
         const leftOuter = width * 0.5;
-        const roadLeft = leftOuter - bands.carriagewayStartM;
-        const roadRight = leftOuter - bands.carriagewayEndM;
+        const roadLeft = leftOuter - bands.carriagewayStart;
+        const roadRight = leftOuter - bands.carriagewayEnd;
         const middle = (roadLeft + roadRight) * 0.5;
         const rightOuter = -leftOuter;
         const lateral = [leftOuter, roadLeft, middle, roadRight, rightOuter];

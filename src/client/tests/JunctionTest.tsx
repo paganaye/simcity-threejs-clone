@@ -15,6 +15,7 @@ import { Page } from '../Page';
 import type { IRoadType } from '../roads/IRoad';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 import { IRoadCuts } from '../roads/RoadCuts';
+import { RoadType } from '../roads/RoadType';
 
 type IStraightRoadDef = IStraightRoadCutDef;
 type IBoundaryKey = 'leftOuter' | 'roadLeft' | 'roadRight' | 'rightOuter';
@@ -163,7 +164,7 @@ export default class JunctionTest extends Page {
                 transient: false,
                 start: road1.start,
                 end: { x: road1.start.x + Math.cos(road1.start.angle) * road1.length, z: road1.start.z - Math.sin(road1.start.angle) * road1.length },
-                roadType: road1.style,
+                roadType: RoadType.get(road1.style),
                 cuts: road1Cuts,
             });
 
@@ -172,7 +173,7 @@ export default class JunctionTest extends Page {
                 transient: false,
                 start: road2.start,
                 end: { x: road2.start.x + Math.cos(road2.start.angle) * road2.length, z: road2.start.z - Math.sin(road2.start.angle) * road2.length },
-                roadType: road2.style,
+                roadType: RoadType.get(road2.style),
                 cuts: { exitCut: road2Cuts },
             });
 
@@ -181,7 +182,7 @@ export default class JunctionTest extends Page {
                 transient: false,
                 start: road3.start,
                 end: { x: road3.start.x + Math.cos(road3.start.angle) * road3.length, z: road3.start.z - Math.sin(road3.start.angle) * road3.length },
-                roadType: road3.style,
+                roadType: RoadType.get(road3.style),
                 cuts: { exitCut: road3Cuts },
             });
 

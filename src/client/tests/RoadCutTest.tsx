@@ -4,6 +4,7 @@ import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
 import type { IRoadType } from '../roads/IRoad';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
+import { RoadType } from '../roads/RoadType';
 
 export default class RoadTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -33,7 +34,7 @@ export default class RoadTest extends Page {
                 transient: false,
                 start: { x: 0, y: 0, z: 10 },
                 end: { x: 30, z: 10 },
-                roadType: road1,
+                roadType: RoadType.get(road1),
                 cuts: {
                     entryCut: {
                         left: 4,

@@ -5,7 +5,7 @@ import { StraightRoadPrimitive } from './StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from './CurvedRoadPrimitive';
 import { computeArcFromThreePoints, distance2D, getRightNormal, IPoint2D, offsetPoint as offsetPoint2D } from '../../sim/Geometry';
 import { GameScene3D } from '../GameScene3D';
-import { RoadBands } from './RoadBands';
+import { RoadType } from './RoadType';
 
 const DEBUG_ROAD_ARC = true;
 
@@ -173,7 +173,7 @@ export class RoadSegment {
                 start,
                 mid,
                 end,
-                roadType: this.dualRoadType.forward,
+                roadType: RoadType.get(this.dualRoadType.forward),
                 lateralOffsetM: forwardOffsetM,
                 cuts: forwardCuts,
                 segment: this,
@@ -186,7 +186,7 @@ export class RoadSegment {
                     start: end,
                     mid,
                     end: start,
-                    roadType: this.dualRoadType.backward,
+                    roadType: RoadType.get(this.dualRoadType.backward),
                     // Backward primitive runs in the opposite direction, so
                     // its local right-side offset sign must be inverted.
                     lateralOffsetM: -backwardOffsetM,
@@ -208,7 +208,7 @@ export class RoadSegment {
             transient: false,
             start: forwardStart,
             end: forwardEnd,
-            roadType: this.dualRoadType.forward,
+            roadType: RoadType.get(this.dualRoadType.forward),
             cuts: forwardCuts,
             segment: this,
         });
@@ -219,7 +219,7 @@ export class RoadSegment {
                 transient: false,
                 start: backwardEnd,
                 end: backwardStart,
-                roadType: this.dualRoadType.backward,
+                roadType: RoadType.get(this.dualRoadType.backward),
                 cuts: backwardCuts,
                 segment: this,
             });
@@ -231,8 +231,8 @@ export class RoadSegment {
             return { forwardOffsetM: 0, backwardOffsetM: 0 };
         }
 
-        const forwardCarriagewayWidthM = RoadBands.get(this.dualRoadType.forward).totalWidthM;
-        const backwardCarriagewayWidthM = RoadBands.get(this.dualRoadType.backward).totalWidthM;
+        const forwardCarriagewayWidthM = RoadType.get(this.dualRoadType.forward).totalWidth;
+        const backwardCarriagewayWidthM = RoadType.get(this.dualRoadType.backward).totalWidth;
         const halfGapM = (this.dualRoadType.gapSize ?? 0) / 2;
 
         return {

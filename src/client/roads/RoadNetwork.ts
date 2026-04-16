@@ -1,4 +1,5 @@
-import type { PrimitiveEndPoint, RoadPrimitive } from './RoadPrimitive';
+import type { RoadPrimitive } from './RoadPrimitive';
+import type { PrimitiveEndPoint } from './PrimitiveEndPoint';
 import { RoadSegment, SegmentEndPoint, SegmentSide } from './RoadSegment';
 import { GameScene3D } from '../GameScene3D';
 import { IPoint2D } from '../../sim/Geometry';

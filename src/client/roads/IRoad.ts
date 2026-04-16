@@ -1,8 +1,8 @@
 import { IPoint2D } from "../../sim/Geometry";
-import { RoadType, KerbType, SideWalkType, Lane } from "../textures/RoadBand";
+import { RoadColor, KerbType, SideWalkType, Lane } from "../textures/RoadBand";
 
 export interface IRoadType {
-    roadColor: RoadType;
+    roadColor: RoadColor;
     lanes: number;
     rightKerb: KerbType;
     rightSidewalk: SideWalkType;

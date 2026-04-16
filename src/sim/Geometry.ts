@@ -1,4 +1,3 @@
-import { int } from "three/tsl";
 
 export const EPSILON = 1e-6;
 
@@ -393,6 +392,11 @@ export function intersectLines(
     };
 }
 
+export interface ISegment {
+    entry: IPoint2D;
+    exit: IPoint2D;
+}
+
 export class Vector {
     static add(point: IPoint2D, vector: IPoint2D, scale: number = 1): IPoint2D {
         return {
@@ -417,6 +421,7 @@ export class Vector {
             z: vector.z / length,
         };
     }
+
     static scale(vector: IPoint2D, scale: number): IPoint2D {
         return {
             x: vector.x * scale,
@@ -425,3 +430,25 @@ export class Vector {
     }
 }
 
+export class Segment {
+    static offset(segment: ISegment, offsetM: IVector2D, scale: number = 1): ISegment {
+        return {
+            entry: Vector.add(segment.entry, offsetM, scale),
+            exit: Vector.add(segment.exit, offsetM, scale),
+        };
+    }
+
+    static direction(primitive: ISegment) {
+        return Vector.normalize({
+            x: primitive.exit.x - primitive.entry.x,
+            z: primitive.exit.z - primitive.entry.z,
+        })!;
+    }
+
+    static perpendicularRight(segment: ISegment): IVector2D {
+        let direction = Segment.direction(segment);
+        return { x: direction.z, z: -direction.x };
+    }
+
+
+}

@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
 import { RoadPrimitive } from './RoadPrimitive';
-import type { IRoadType } from './IRoad';
 import type { RoadSegment } from './RoadSegment';
-import { computeArcFromThreePoints, type IPoint2D } from '../../sim/Geometry';
+import { computeArcFromThreePoints, EPSILON, IVector2D, type IPoint2D } from '../../sim/Geometry';
 import { RoadConstants } from '../textures/RoadBand';
 import { RoadShaderMaterialBuilder } from '../textures/RoadShaderMaterialBuilder';
-import { RoadBands } from './RoadBands';
+import { RoadType } from './RoadType';
+import { PrimitiveSide } from './PrimitiveEndPoint';
 
 export interface CurvedRoadPrimitiveParams {
     parent: THREE.Object3D;
@@ -15,7 +15,7 @@ export interface CurvedRoadPrimitiveParams {
     start: IPoint2D;
     mid: IPoint2D;
     end: IPoint2D;
-    roadType: IRoadType;
+    roadType: RoadType;
     lateralOffsetM?: number;
     cuts?: IRoadCuts;
 }
@@ -38,7 +38,7 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
     protected createMesh(): THREE.Object3D | null {
         const geometry = this.createGeometry();
         if (!geometry) return null;
-        const material = RoadShaderMaterialBuilder.getRoadMaterial(this.roadType);
+        const material = RoadShaderMaterialBuilder.getRoadMaterial(this.roadType.roadType);
         return new THREE.Mesh(geometry, material);
     }
 
@@ -47,8 +47,8 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         const arc = computeArcFromThreePoints(this.entry, this.mid, this.exit);
         if (!arc || Math.abs(arc.sweepAngle) < 1e-6) return null;
 
-        const bands = RoadBands.get(this.roadType);
-        const widthM = bands.totalWidthM;
+        const bands = this.roadType;
+        const widthM = bands.totalWidth;
         if (widthM <= 0) return null;
 
         const halfWidth = widthM / 2;
@@ -110,6 +110,26 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         return geometry;
     }
 
+
+    getDirection(side: PrimitiveSide): IVector2D {
+        const arc = computeArcFromThreePoints(this.entry, this.mid, this.exit);
+        if (!arc || Math.abs(arc.sweepAngle) <= EPSILON) {
+            const dx = this.exit.x - this.entry.x;
+            const dz = this.exit.z - this.entry.z;
+            const length = Math.hypot(dx, dz);
+            if (!Number.isFinite(length) || length <= EPSILON) return { x: 0, z: 0 };
+            return { x: dx / length, z: dz / length };
+        }
+
+        const angle = side === 'entry'
+            ? arc.startAngle
+            : arc.startAngle + arc.sweepAngle;
+        const radial = { x: Math.cos(angle), z: Math.sin(angle) };
+
+        return arc.sweepAngle > 0
+            ? { x: -radial.z, z: radial.x }
+            : { x: radial.z, z: -radial.x };
+    }
 }
 
 

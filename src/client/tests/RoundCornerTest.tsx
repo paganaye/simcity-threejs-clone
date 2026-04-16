@@ -3,11 +3,10 @@ import * as THREE from 'three';
 import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
-import type { IRoadType } from '../roads/IRoad';
-//import type { RoadPrimitive } from '../roads/RoadPrimitive';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 import { RoadJoin } from '../roads/RoadJoin';
-import type { PrimitiveEndPoint } from '../roads/RoadPrimitive';
+import type { PrimitiveEndPoint } from '../roads/PrimitiveEndPoint';
+import { RoadType } from '../roads/RoadType';
 
 export default class RoundCornerTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -26,7 +25,7 @@ export default class RoundCornerTest extends Page {
         const handleUILoaded = async (): Promise<void> => {
             await scene3D.init(this);
 
-            const roadType: IRoadType = {
+            const roadType = RoadType.get({
                 roadColor: 'old',
                 lanes: 1,
                 rightKerb: 'line',
@@ -34,7 +33,7 @@ export default class RoundCornerTest extends Page {
                 laneWidth: 'normal',
                 leftKerb: 'line',
                 leftSidewalk: 'small',
-            };
+            });
 
             const centerX = 24;
             const centerZ = 24;
@@ -43,14 +42,14 @@ export default class RoundCornerTest extends Page {
                 transient: false,
                 start: { x: centerX, z: centerZ },
                 end: { x: centerX + 30, z: centerZ },
-                roadType: roadType,
+                roadType,
             });
             this.secondPrimitive = new StraightRoadPrimitive({
                 parent: scene3D.scene,
                 transient: false,
                 start: { x: centerX, z: centerZ - 40 },
                 end: { x: centerX, z: centerZ },
-                roadType: roadType,
+                roadType,
             });
 
             this.requestedPrevRoadLine = this.#createDebugLine(scene3D.scene, 0xff4444);

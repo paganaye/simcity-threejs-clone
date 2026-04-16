@@ -5,6 +5,7 @@ import { Page } from '../Page';
 import type { IRoadType } from '../roads/IRoad';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from '../roads/CurvedRoadPrimitive';
+import { RoadType } from '../roads/RoadType';
 
 export default class RoadTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -35,7 +36,7 @@ export default class RoadTest extends Page {
                 transient: false,
                 start: { x: 0, y: 0, z: 20 },
                 end: { x: 10, z: 20 },
-                roadType: road1,
+                roadType: RoadType.get(road1),
             });
 
             const createArcPrimitive = (params: {
@@ -73,7 +74,7 @@ export default class RoadTest extends Page {
                     start: pointAt(0),
                     mid: pointAt(0.5),
                     end: pointAt(1),
-                    roadType: params.roadType,
+                    roadType: RoadType.get(params.roadType),
                 });
             };
 
@@ -83,7 +84,7 @@ export default class RoadTest extends Page {
                 sweepAngle: -Math.PI / 2,
                 roadType: road1,
             });
-            
+
 
 
             const arc2 = createArcPrimitive({
@@ -92,7 +93,7 @@ export default class RoadTest extends Page {
                 sweepAngle: Math.PI / 2,
                 roadType: road1,
             });
-            
+
             void arc1;
             void arc2;
             scene3D.isLoading.set(false);

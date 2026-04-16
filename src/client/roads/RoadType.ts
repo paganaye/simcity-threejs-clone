@@ -1,4 +1,4 @@
-import { BandType, Lane, laneSeparators, RoadBand, roadBands } from '../textures/RoadBand';
+import { RoadBand, Lane, BandType, roadBands, laneSeparators } from '../textures/RoadBand';
 import { IRoadType } from './IRoad';
 
 /*
@@ -21,17 +21,19 @@ export function getBands(options: IRoadType): IRoadBands {
 
 */
 
-export class RoadBands {
-    private static cache: Map<string, RoadBands> = new Map();
+export class RoadType {
+    private static cache: Map<string, RoadType> = new Map();
 
     readonly bands: RoadBand[];
-    readonly totalWidthM: number;
-    readonly carriagewayStartM: number;
-    readonly carriagewayEndM: number;
-    readonly carriagewayWidthM: number;
+    readonly totalWidth: number;
+    readonly carriagewayStart: number;
+    readonly carriagewayEnd: number;
+    readonly carriagewayWidth: number;
+    readonly totalStart: number;
+    readonly totalEnd: number;
 
-    private constructor(options: IRoadType) {
-        const laneCount = Math.max(0, options.lanes);
+    private constructor(readonly roadType: IRoadType) {
+        const laneCount = Math.max(0, roadType.lanes);
         const laneType: Lane = 'normal';
 
         let bands: RoadBand[] = [];
@@ -41,8 +43,8 @@ export class RoadBands {
             if (band) bands.push(band);
         }
 
-        addBand(options.leftSidewalk);
-        addBand(options.leftKerb);
+        addBand(roadType.leftSidewalk);
+        addBand(roadType.leftKerb);
 
         for (let laneIndex = 0; laneIndex < laneCount; laneIndex++) {
             addBand(laneType);
@@ -50,8 +52,8 @@ export class RoadBands {
                 bands.push(laneSeparators.discontinuous);
             }
         }
-        addBand(options.rightKerb);
-        addBand(options.rightSidewalk);
+        addBand(roadType.rightKerb);
+        addBand(roadType.rightSidewalk);
 
         let offsetM = 0;
         let carriagewayStartM;
@@ -67,19 +69,22 @@ export class RoadBands {
         }
 
         this.bands = bands;
-        this.totalWidthM = offsetM;
-        this.carriagewayStartM = carriagewayStartM ?? 0;
-        this.carriagewayEndM = carriagewayEndM ?? 0,
-            this.carriagewayWidthM = (carriagewayEndM !== undefined && carriagewayStartM !== undefined) ? (carriagewayEndM - carriagewayStartM) : 0;
+        this.totalWidth = offsetM;
+        this.carriagewayStart = carriagewayStartM ?? 0;
+        this.carriagewayEnd = carriagewayEndM ?? 0;
+        this.carriagewayWidth = (carriagewayEndM !== undefined && carriagewayStartM !== undefined)
+            ? (carriagewayEndM - carriagewayStartM) : 0;
+        this.totalStart = 0;
+        this.totalEnd = this.totalWidth;
 
     }
 
 
-    static get(options: IRoadType): RoadBands {
+    static get(options: IRoadType): RoadType {
         const key = JSON.stringify(options);
         let bands = this.cache.get(key);
         if (!bands) {
-            bands = new RoadBands(options);
+            bands = new RoadType(options);
             this.cache.set(key, bands);
         }
         return bands;
@@ -87,5 +92,3 @@ export class RoadBands {
 
     classGuard() { }
 }
-
-

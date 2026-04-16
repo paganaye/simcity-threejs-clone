@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import type { PrimitiveEntry, PrimitiveExit, RoadPrimitive } from './RoadPrimitive';
-import type { IRoadType } from './IRoad';
+import type { RoadPrimitive } from './RoadPrimitive';
 import { CurvedJoiningRoad } from './CurvedJoiningRoad';
 import { TightJoiningRoad, } from './TightJoiningRoad';
+import { RoadType } from './RoadType';
+import { PrimitiveExit, PrimitiveEntry } from './PrimitiveEndPoint';
 
 const DEBUG_JOINING_ROAD = true;
 
@@ -14,7 +15,7 @@ export interface JoiningRoadsParams {
     parent: THREE.Object3D;
     previousRoadExit: PrimitiveExit;
     nextRoadEntry: PrimitiveEntry;
-    roadType: IRoadType;
+    roadType: RoadType;
     radius: number;
 };
 
@@ -39,7 +40,7 @@ export class RoadJoin {
         parent: THREE.Object3D,
         previousRoadExit: PrimitiveExit,
         nextRoadEntry: PrimitiveEntry,
-        roadType: IRoadType,
+        roadType: RoadType,
         options: JoiningPrimitiveOptions = {},
     ): void {
         let newJoin = new RoadJoin({

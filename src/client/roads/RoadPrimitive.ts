@@ -1,50 +1,13 @@
 import * as THREE from 'three';
 import type { IRoadCuts } from './RoadCuts';
-import type { IRoadType } from './IRoad';
-import { IPoint2D, IVector2D, Vector } from '../../sim/Geometry';
+import { IPoint2D, ISegment, IVector2D } from '../../sim/Geometry';
 import type { RoadSegment } from './RoadSegment';
-import { RoadJoin } from './RoadJoin';
+import { RoadType } from './RoadType';
+import { PrimitiveEntry, PrimitiveExit, PrimitiveSide } from './PrimitiveEndPoint';
 
-
-export type PrimitiveSide = 'entry' | 'exit';
-
-export abstract class PrimitiveEndPoint implements IPoint2D {
-    x: number = 0;
-    y?: number = 0;
-    z: number = 0;
-
-    readonly abstract side: PrimitiveSide;
-    constructor(readonly primitive: RoadPrimitive) { }
-
-    isPrimitiveEndPoint(): boolean { return true; }
-    roadJoin?: RoadJoin | null;
-
-    move(point: IPoint2D, raiseEvent: boolean = true): void {
-        this.x = point.x;
-        this.y = point.y;
-        this.z = point.z;
-        if (raiseEvent) {
-            this.primitive.onRoadMoved();
-        }
-    }
-
-    disposeJoin() {
-        this.roadJoin?.dispose();
-        this.roadJoin = null;
-    }
-}
-
-export class PrimitiveEntry extends PrimitiveEndPoint {
-    override readonly side = 'entry';
-}
-export class PrimitiveExit extends PrimitiveEndPoint {
-    override readonly side = 'exit';
-}
-
-
-export abstract class RoadPrimitive {
+export abstract class RoadPrimitive implements ISegment {
     transient: boolean;
-    roadType: IRoadType;
+    roadType: RoadType;
     cuts?: IRoadCuts;
 
     //    entryJoinPrimitive?: JoiningRoadPrimitive | null;
@@ -61,7 +24,7 @@ export abstract class RoadPrimitive {
         transient: boolean;
         start: IPoint2D;
         end: IPoint2D;
-        roadType: IRoadType;
+        roadType: RoadType;
         cuts?: IRoadCuts;
     }) {
         this.parent = params.parent;
@@ -145,14 +108,9 @@ export abstract class RoadPrimitive {
         this.recreateMesh();
     }
 
-    get perpendicularRightVector(): IVector2D {
-        const delta = Vector.sub(this.exit, this.entry);
-        return Vector.normalize({ x: -delta.z, z: delta.x })!;
-    }
 
-    get direction(): IVector2D {
-        const delta = Vector.sub(this.exit, this.entry);
-        return Vector.normalize(delta)!;
-    }
+    abstract getDirection(side: PrimitiveSide): IVector2D;
 
+    
+    
 }

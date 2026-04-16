@@ -1,12 +1,12 @@
 import type { IDualRoadType} from './IRoad';
-import { RoadBands } from './RoadBands';
+import { RoadType } from './RoadType';
 
 
 
 export interface IJunctionArm {
     road: IDualRoadType;
     angleRad: number;
-    crossSection: RoadBands;
+    crossSection: RoadType;
 }
 
 export interface IJunctionGeometry {

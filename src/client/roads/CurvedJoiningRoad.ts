@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CurvedRoadPrimitive } from './CurvedRoadPrimitive';
-import type { PrimitiveEndPoint, PrimitiveEntry, PrimitiveExit } from './RoadPrimitive';
+import type { PrimitiveEndPoint, PrimitiveEntry, PrimitiveExit } from './PrimitiveEndPoint';
 import { type JoiningRoadsParams } from './RoadJoin';
 import { IPoint2D } from '../../sim/Geometry';
 const JOIN_EPS = 1e-6;
@@ -18,7 +18,6 @@ type CurvedJoinGeometry = {
 
 
 export class CurvedJoiningRoad extends CurvedRoadPrimitive {
-
     private static applyStraightNeighborCuts(
         previousRoadExit: PrimitiveExit,
         nextRoadEntry: PrimitiveEntry,
@@ -181,5 +180,6 @@ export class CurvedJoiningRoad extends CurvedRoadPrimitive {
             ? { x: dx / length, z: dz / length }
             : { x: -dx / length, z: -dz / length };
     }
+
 
 }

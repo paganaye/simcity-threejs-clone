@@ -2,9 +2,9 @@ import { render } from 'solid-js/web';
 import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
-import type { IRoadType } from '../roads/IRoad';
 import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 import { RoadJoin } from '../roads/RoadJoin';
+import { RoadType } from '../roads/RoadType';
 
 export default class RoundCornerAnglesTest extends Page {
     scene3DInstance: GameScene3D | undefined;
@@ -17,7 +17,7 @@ export default class RoundCornerAnglesTest extends Page {
         const handleUILoaded = async (): Promise<void> => {
             await scene3D.init(this);
 
-            const roadType: IRoadType = {
+            const roadType: RoadType = RoadType.get({
                 roadColor: 'old',
                 lanes: 1,
                 rightKerb: 'line',
@@ -25,7 +25,7 @@ export default class RoundCornerAnglesTest extends Page {
                 laneWidth: 'normal',
                 leftKerb: 'line',
                 leftSidewalk: 'small',
-            };
+            });
 
             const angleRows = [30, 45, 60, 75, 90];
             let x = 10;

@@ -37,7 +37,7 @@ export default class RoadTool extends Page {
                     leftKerb: 'line',
                     leftSidewalk: 'small',
                 },
-                gapSize: 0,
+                gapSize: 0.5,
             };
 
             const main = new RoadSegment(scene3D, { x: 4, z: 18 }, { x: 34, z: 18 }, roadType);

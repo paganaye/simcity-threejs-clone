@@ -68,9 +68,9 @@ export class CurvedJoiningRoad extends CurvedRoadPrimitive {
             parent: params.parent,
             segment: null as any,
             transient: true,
-            start: geometry.start,
+            entry: geometry.start,
             mid: geometry.mid,
-            end: geometry.end,
+            exit: geometry.end,
             roadType: params.roadType,
         });
     }
@@ -100,15 +100,24 @@ export class CurvedJoiningRoad extends CurvedRoadPrimitive {
 
         const firstOpposite = joinArgs.nextRoadEntry.primitive.exit;
         const secondOpposite = joinArgs.previousRoadExit.primitive.entry;
-        const firstSegmentLength = joinArgs.nextRoadEntry.primitive.segment?.length ?? 20;
-        const secondSegmentLength = joinArgs.previousRoadExit.primitive.segment?.length ?? 20;
-        if (!Number.isFinite(firstSegmentLength) || !Number.isFinite(secondSegmentLength)) return null;
+        const firstPrimitiveLength = Math.hypot(
+            firstOpposite.x - joinArgs.nextRoadEntry.x,
+            firstOpposite.z - joinArgs.nextRoadEntry.z,
+        );
+        const secondPrimitiveLength = Math.hypot(
+            secondOpposite.x - joinArgs.previousRoadExit.x,
+            secondOpposite.z - joinArgs.previousRoadExit.z,
+        );
+        if (!Number.isFinite(firstPrimitiveLength) || !Number.isFinite(secondPrimitiveLength)) return null;
 
         const firstMaxTrim = (firstOpposite.x - node.x) * d1.x + (firstOpposite.z - node.z) * d1.z;
         const secondMaxTrim = (secondOpposite.x - node.x) * d2.x + (secondOpposite.z - node.z) * d2.z;
         const maxTrim = Math.max(
             0,
-            Math.min(firstMaxTrim, secondMaxTrim, firstSegmentLength * 0.5, secondSegmentLength * 0.5) - 0.001,
+            Math.min(
+                firstMaxTrim,
+                secondMaxTrim,
+            ) - 0.001,
         );
         const desiredTrim = joinArgs.radius / tanHalf;
         if (desiredTrim > maxTrim + JOIN_EPS) return null;

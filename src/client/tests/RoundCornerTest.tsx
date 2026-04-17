@@ -40,15 +40,15 @@ export default class RoundCornerTest extends Page {
             this.minutePrimitive = new StraightRoadPrimitive({
                 parent: scene3D.scene,
                 transient: false,
-                start: { x: centerX, z: centerZ },
-                end: { x: centerX + 30, z: centerZ },
+                entry: { x: centerX, z: centerZ },
+                exit: { x: centerX + 30, z: centerZ },
                 roadType,
             });
             this.secondPrimitive = new StraightRoadPrimitive({
                 parent: scene3D.scene,
                 transient: false,
-                start: { x: centerX, z: centerZ - 40 },
-                end: { x: centerX, z: centerZ },
+                entry: { x: centerX, z: centerZ - 40 },
+                exit: { x: centerX, z: centerZ },
                 roadType,
             });
 

@@ -27,7 +27,7 @@ export default class RoundCornerAnglesTest extends Page {
                 leftSidewalk: 'small',
             });
 
-            const angleRows = [30, 45, 60, 75, 90];
+            const angleRows = [25, 35, 45, 60, 75, 90];
             let x = 10;
             let z = 10;
             for (let i = 0; i < angleRows.length; i++) {
@@ -40,8 +40,8 @@ export default class RoundCornerAnglesTest extends Page {
                 const nextRoad = new StraightRoadPrimitive({
                     parent: scene3D.scene,
                     transient: false,
-                    start: { x: center.x, z: center.z },
-                    end: { x: center.x + nextLength, z: center.z },
+                    entry: { x: center.x, z: center.z },
+                    exit: { x: center.x + nextLength, z: center.z },
                     roadType,
                 });
 
@@ -55,15 +55,15 @@ export default class RoundCornerAnglesTest extends Page {
                 const previousRoad = new StraightRoadPrimitive({
                     parent: scene3D.scene,
                     transient: false,
-                    start: {
+                    entry: {
                         x: center.x + prevAwayX * previousLength,
                         z: center.z + prevAwayZ * previousLength,
                     },
-                    end: { x: center.x, z: center.z },
+                    exit: { x: center.x, z: center.z },
                     roadType,
                 });
 
-                RoadJoin.joinRoads(scene3D.scene, previousRoad.exit, nextRoad.entry, roadType);
+                RoadJoin.joinRoads(scene3D.scene, previousRoad.exit, nextRoad.entry, roadType, { radius: 3.5 });
             }
 
             console.log('[RoundCornerAnglesTest] Rendered joins for 10, 20, 30 and 40 degrees.');

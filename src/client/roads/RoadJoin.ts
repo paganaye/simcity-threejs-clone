@@ -32,10 +32,6 @@ export class RoadJoin {
         console.log(`[JoiningRoads] ${message}`, data);
     }
 
-    static resolveRequestedRadius(radius: number | undefined): number {
-        return typeof radius === 'number' && Number.isFinite(radius) ? Math.max(0, Math.abs(radius)) : 6;
-    }
-
     static joinRoads(
         parent: THREE.Object3D,
         previousRoadExit: PrimitiveExit,
@@ -48,7 +44,7 @@ export class RoadJoin {
             roadType,
             previousRoadExit,
             nextRoadEntry,
-            radius: RoadJoin.resolveRequestedRadius(options.radius),
+            radius: options.radius ?? 6,
         });
         newJoin.build();
 

@@ -162,6 +162,8 @@ export class RoadSegment {
         const backwardCuts = this.junctionCuts?.backwardCuts;
 
         const { forwardOffsetM, backwardOffsetM } = this.#getCarriagewayCenterOffsets();
+        const forwardRightOffsetM = forwardOffsetM;
+        const backwardRightOffsetM = backwardOffsetM;
         const start = { x: this.startPoint.x, z: this.startPoint.z };
         const end = { x: this.endPoint.x, z: this.endPoint.z };
 
@@ -170,10 +172,11 @@ export class RoadSegment {
             this.forwardPrimitive = new CurvedRoadPrimitive({
                 parent: this.gameScene3D.scene,
                 transient: false,
-                start,
+                entry: start,
                 mid,
-                end,
+                exit: end,
                 roadType: RoadType.get(this.dualRoadType.forward),
+                // Curved primitive offset is defined from segment centerline.
                 lateralOffsetM: forwardOffsetM,
                 cuts: forwardCuts,
                 segment: this,
@@ -183,12 +186,11 @@ export class RoadSegment {
                 this.backwardPrimitive = new CurvedRoadPrimitive({
                     parent: this.gameScene3D.scene,
                     transient: false,
-                    start: end,
+                    entry: end,
                     mid,
-                    end: start,
+                    exit: start,
                     roadType: RoadType.get(this.dualRoadType.backward),
-                    // Backward primitive runs in the opposite direction, so
-                    // its local right-side offset sign must be inverted.
+                    // Backward primitive runs in opposite direction.
                     lateralOffsetM: -backwardOffsetM,
                     cuts: backwardCuts,
                     segment: this,
@@ -198,16 +200,16 @@ export class RoadSegment {
         }
 
         const normal = this.#getLateralNormal();
-        const forwardStart = offsetPoint2D(start, normal, forwardOffsetM);
-        const forwardEnd = offsetPoint2D(end, normal, forwardOffsetM);
-        const backwardStart = offsetPoint2D(start, normal, backwardOffsetM);
-        const backwardEnd = offsetPoint2D(end, normal, backwardOffsetM);
+        const forwardStart = offsetPoint2D(start, normal, forwardRightOffsetM);
+        const forwardEnd = offsetPoint2D(end, normal, forwardRightOffsetM);
+        const backwardStart = offsetPoint2D(start, normal, backwardRightOffsetM);
+        const backwardEnd = offsetPoint2D(end, normal, backwardRightOffsetM);
 
         this.forwardPrimitive = new StraightRoadPrimitive({
             parent: this.gameScene3D.scene,
             transient: false,
-            start: forwardStart,
-            end: forwardEnd,
+            entry: forwardStart,
+            exit: forwardEnd,
             roadType: RoadType.get(this.dualRoadType.forward),
             cuts: forwardCuts,
             segment: this,
@@ -217,8 +219,8 @@ export class RoadSegment {
             this.backwardPrimitive = new StraightRoadPrimitive({
                 parent: this.gameScene3D.scene,
                 transient: false,
-                start: backwardEnd,
-                end: backwardStart,
+                entry: backwardEnd,
+                exit: backwardStart,
                 roadType: RoadType.get(this.dualRoadType.backward),
                 cuts: backwardCuts,
                 segment: this,
@@ -237,8 +239,8 @@ export class RoadSegment {
 
         return {
             // Positive is right side relative to start -> end.
-            forwardOffsetM: halfGapM + forwardCarriagewayWidthM / 2,
-            backwardOffsetM: -halfGapM - backwardCarriagewayWidthM / 2,
+            forwardOffsetM: halfGapM + forwardCarriagewayWidthM,
+            backwardOffsetM: -halfGapM - backwardCarriagewayWidthM,
         };
     }
 

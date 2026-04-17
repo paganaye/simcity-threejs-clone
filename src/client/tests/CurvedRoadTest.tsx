@@ -3,7 +3,6 @@ import { GameScene3D } from '../GameScene3D';
 import { GameUIComponent } from '../GameUIComponent';
 import { Page } from '../Page';
 import type { IRoadType } from '../roads/IRoad';
-import { StraightRoadPrimitive } from '../roads/StraightRoadPrimitive';
 import { CurvedRoadPrimitive } from '../roads/CurvedRoadPrimitive';
 import { RoadType } from '../roads/RoadType';
 
@@ -30,14 +29,16 @@ export default class RoadTest extends Page {
                 leftSidewalk: 'small',
 
             };
+            const road2: IRoadType = {
+                roadColor: 'new',
+                lanes: 2,
+                rightKerb: 'line',
+                rightSidewalk: 'grass',
+                laneWidth: 'normal',
+                leftKerb: 'line',
+                leftSidewalk: 'small',
 
-            new StraightRoadPrimitive({
-                parent: scene3D.scene,
-                transient: false,
-                start: { x: 0, y: 0, z: 20 },
-                end: { x: 10, z: 20 },
-                roadType: RoadType.get(road1),
-            });
+            };
 
             const createArcPrimitive = (params: {
                 start: { x: number; z: number; angle: number };
@@ -71,15 +72,15 @@ export default class RoadTest extends Page {
                 return new CurvedRoadPrimitive({
                     parent: scene3D.scene,
                     transient: false,
-                    start: pointAt(0),
+                    entry: pointAt(0),
                     mid: pointAt(0.5),
-                    end: pointAt(1),
+                    exit: pointAt(1),
                     roadType: RoadType.get(params.roadType),
                 });
             };
 
             const arc1 = createArcPrimitive({
-                start: { x: 10, z: 20, angle: 0 },
+                start: { x: 0, z: 0, angle: 0 },
                 radius: 10,
                 sweepAngle: -Math.PI / 2,
                 roadType: road1,
@@ -88,14 +89,21 @@ export default class RoadTest extends Page {
 
 
             const arc2 = createArcPrimitive({
-                start: { x: 10, z: 20, angle: 0 },
+                start: { x: 21, z: 8, angle: 0 },
                 radius: 10,
                 sweepAngle: Math.PI / 2,
                 roadType: road1,
             });
 
-            void arc1;
-            void arc2;
+            const arc3 = createArcPrimitive({
+                start: { x: 1, z: 34, angle: 0 },
+                radius: 0.01,
+                sweepAngle: Math.PI,
+                roadType: road2,
+            });
+
+            void arc1, arc2, arc3;
+
             scene3D.isLoading.set(false);
             this.setCameraView(20, 40, 40, 20, 0, 20);
         };

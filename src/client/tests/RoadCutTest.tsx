@@ -32,8 +32,8 @@ export default class RoadTest extends Page {
             new StraightRoadPrimitive({
                 parent: scene3D.scene,
                 transient: false,
-                start: { x: 0, y: 0, z: 10 },
-                end: { x: 30, z: 10 },
+                entry: { x: 0, y: 0, z: 10 },
+                exit: { x: 30, z: 10 },
                 roadType: RoadType.get(road1),
                 cuts: {
                     entryCut: {

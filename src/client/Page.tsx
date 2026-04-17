@@ -4,6 +4,7 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { App } from './App';
 import { CameraRotateGizmo } from './CameraRotateGizmo';
 import { SimpleCameraControls } from './SimpleCameraControls';
+import { IPoint3D } from '../sim/Geometry';
 
 export abstract class Page {
     app!: App<any>;
@@ -126,6 +127,30 @@ export abstract class Page {
         this.camera.position.set(positionX, positionY, positionZ);
         this.camera.lookAt(targetX, targetY, targetZ);
         this.camera.updateMatrixWorld();
+    }
+
+    protected setCameraViewPolar(
+        args: {
+            distance?: number,
+            azimuthDeg?: number,
+            elevationDeg?: number,
+            focus?: IPoint3D,
+        } = {}
+    ): void {
+        const distance = args.distance ?? 40;
+        const azimuthDeg = args.azimuthDeg ?? 0;
+        const elevationDeg = args.elevationDeg ?? 45;
+        const azimuthRad = (azimuthDeg * Math.PI) / 180;
+        const elevationRad = (elevationDeg * Math.PI) / 180;
+
+        const cosElevation = Math.cos(elevationRad);
+        const focus = args.focus ?? { x: 0, y: 0, z: 0 };
+
+        const positionX = focus.x + distance * Math.cos(azimuthRad) * cosElevation;
+        const positionY = focus.y + distance * Math.sin(elevationRad);
+        const positionZ = focus.z + distance * Math.sin(azimuthRad) * cosElevation;
+
+        this.setCameraView(positionX, positionY, positionZ, focus.x, focus.y, focus.z);
     }
 
     protected addStats() {

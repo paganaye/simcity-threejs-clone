@@ -5,6 +5,8 @@ import { drawMarker } from '../Debug';
 import { IPoint2D, Point2D } from '../../sim/Geometry';
 import { PrimitiveExit, PrimitiveEntry } from './PrimitiveEndPoint';
 
+const JOIN_EPS = 1e-6;
+
 
 type TightJoinGeometry = {
     kind: 'tight';
@@ -29,23 +31,33 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
         const exitPoint = joinArgs.nextRoadEntry;    // point d'entrée de la route suivante (= b côté centre)
         const entryPoint = joinArgs.previousRoadExit; // point de sortie de la route précédente
 
-        // Direction de la route suivante qui s'éloigne de l'entrée
-        const entryDirection = entryPoint.direction();
-        const exitDirection = exitPoint.direction();
-        const carriageWayStart = joinArgs.roadType.carriagewayStart;
-        const midCarriageway = joinArgs.roadType.midCarriageway;
+        const previousAway = this.directionAwayFromSide(entryPoint);
+        const nextAway = this.directionAwayFromSide(exitPoint);
+        if (!previousAway || !nextAway) return null;
+
+        // Travel direction at the junction: previous road comes into the node, then leaves on next road.
+        const incoming = { x: -previousAway.x, z: -previousAway.z };
+        const outgoing = nextAway;
         const carriageWayEnd = joinArgs.roadType.carriagewayEnd;
         const outerWidth = joinArgs.roadType.outerWidth;
 
-        const dx = entryDirection.x + exitDirection.x;
-        const dz = entryDirection.z + exitDirection.z;
-        const slope = Math.abs(dz / dx) / 2;
-        const angle = Math.atan2(dz, dx);
+        const dot = Math.max(-1, Math.min(1, incoming.x * outgoing.x + incoming.z * outgoing.z));
+        const turnAngle = Math.acos(dot);
+        const interiorTurnAngle = Math.min(turnAngle, Math.PI - turnAngle);
+        const slope = interiorTurnAngle > JOIN_EPS && interiorTurnAngle < Math.PI - JOIN_EPS
+            ? Math.tan(interiorTurnAngle / 2)
+            : 0;
+
+        const bisector = {
+            x: incoming.x + outgoing.x,
+            z: incoming.z + outgoing.z,
+        };
+        const angle = Math.atan2(bisector.z, bisector.x);
         let cutB: number, cutD: number, cutF: number, cutH: number, cutI: number;
         if (isFinite(slope)) {
             cutB = 0;
-            cutD = carriageWayStart * slope;
-            cutF = midCarriageway * slope;
+            cutD = 0;
+            cutF = 0;
             cutH = carriageWayEnd * slope;
             cutI = outerWidth * slope;
         } else {
@@ -79,14 +91,7 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
         drawMarker('orange', ptB, joinArgs.parent);
         drawMarker('orange', ptC, joinArgs.parent);
         drawMarker('orange', ptI, joinArgs.parent);
-        // const t = {
-        //     x: ((entryI.x - entryB.x) + (exitI.x - exitB.x)) / 2,
-        //     z: ((entryI.z - entryB.z) + (exitI.z - exitB.z)) / 2,
-        // };
-        // const start = { x: entryB.x + t.x, z: entryB.z + t.z };
-        // const end = { x: start.x + bc.x, z: start.z + bc.z };
-        // const ptA = { x: (entryPoint.x + exitPoint.x) / 2, z: (entryPoint.z + exitPoint.z) / 2 };
-
+  
         const start = entryPoint;
         const end = exitPoint;
         const ptA = { x: (entryPoint.x + exitPoint.x) / 2, z: (entryPoint.z + exitPoint.z) / 2 };
@@ -110,6 +115,17 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
             drawMarker('blue', geometry.ptA, joinArgs.parent);
         }
 
+    }
+
+    private static directionAwayFromSide(endpoint: PrimitiveEntry | PrimitiveExit): IPoint2D | null {
+        const primitive = endpoint.primitive;
+        const dx = primitive.exit.x - primitive.entry.x;
+        const dz = primitive.exit.z - primitive.entry.z;
+        const length = Math.hypot(dx, dz);
+        if (!Number.isFinite(length) || length <= JOIN_EPS) return null;
+        return endpoint.side === 'entry'
+            ? { x: dx / length, z: dz / length }
+            : { x: -dx / length, z: -dz / length };
     }
 
 
@@ -153,8 +169,8 @@ export class TightJoiningRoad extends StraightRoadPrimitive {
             parent: params.parent,
             segment: undefined,
             transient: true,
-            start: geometry.start,
-            end: geometry.end,
+            entry: geometry.start,
+            exit: geometry.end,
             roadType: params.roadType,
             cuts: {
                 entryCut: geometry.centerSegmentEntryCut,

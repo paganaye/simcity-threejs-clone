@@ -13,9 +13,9 @@ export interface CurvedRoadPrimitiveParams {
     parent: THREE.Object3D;
     segment?: RoadSegment;
     transient: boolean;
-    start: IPoint2D;
+    entry: IPoint2D;
     mid: IPoint2D;
-    end: IPoint2D;
+    exit: IPoint2D;
     roadType: RoadType;
     lateralOffsetM?: number;
     cuts?: IRoadCuts;
@@ -55,19 +55,25 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
         const widthM = this.roadType.outerWidth;
         if (widthM <= 0) return null;
 
-        const halfWidth = widthM / 2;
-        // Positive lateral offset means "right side" of the road direction.
-        // For CCW arcs, right side is outward (larger radius).
-        // For CW arcs, right side is inward (smaller radius).
-        const radiusShift = arc.sweepAngle > 0 ? this.lateralOffsetM : -this.lateralOffsetM;
-        const centerRadius = arc.radius + radiusShift;
+        // `lateralOffsetM` is defined as a right-edge offset from the segment axis.
+        // Build boundary radii directly from that right-edge reference.
+        const rightEdgeRadiusShift = arc.sweepAngle > 0 ? this.lateralOffsetM : -this.lateralOffsetM;
+        let rightRadius = arc.radius + rightEdgeRadiusShift;
+        let leftRadius = arc.sweepAngle > 0
+            ? rightRadius - widthM
+            : rightRadius + widthM;
+
         const minInnerRadius = 0.2;
-        const safeCenterRadius = Math.max(minInnerRadius + halfWidth, centerRadius);
-        const innerRadius = Math.max(minInnerRadius, safeCenterRadius - halfWidth);
-        const outerRadius = safeCenterRadius + halfWidth;
+        const innerRadius = Math.min(leftRadius, rightRadius);
+        if (innerRadius < minInnerRadius) {
+            const outwardShift = minInnerRadius - innerRadius;
+            leftRadius += outwardShift;
+            rightRadius += outwardShift;
+        }
+        const referenceRadius = (leftRadius + rightRadius) * 0.5;
 
         const safeSegmentLength = Math.max(0.1, segmentLength);
-        const arcLength = safeCenterRadius * Math.abs(arc.sweepAngle);
+        const arcLength = referenceRadius * Math.abs(arc.sweepAngle);
         const subdivisionCount = Math.max(2, Math.ceil(arcLength / safeSegmentLength));
 
         const vertices: number[] = [];
@@ -79,8 +85,6 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
             const angle = arc.startAngle + arc.sweepAngle * t;
             const radial = { x: Math.cos(angle), z: Math.sin(angle) };
 
-            const leftRadius = arc.sweepAngle > 0 ? innerRadius : outerRadius;
-            const rightRadius = arc.sweepAngle > 0 ? outerRadius : innerRadius;
             const leftBoundary = {
                 x: arc.center.x + radial.x * leftRadius,
                 z: arc.center.z + radial.z * leftRadius,
@@ -92,9 +96,9 @@ export class CurvedRoadPrimitive extends RoadPrimitive {
 
             const v = textureProgressV + (arcLength / lineLength) * t;
             vertices.push(leftBoundary.x, y, leftBoundary.z);
-            uvs.push(1, v);
-            vertices.push(rightBoundary.x, y, rightBoundary.z);
             uvs.push(0, v);
+            vertices.push(rightBoundary.x, y, rightBoundary.z);
+            uvs.push(1, v);
         }
 
         for (let i = 0; i < subdivisionCount; i++) {

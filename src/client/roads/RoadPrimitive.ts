@@ -23,20 +23,20 @@ export abstract class RoadPrimitive implements ISegment {
         parent: THREE.Object3D;
         segment?: RoadSegment;
         transient: boolean;
-        start: IPoint2D;
-        end: IPoint2D;
+        entry: IPoint2D;
+        exit: IPoint2D;
         roadType: RoadType;
         cuts?: IRoadCuts;
     }) {
         this.parent = params.parent;
         this.segment = params.segment;
         this.transient = params.transient;
-        this.entry.x = params.start.x;
-        this.entry.y = params.start.y;
-        this.entry.z = params.start.z;
-        this.exit.x = params.end.x;
-        this.exit.y = params.end.y;
-        this.exit.z = params.end.z;
+        this.entry.x = params.entry.x;
+        this.entry.y = params.entry.y;
+        this.entry.z = params.entry.z;
+        this.exit.x = params.exit.x;
+        this.exit.y = params.exit.y;
+        this.exit.z = params.exit.z;
         this.roadType = params.roadType;
         this.cuts = params.cuts;
     }

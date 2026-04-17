@@ -162,8 +162,8 @@ export default class JunctionTest extends Page {
             new StraightRoadPrimitive({
                 parent: scene3D.scene,
                 transient: false,
-                start: road1.start,
-                end: { x: road1.start.x + Math.cos(road1.start.angle) * road1.length, z: road1.start.z - Math.sin(road1.start.angle) * road1.length },
+                entry: road1.start,
+                exit: { x: road1.start.x + Math.cos(road1.start.angle) * road1.length, z: road1.start.z - Math.sin(road1.start.angle) * road1.length },
                 roadType: RoadType.get(road1.style),
                 cuts: road1Cuts,
             });
@@ -171,8 +171,8 @@ export default class JunctionTest extends Page {
             new StraightRoadPrimitive({
                 parent: scene3D.scene,
                 transient: false,
-                start: road2.start,
-                end: { x: road2.start.x + Math.cos(road2.start.angle) * road2.length, z: road2.start.z - Math.sin(road2.start.angle) * road2.length },
+                entry: road2.start,
+                exit: { x: road2.start.x + Math.cos(road2.start.angle) * road2.length, z: road2.start.z - Math.sin(road2.start.angle) * road2.length },
                 roadType: RoadType.get(road2.style),
                 cuts: { exitCut: road2Cuts },
             });
@@ -180,8 +180,8 @@ export default class JunctionTest extends Page {
             new StraightRoadPrimitive({
                 parent: scene3D.scene,
                 transient: false,
-                start: road3.start,
-                end: { x: road3.start.x + Math.cos(road3.start.angle) * road3.length, z: road3.start.z - Math.sin(road3.start.angle) * road3.length },
+                entry: road3.start,
+                exit: { x: road3.start.x + Math.cos(road3.start.angle) * road3.length, z: road3.start.z - Math.sin(road3.start.angle) * road3.length },
                 roadType: RoadType.get(road3.style),
                 cuts: { exitCut: road3Cuts },
             });

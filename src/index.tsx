@@ -7,6 +7,7 @@ const pages = {
     "Buildings": "client/tests/BuildingsTest",
     "Character Test": "client/tests/CharacterTest",
     "Curved Road": "client/tests/CurvedRoadTest",
+    "Cut Road": "client/tests/CutRoadTest",
     "Game": "client/GamePage",
     "GamePart": "client/tests/GamePart",
     "Junction": "client/tests/JunctionTest",
